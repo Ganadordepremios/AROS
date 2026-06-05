@@ -1103,6 +1103,29 @@
   .donut-legend .dl b { color: var(--text); font-family: var(--font-mono); margin-left: auto; padding-left: 16px; }
   .donut-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
+  /* ── GLASS MODALS ── */
+  .boxdrop, .wiz-panel {
+    background-color: color-mix(in srgb, var(--surface) 86%, transparent);
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  }
+  .boxdrop-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+  /* ── MICRO-ANIMACIONES ── */
+  .btn { transition: transform 0.12s ease, filter 0.15s ease, background 0.15s, color 0.15s, border-color 0.15s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .nav-item, .mtab, .ctab, .boxdrop-tab, .filter-btn, .chip, .rev-check, .goal-btn, .kanban-card, .launch-card, .idea-card, .ref-page-card { transition: all 0.16s ease; }
+  .page.active { animation: pageIn 0.28s ease; }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .donut-wrap svg, .stat-value { animation: popIn 0.4s ease; }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  .progress-fill { transition: width 0.5s cubic-bezier(0.22,1,0.36,1); }
+  .donut-wrap svg circle { transition: stroke-dasharray 0.6s ease; }
+  /* sparkline polish */
+  .spark { display: block; }
+  .spark polyline { filter: drop-shadow(0 0 4px var(--glow)); }
+
   /* ════════════════════════════════════════ */
   /* ── CAMPAIGN PLANNER WIZARD ── */
   /* ════════════════════════════════════════ */
@@ -3868,13 +3891,34 @@ function latestEntries(entries) {
   (entries || []).forEach(e => { const k = e.platform + '|' + e.metric; if (!map[k] || (e.date||'') >= (map[k].date||'')) map[k] = e; });
   return Object.values(map);
 }
-function metricCardHTML(e) {
+function sparklineSVG(values, w, h, color) {
+  w = w || 110; h = h || 30; color = color || 'var(--accent)';
+  if (!values || values.length < 2) return '';
+  const max = Math.max(...values), min = Math.min(...values), range = (max - min) || 1;
+  const step = w / (values.length - 1);
+  const pts = values.map((v, i) => `${(i*step).toFixed(1)},${(h - ((v-min)/range)*(h-6) - 3).toFixed(1)}`).join(' ');
+  const lx = (values.length-1)*step, ly = h - ((values[values.length-1]-min)/range)*(h-6) - 3;
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible;margin-top:8px">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></polyline>
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.6" fill="${color}"></circle>
+  </svg>`;
+}
+function metricCardHTML(e, allEntries) {
   const pm = PLAT_META[e.platform] || PLAT_META.other;
+  let spark = '';
+  if (allEntries) {
+    const series = allEntries.filter(x => x.platform === e.platform && x.metric === e.metric)
+      .sort((a, b) => a.date < b.date ? -1 : 1).map(x => x.value);
+    if (series.length >= 2) spark = sparklineSVG(series, 120, 30, pm.color);
+  }
+  const first = (allEntries || []).filter(x => x.platform === e.platform && x.metric === e.metric).sort((a,b)=>a.date<b.date?-1:1)[0];
+  const delta = (first && first.value && e.value !== first.value) ? Math.round((e.value - first.value) / first.value * 100) : null;
   return `<div class="stat-card">
     <div class="stat-label">${s(e.metric)}</div>
     <div class="stat-value">${fmtNum(e.value)}</div>
-    <div class="stat-trend" style="color:${pm.color}">${pm.icon} ${pm.name}</div>
+    <div class="stat-trend" style="color:${pm.color}">${pm.icon} ${pm.name}${delta!=null?` · <span style="color:${delta>=0?'#4ade80':'var(--accent2)'}">${delta>=0?'↑':'↓'} ${Math.abs(delta)}%</span>`:''}</div>
     <div class="stat-sub">${s(e.date)}${e.source && e.source!=='seed' ? ' · ' + s(e.source) : ''}</div>
+    ${spark}
   </div>`;
 }
 function metricsTimeSeriesHTML(entries) {
@@ -3929,9 +3973,9 @@ function metricsResumenHTML() {
   const lnLatest = latestEntries(a ? a.metricEntries : []);
   return `
     <div class="section-header"><div class="section-title">MÉTRICAS DEL ARTISTA · ${up(art.name)}</div></div>
-    ${artLatest.length ? `<div class="dashboard-grid">${artLatest.map(metricCardHTML).join('')}</div>` : `<div class="empty-hint">Sin métricas del artista. Cárgalas en la pestaña “Importar / Cargar”.</div>`}
+    ${artLatest.length ? `<div class="dashboard-grid">${artLatest.map(e => metricCardHTML(e, art.metricEntries)).join('')}</div>` : `<div class="empty-hint">Sin métricas del artista. Cárgalas en la pestaña “Importar / Cargar”.</div>`}
     <div class="section-header" style="margin-top:26px"><div class="section-title">MÉTRICAS DEL LANZAMIENTO · ${a ? up(a.name) : '—'}</div></div>
-    ${lnLatest.length ? `<div class="dashboard-grid">${lnLatest.map(metricCardHTML).join('')}</div>${metricsTimeSeriesHTML(a.metricEntries)}` : `<div class="empty-hint">Sin métricas para este lanzamiento.</div>`}
+    ${lnLatest.length ? `<div class="dashboard-grid">${lnLatest.map(e => metricCardHTML(e, a.metricEntries)).join('')}</div>${metricsTimeSeriesHTML(a.metricEntries)}` : `<div class="empty-hint">Sin métricas para este lanzamiento.</div>`}
     ${screenshotsStripHTML()}`;
 }
 
