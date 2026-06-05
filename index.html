@@ -818,6 +818,18 @@
   .goal-btn.on-accept { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,0.1); }
   .goal-btn.on-reject { border-color:var(--accent2); color:var(--accent2); background:rgba(255,71,87,0.1); }
 
+  /* ── PROGRESO / POW ── */
+  .progress-track { height: 12px; background: var(--surface2); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #4ade80); border-radius: 6px; transition: width 0.4s ease; }
+  .deadline-alert {
+    display: flex; align-items: center; gap: 10px; background: rgba(255,71,87,0.08);
+    border: 1px solid rgba(255,71,87,0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px;
+    font-size: 12px; color: #ff8a8a;
+  }
+  .pow-section { margin-bottom: 18px; }
+  .pow-section h4 { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .pow-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+
   /* ── CONTENIDO IA: mini-tabs ── */
   .ctabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
   .ctab { padding: 8px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.5px; }
@@ -1273,6 +1285,9 @@
 
     <!-- ── DASHBOARD ── -->
     <div class="page active" id="page-dashboard">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button class="btn btn-primary" onclick="openPOW()">📋 Plan de la Semana (POW)</button>
+      </div>
       <div class="dashboard-grid fade-in" id="dash-stats"></div>
 
       <div style="margin-bottom:24px">
@@ -1957,6 +1972,21 @@
       <div class="boxdrop-tab" data-ptab="content" onclick="prodTab('content',this)" style="color:#a78bfa">✨ Contenido IA</div>
     </div>
     <div class="boxdrop-body" id="prod-body"></div>
+  </div>
+</div>
+
+<!-- ── POW: Plan de la Semana (Fase 2) ── -->
+<div class="boxdrop-overlay" id="pow-modal" onclick="closePOW(event)">
+  <div class="boxdrop" style="width:640px;max-width:96vw">
+    <div class="boxdrop-header">
+      <div class="boxdrop-title">📋 PLAN DE LA SEMANA</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="copyPOW(this)">⧉ Copiar (WhatsApp)</button>
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="powPDF()">⤓ PDF</button>
+        <div class="boxdrop-close" onclick="closePOWDirect()">✕</div>
+      </div>
+    </div>
+    <div class="boxdrop-body" id="pow-body"></div>
   </div>
 </div>
 
@@ -3026,6 +3056,14 @@ function stageOf(estado) {
   const st = STAGE_DEF.find(s2 => s2.estados.includes(estado));
   return st ? st.key : 'pre';
 }
+function launchProgress(l) {
+  const items = (l && l.cal) || [];
+  const total = items.length;
+  const published = items.filter(c => (c.production && c.production.estado) === 'publicado').length;
+  const byStage = { pre: 0, prod: 0, post: 0 };
+  items.forEach(c => { byStage[stageOf((c.production && c.production.estado) || 'pendiente')]++; });
+  return { total, published, pct: total ? Math.round(published / total * 100) : 0, byStage };
+}
 function kanbanCardHTML(launchId, ci) {
   const col = catColor(ci.cat);
   const est = (ci.production && ci.production.estado) || 'pendiente';
@@ -3328,6 +3366,138 @@ async function generarContenidoBanco(idx) {
   } catch (e) {
     res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`;
   }
+}
+
+// ══════════════════════════════════════════
+// FASE 2: POW — Plan de la Semana
+// ══════════════════════════════════════════
+let powRecommendation = null;
+function weekBounds(offset) {
+  const d = new Date(); d.setHours(0,0,0,0);
+  const dow = (d.getDay() + 6) % 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - dow + offset * 7);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return { mon, sun };
+}
+function inWeek(iso, wb) { const t = new Date(iso + 'T00:00:00'); return t >= wb.mon && t <= wb.sun; }
+function powData() {
+  const a = activeLaunch(); const art = activeArtist() || {};
+  const last = weekBounds(-1), now = weekBounds(0);
+  const items = (a && a.cal) || [];
+  const lastWeekItems = items.filter(c => inWeek(c.fecha, last));
+  const lastPublished = lastWeekItems.filter(c => (c.production && c.production.estado) === 'publicado');
+  const thisWeekItems = items.filter(c => inWeek(c.fecha, now));
+  const pending = thisWeekItems.filter(c => (c.production && c.production.estado) !== 'publicado').sort((x,y) => x.fecha < y.fecha ? -1 : 1);
+  const metrics = latestEntries(a ? a.metricEntries : []).slice(0, 3);
+  return { a, art, last, now, lastWeekItems, lastPublished, thisWeekItems, pending, metrics };
+}
+function powDM(iso) { const x = new Date(iso + 'T00:00:00'); return `${x.getDate()}/${x.getMonth()+1}`; }
+function powDMd(d) { return `${d.getDate()}/${d.getMonth()+1}`; }
+function powRecPrompt(d) {
+  const m = d.metrics.map(x => `${x.metric} ${fmtNum(x.value)}`).join(', ') || 'sin métricas';
+  return `Eres director de estrategia musical. En 2-3 frases, recomienda qué priorizar ESTA semana para la campaña y por qué.
+
+ARTISTA: ${s(d.art.name)} · CAMPAÑA: ${s(d.a && d.a.name)}
+Semana pasada: ${d.lastPublished.length}/${d.lastWeekItems.length} piezas publicadas.
+Pendientes esta semana: ${d.pending.map(c => c.title).join('; ') || 'ninguna'}.
+Métricas: ${m}.
+
+Devuelve SOLO el texto de la recomendación (sin JSON), empezando por la acción a priorizar.`;
+}
+function openPOW() { powRecommendation = null; renderPOW(); document.getElementById('pow-modal').classList.add('open'); }
+function closePOW(e) { if (e.target === document.getElementById('pow-modal')) closePOWDirect(); }
+function closePOWDirect() { document.getElementById('pow-modal').classList.remove('open'); }
+function renderPOW() {
+  const d = powData(); const body = document.getElementById('pow-body');
+  if (!d.a) { body.innerHTML = '<div class="empty-hint" style="margin:0">Selecciona un lanzamiento con calendario para generar el POW.</div>'; return; }
+  const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;
+  body.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-bottom:18px">${up(d.art.name)} · ${up(d.a.name)} · SEMANA DEL ${powDMd(d.now.mon)} AL ${powDMd(d.now.sun)}</div>
+
+    <div class="pow-section">
+      <h4>✅ Semana pasada · hit rate ${hit}%</h4>
+      <div style="font-size:13px;margin-bottom:8px">${d.lastPublished.length} de ${d.lastWeekItems.length} piezas publicadas.</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${hit}%"></div></div>
+    </div>
+
+    <div class="pow-section">
+      <h4>📅 Esta semana · ${d.pending.length} pendiente${d.pending.length===1?'':'s'}</h4>
+      ${d.pending.length ? d.pending.map(c => `<div class="pow-row"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:48px">${powDM(c.fecha)}</span><span style="flex:1">${ESTADO_ICON[(c.production&&c.production.estado)||'pendiente']||''} ${s(c.title)}</span><span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${(c.production&&c.production.estado)||'pendiente'}</span></div>`).join('') : '<div style="font-size:12px;color:var(--text-dim)">Sin piezas pendientes esta semana.</div>'}
+    </div>
+
+    <div class="pow-section">
+      <h4>📊 Métricas top — ${s(d.a.name)}</h4>
+      ${d.metrics.length ? `<div class="dashboard-grid" style="grid-template-columns:repeat(3,1fr);gap:10px">${d.metrics.map(m => `<div class="stat-card" style="padding:14px"><div class="stat-label">${s(m.metric)}</div><div class="stat-value" style="font-size:24px">${fmtNum(m.value)}</div></div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--text-dim)">Sin métricas cargadas (impórtalas en Métricas).</div>'}
+    </div>
+
+    <div class="pow-section" style="margin-bottom:0">
+      <h4>💡 Recomendación IA</h4>
+      <div id="pow-rec">${powRecommendation
+        ? `<div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;line-height:1.6">${s(powRecommendation)}</div>`
+        : `<button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarPOWRecomendacion()">✨ Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
+    </div>`;
+}
+async function generarPOWRecomendacion() {
+  if (!aiReady()) { abrirAISettings(); return; }
+  const d = powData(); const rec = document.getElementById('pow-rec');
+  rec.innerHTML = '<div class="empty-hint">✨ Generando recomendación…</div>';
+  try {
+    const { text } = await callClaude(powRecPrompt(d), 400);
+    powRecommendation = s(text).trim();
+    renderPOW();
+  } catch (e) { rec.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`; }
+}
+function powText() {
+  const d = powData(); if (!d.a) return '';
+  const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;
+  let t = `📋 PLAN DE LA SEMANA — ${d.art.name} / ${d.a.name}\n(semana del ${powDMd(d.now.mon)} al ${powDMd(d.now.sun)})\n\n`;
+  t += `✅ Semana pasada: ${d.lastPublished.length}/${d.lastWeekItems.length} publicadas (${hit}% hit rate)\n\n`;
+  t += `📅 Esta semana — ${d.pending.length} pendientes:\n`;
+  t += d.pending.length ? d.pending.map(c => `• ${c.title} — ${powDM(c.fecha)} (${(c.production && c.production.estado) || 'pendiente'})`).join('\n') : '• Sin pendientes';
+  if (d.metrics.length) t += `\n\n📊 Métricas top:\n` + d.metrics.map(m => `• ${m.metric}: ${fmtNum(m.value)}`).join('\n');
+  if (powRecommendation) t += `\n\n💡 ${powRecommendation}`;
+  return t;
+}
+function copyPOW(btn) {
+  const t = powText();
+  if (navigator.clipboard) navigator.clipboard.writeText(t);
+  if (btn) { const o = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = o; }, 1200); }
+}
+function ensureJsPDF() {
+  return new Promise((resolve, reject) => {
+    if (window.jspdf && window.jspdf.jsPDF) return resolve();
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.onload = () => resolve(); sc.onerror = () => reject(new Error('No se pudo cargar jsPDF (¿sin internet?)'));
+    document.head.appendChild(sc);
+  });
+}
+async function powPDF() {
+  const d = powData(); if (!d.a) { alert('Selecciona un lanzamiento.'); return; }
+  try { await ensureJsPDF(); } catch (e) { alert('No se pudo cargar el generador de PDF (¿sin internet?). Usa "Copiar (WhatsApp)" como alternativa.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth(); let y = 120;
+  const pline = (txt, size, rgb, gap) => {
+    doc.setFontSize(size); doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+    const lines = doc.splitTextToSize(txt, W - 80); doc.text(lines, 40, y); y += lines.length * (size * 1.25) + gap;
+  };
+  doc.setFillColor(10,10,10); doc.rect(0, 0, W, 92, 'F');
+  doc.setTextColor(232,255,71); doc.setFontSize(22); doc.text('ArtistOS', 40, 42);
+  doc.setTextColor(255,255,255); doc.setFontSize(13); doc.text('Plan de la Semana', 40, 64);
+  doc.setTextColor(160,160,160); doc.setFontSize(10); doc.text(`${d.art.name}  ·  ${d.a.name}  ·  ${powDMd(d.now.mon)}-${powDMd(d.now.sun)}`, 40, 82);
+  const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;
+  pline('Semana pasada', 14, [0,0,0], 4);
+  pline(`${d.lastPublished.length} de ${d.lastWeekItems.length} piezas publicadas - hit rate ${hit}%`, 11, [80,80,80], 16);
+  pline('Esta semana - pendientes', 14, [0,0,0], 6);
+  if (d.pending.length) d.pending.forEach(c => pline(`-  ${c.title}  (${powDM(c.fecha)} - ${(c.production && c.production.estado) || 'pendiente'})`, 11, [80,80,80], 3));
+  else pline('Sin pendientes.', 11, [80,80,80], 3);
+  y += 10;
+  pline('Metricas top', 14, [0,0,0], 6);
+  if (d.metrics.length) d.metrics.forEach(m => pline(`-  ${m.metric}: ${fmtNum(m.value)}`, 11, [80,80,80], 3));
+  else pline('Sin metricas.', 11, [80,80,80], 3);
+  if (powRecommendation) { y += 10; pline('Recomendacion IA', 14, [0,0,0], 6); pline(powRecommendation, 11, [80,80,80], 4); }
+  doc.save(`POW-${s(d.art.name)}-${todayISO()}.pdf`.replace(/\s+/g, '_'));
 }
 
 // ══════════════════════════════════════════
@@ -3931,6 +4101,9 @@ const SEED_LAUNCHES = [
       {fecha:'2026-05-17', title:'Mensajes en pantalla', cat:'engagement', production:{estado:'programado'}},
       {fecha:'2026-05-19', title:'60 seg Mini Doc', cat:'storytelling', production:{estado:'grabando'}},
       {fecha:'2026-05-21', title:'Reacción productor', cat:'bts', production:{estado:'aprobado'}},
+      {fecha:'2026-05-26', title:'Teaser visual', cat:'awareness', production:{estado:'publicado'}},
+      {fecha:'2026-05-28', title:'Clip lyric', cat:'storytelling', production:{estado:'publicado'}},
+      {fecha:'2026-05-30', title:'Behind the lyrics', cat:'bts', production:{estado:'programado'}},
       {fecha:'2026-06-04', title:'Q&A en vivo con fans', cat:'engagement', production:{estado:'pendiente'}},
       {fecha:'2026-06-06', title:'Trend: antes/después del quiebre', cat:'trend', production:{estado:'pendiente'}},
       {fecha:'2026-06-09', title:'Mini documental del proceso', cat:'storytelling', production:{estado:'pendiente'}},
@@ -4137,17 +4310,21 @@ function renderDashboard() {
     </div>`;
 
   // próximo contenido (lista)
+  const dueSoon = upcoming.filter(ci => diasRestantes(ci.fecha) <= 2 && (ci.production && ci.production.estado) !== 'publicado');
   if (nextHost) {
     if (!upcoming.length) {
       nextHost.innerHTML = `<div class="empty-hint">No hay contenido próximo. Agrega piezas desde el Banco de Referencias o el Generador de Ideas.</div>`;
     } else {
-      nextHost.innerHTML = upcoming.slice(0, 6).map(ci => {
+      const alert = dueSoon.length ? `<div class="deadline-alert">⏰ <strong>${dueSoon.length}</strong> pieza${dueSoon.length>1?'s':''} con deadline en las próximas 48h${(activeArtist()&&!aiReady())?'':''}</div>` : '';
+      nextHost.innerHTML = alert + upcoming.slice(0, 6).map(ci => {
         const col = catColor(ci.cat);
         const dr = diasRestantes(ci.fecha);
+        const estado = (ci.production && ci.production.estado) || 'pendiente';
+        const urgent = dr <= 2 && estado !== 'publicado';
         const dlabel = dr === 0 ? 'HOY' : (dr === 1 ? 'MAÑANA' : (() => { const d = new Date(ci.fecha + 'T00:00:00'); return `${MESES_CAL[d.getMonth()]} ${d.getDate()}`; })());
-        return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;">
-          <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : 'var(--text-muted)'};width:64px">${dlabel}</div>
-          <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${s(ci.title)}</span>
+        return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;cursor:pointer;">
+          <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px">${urgent?'⏰ ':''}${dlabel}</div>
+          <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${s(ci.title)}</span>
           <div style="margin-left:auto;font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${s(ci.launch)}</div>
         </div>`;
       }).join('');
@@ -4249,6 +4426,19 @@ function renderLaunchDetail() {
         </div>
       </div>
     </div>
+
+    ${(function(){ const pr = launchProgress(l); return `
+    <div class="panel">
+      <div class="panel-head"><span class="ph-icon">📈</span><span class="ph-title">Progreso de Producción</span>
+        <span class="ph-sub">${pr.published}/${pr.total} publicadas · ${pr.pct}%</span></div>
+      <div class="progress-track" style="margin-bottom:12px"><div class="progress-fill" style="width:${pr.pct}%"></div></div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">
+        <span>🟡 Preproducción: ${pr.byStage.pre}</span>
+        <span>🎥 Producción: ${pr.byStage.prod}</span>
+        <span>✂️ Postproducción: ${pr.byStage.post}</span>
+      </div>
+      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('calendario');setTimeout(()=>setCalView('kanban'),50)">▤ Ver Tablero de Producción</button>
+    </div>`; })()}
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">✦</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">Estrategia narrativa</span></div>
