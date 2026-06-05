@@ -988,14 +988,15 @@
     /* menú lateral como cajón deslizable */
     .hamburger { display: flex; }
     .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; z-index: 1500; width: 250px;
+      position: fixed !important; top: 0; left: 0; bottom: 0; z-index: 1500 !important; width: 250px;
       transform: translateX(-100%); transition: transform 0.25s ease;
       box-shadow: 0 0 50px rgba(0,0,0,0.7);
     }
     body.sidebar-open .sidebar { transform: translateX(0); }
     .sidebar-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1400; }
     body.sidebar-open .sidebar-backdrop { display: block; }
-    .main { width: 100%; }
+    .main { width: 100% !important; }
+    body { overflow-x: hidden; }
 
     .topbar { padding: 0 14px; gap: 10px; }
     .topbar-title { font-size: 17px; letter-spacing: 1px; }
