@@ -818,6 +818,15 @@
   .goal-btn.on-accept { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,0.1); }
   .goal-btn.on-reject { border-color:var(--accent2); color:var(--accent2); background:rgba(255,71,87,0.1); }
 
+  /* ── REVENUE STREAMS ── */
+  .rev-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .rev-check { width: 22px; height: 22px; border-radius: 5px; border: 1.5px solid var(--border); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #4ade80; transition: all 0.15s; margin-top: 1px; }
+  .rev-check:hover { border-color: #4ade80; }
+  .rev-item.done .rev-check { background: rgba(74,222,128,0.12); border-color: #4ade80; }
+  .rev-label { font-size: 13px; font-weight: 500; }
+  .rev-item.done .rev-label { color: var(--text-muted); }
+  .rev-money { font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-top: 3px; }
+
   /* ── PROGRESO / POW ── */
   .progress-track { height: 12px; background: var(--surface2); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #4ade80); border-radius: 6px; transition: width 0.4s ease; }
@@ -1337,6 +1346,14 @@
       </div>
 
       <div class="panel">
+        <div class="panel-head"><span class="ph-icon">📝</span><span class="ph-title">Bio & Keywords</span><span class="ph-sub">generada con el wizard de ADN</span></div>
+        <div class="field" style="margin-bottom:14px"><label>Bio · 1 línea</label><input class="input" data-bind="bio.oneLine" placeholder="Una frase que te define"></div>
+        <div class="field" style="margin-bottom:14px"><label>Bio · corta (~100 palabras)</label><textarea class="textarea" data-bind="bio.short" placeholder="Versión media para press kit / redes"></textarea></div>
+        <div class="field" style="margin-bottom:14px"><label>Bio · larga (~300 palabras)</label><textarea class="textarea" data-bind="bio.long" placeholder="Versión completa para prensa"></textarea></div>
+        <div class="field"><label>Keywords estratégicos</label><input class="input" data-bind="keywords" placeholder="Palabras clave de marca"></div>
+      </div>
+
+      <div class="panel">
         <div class="panel-head"><span class="ph-icon">👥</span><span class="ph-title">Equipo de Trabajo</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="agregarMiembro()">+ Miembro</button></div>
         <div id="team-list"></div>
       </div>
@@ -1782,6 +1799,24 @@
     <div class="spacer"></div>
     <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)" id="wiz-progress">Paso 1 de 4</span>
     <button class="btn btn-primary" id="wiz-next" onclick="wizNext()">Continuar →</button>
+  </div>
+</div>
+
+<!-- ── FASE 4: WIZARD DE ADN ARTÍSTICO (onboarding con IA) ── -->
+<div class="wizard-overlay" id="artist-wizard">
+  <div class="wiz-top">
+    <div class="wiz-logo">ArtistOS<small>Nuevo Artista · ADN guiado</small></div>
+    <button class="btn btn-ghost wiz-close" onclick="closeArtistWizard()">✕ Cancelar</button>
+  </div>
+  <div class="wiz-steps" id="aw-steps"></div>
+  <div class="wiz-body">
+    <div class="wiz-panel active" style="display:block" id="aw-panel"></div>
+  </div>
+  <div class="wiz-foot">
+    <button class="btn btn-ghost" id="aw-back" onclick="awPrev()" style="display:none">← Atrás</button>
+    <div class="spacer"></div>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)" id="aw-progress">Paso 1 de 6</span>
+    <button class="btn btn-primary" id="aw-next" onclick="awNext()">Continuar →</button>
   </div>
 </div>
 
@@ -4039,7 +4074,7 @@ function makeArtist(name, extra) {
     name: name || 'Nuevo Artista', legalName:'', genre:'', country:'',
     socials:{ig:'',tiktok:'',youtube:'',x:''},
     dsps:{spotify:'',apple:'',ytmusic:'',other:''},
-    team:[], adn: emptyADN(),
+    team:[], adn: emptyADN(), bio:{oneLine:'',short:'',long:''}, keywords:'',
   }, extra || {});
 }
 function normalizeArtist(a) {
@@ -4054,6 +4089,8 @@ function normalizeArtist(a) {
   a.strategy = (a.strategy && typeof a.strategy === 'object') ? a.strategy : null;
   a.metricEntries = Array.isArray(a.metricEntries) ? a.metricEntries : [];
   a.screenshots = Array.isArray(a.screenshots) ? a.screenshots : [];
+  a.bio = (a.bio && typeof a.bio === 'object') ? a.bio : {oneLine:'',short:'',long:''};
+  if (typeof a.keywords !== 'string') a.keywords = '';
   return a;
 }
 const SEED_ARTISTS = [
@@ -4142,6 +4179,7 @@ function normalizeLaunch(l) {
   l.generated = Array.isArray(l.generated) ? l.generated : [];
   l.metricEntries = Array.isArray(l.metricEntries) ? l.metricEntries : [];
   l.screenshots = Array.isArray(l.screenshots) ? l.screenshots : [];
+  l.revenue = (l.revenue && typeof l.revenue === 'object') ? l.revenue : {};
   l.artistId = l.artistId || (artists[0] && artists[0].id);
   return l;
 }
@@ -4485,7 +4523,57 @@ function renderLaunchDetail() {
         ? `<div class="chips">${l.ideas.slice(0,8).map(it => `<span class="chip on" style="cursor:default">${s(it.emoji)||'★'} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:default">+${l.ideas.length-8} más</span>`:''}</div>`
         : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ★ en el Banco de Referencias.</div>`}
       <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('ideas')">✲ Abrir Generador de Ideas</button>
-    </div>`;
+    </div>
+
+    ${revenuePanelHTML(l)}`;
+}
+
+// ══════════════════════════════════════════
+// FASE 5: Revenue Streams (checklist por lanzamiento)
+// ══════════════════════════════════════════
+const REVENUE_ITEMS = [
+  { key:'pro', label:'PRO registrado (ASCAP / BMI / SAYCO / SGAE)', money:'Regalías por composición cada vez que tu canción suena en radio, streaming o en vivo.', link:'https://www.ascap.com/', linkLabel:'Registrar' },
+  { key:'contentid', label:'YouTube Content ID activado', money:'Monetiza cualquier video que use tu música en YouTube (covers, ediciones de fans).', link:'https://support.google.com/youtube/answer/3244015', linkLabel:'Cómo activar' },
+  { key:'tiktoksounds', label:'TikTok Sounds registrado', money:'Tu canción como sonido oficial → uso viral = más streams y descubrimiento.', link:'https://www.tiktok.com/business/es', linkLabel:'TikTok' },
+  { key:'spotifyartist', label:'Spotify for Artists reclamado', money:'Datos, pitch a playlists editoriales, Canvas y Marquee.', link:'https://artists.spotify.com/', linkLabel:'Reclamar' },
+  { key:'appleartist', label:'Apple Music for Artists activado', money:'Datos de Apple + Shazam y herramientas de promoción.', link:'https://artists.apple.com/', linkLabel:'Activar' },
+  { key:'presave', label:'Pre-save configurado', money:'Guardados antes del drop → más streams el día 1 → mejor empuje del algoritmo.', link:'', linkLabel:'', hasInput:true, inputPh:'Link del pre-save' },
+  { key:'smartlink', label:'Smart link creado (Feature.fm / Linktree)', money:'Un solo link a todas las plataformas → no pierdes oyentes.', link:'https://linktr.ee/', linkLabel:'Crear', hasInput:true, inputPh:'Link' },
+  { key:'sync', label:'Sincronización disponible (sello / publisher notificado)', money:'Licencias para cine, TV y publicidad: pagos grandes por una sola colocación.', link:'', linkLabel:'' },
+  { key:'merch', label:'Merchandise listo', money:'Margen alto y conexión con fans (camisetas, vinilos, posters).', link:'', linkLabel:'' },
+  { key:'merchdigital', label:'Merch digital (samples / stems)', money:'Vende stems y samples a productores: ingreso pasivo de tu material.', link:'', linkLabel:'' },
+];
+function revenuePanelHTML(l) {
+  const rev = l.revenue || {};
+  const done = REVENUE_ITEMS.filter(it => rev[it.key] && rev[it.key].done).length;
+  const pct = Math.round(done / REVENUE_ITEMS.length * 100);
+  return `<div class="panel">
+    <div class="panel-head"><span class="ph-icon">💰</span><span class="ph-title">Revenue Streams</span><span class="ph-sub">${done}/${REVENUE_ITEMS.length} activados · ${pct}%</span></div>
+    <div class="progress-track" style="margin-bottom:16px"><div class="progress-fill" style="width:${pct}%"></div></div>
+    ${REVENUE_ITEMS.map(it => {
+      const st = rev[it.key] || {};
+      return `<div class="rev-item ${st.done ? 'done' : ''}">
+        <div class="rev-check" onclick="revenueToggle('${l.id}','${it.key}')" title="Marcar">${st.done ? '✓' : ''}</div>
+        <div style="flex:1;min-width:0">
+          <div class="rev-label">${it.label}</div>
+          <div class="rev-money">${it.money}</div>
+          ${it.hasInput ? `<input class="input" style="margin-top:8px;font-size:11px" placeholder="${it.inputPh || 'Link'}" value="${s(st.value)}" onchange="revenueSetValue('${l.id}','${it.key}',this.value)">` : ''}
+        </div>
+        ${it.link ? `<a href="${it.link}" target="_blank" class="btn btn-ghost" style="padding:4px 10px;font-size:10px;text-decoration:none;align-self:flex-start;white-space:nowrap">${it.linkLabel || 'Ir'} ↗</a>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function revenueToggle(launchId, key) {
+  const l = launches.find(x => x.id === launchId); if (!l) return;
+  l.revenue = l.revenue || {}; l.revenue[key] = l.revenue[key] || {};
+  l.revenue[key].done = !l.revenue[key].done;
+  saveLaunches(); renderLaunchDetail();
+}
+function revenueSetValue(launchId, key, val) {
+  const l = launches.find(x => x.id === launchId); if (!l) return;
+  l.revenue = l.revenue || {}; l.revenue[key] = l.revenue[key] || {};
+  l.revenue[key].value = val; saveLaunches();
 }
 
 // ══════════════════════════════════════════
@@ -5018,12 +5106,7 @@ function setActiveArtist(id) {
   else renderDashboard();
 }
 
-function abrirNuevoArtista() {
-  toggleArtistMenu(false);
-  ['na-name','na-genre','na-country'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('na-status').textContent = '';
-  document.getElementById('modal-artist').classList.add('open');
-}
+function abrirNuevoArtista() { toggleArtistMenu(false); openArtistWizard(); }
 function cerrarNuevoArtista(e) {
   if (!e || e.target === document.getElementById('modal-artist'))
     document.getElementById('modal-artist').classList.remove('open');
@@ -5035,6 +5118,138 @@ function crearArtista() {
   artists.push(a); saveArtists();
   currentArtistId = a.id; saveActiveArtist(); currentLaunchId = null;
   document.getElementById('modal-artist').classList.remove('open');
+  renderSidebarArtist(); renderAllLaunches();
+  showPage('perfil');
+}
+
+// ══════════════════════════════════════════
+// FASE 4: Wizard de ADN artístico (onboarding con IA)
+// ══════════════════════════════════════════
+const AW_STEPS = ['Básicos','Historia','Sonido','Estética','Fan ideal','ADN IA'];
+let awStep = 1;
+let awData = null;
+function awBlank() {
+  return { name:'', genre:'', country:'', ig:'', tiktok:'', spotify:'',
+    hist:{from:'',drive:'',who:''},
+    refs:[{a:'',why:''},{a:'',why:''},{a:'',why:''}],
+    aes:{w1:'',w2:'',w3:'',color:''}, fan:'', generated:null };
+}
+function openArtistWizard() { awData = awBlank(); awStep = 1; awRender(); document.getElementById('artist-wizard').classList.add('open'); }
+function closeArtistWizard() { document.getElementById('artist-wizard').classList.remove('open'); }
+function awRender() {
+  document.getElementById('aw-steps').innerHTML = AW_STEPS.map((lbl,i) => {
+    const n = i+1; const cls = n===awStep ? 'active' : (n<awStep ? 'done' : '');
+    return `<div class="wiz-step ${cls}"><span class="num">${n<awStep?'✓':n}</span><span class="lbl">${lbl}</span></div>${n<AW_STEPS.length?'<span class="wiz-arrow">›</span>':''}`;
+  }).join('');
+  document.getElementById('aw-panel').innerHTML = awPanelHTML(awStep);
+  document.getElementById('aw-back').style.display = awStep>1 ? '' : 'none';
+  document.getElementById('aw-progress').textContent = `Paso ${awStep} de 6`;
+  document.getElementById('aw-next').textContent = awStep===6 ? '✓ Crear Artista' : 'Continuar →';
+  document.querySelector('#artist-wizard .wiz-body').scrollTop = 0;
+}
+function awNext() { if (awStep<6) { awStep++; awRender(); } else awFinish(); }
+function awPrev() { if (awStep>1) { awStep--; awRender(); } }
+function awPanelHTML(step) {
+  if (step===1) return `<h2>DATOS BÁSICOS</h2><div class="sub">Lo esencial del artista.</div>
+    <div class="wiz-field"><label>Nombre artístico *</label><input class="input" value="${s(awData.name)}" oninput="awData.name=this.value"></div>
+    <div class="stepper-row" style="grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
+      <div class="wiz-field" style="margin:0"><label>Género</label><input class="input" value="${s(awData.genre)}" oninput="awData.genre=this.value" placeholder="Ej. Pop alternativo"></div>
+      <div class="wiz-field" style="margin:0"><label>País</label><input class="input" value="${s(awData.country)}" oninput="awData.country=this.value"></div>
+    </div>
+    <div class="stepper-row" style="grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="wiz-field" style="margin:0"><label>Instagram</label><input class="input" value="${s(awData.ig)}" oninput="awData.ig=this.value" placeholder="@"></div>
+      <div class="wiz-field" style="margin:0"><label>TikTok</label><input class="input" value="${s(awData.tiktok)}" oninput="awData.tiktok=this.value" placeholder="@"></div>
+      <div class="wiz-field" style="margin:0"><label>Spotify</label><input class="input" value="${s(awData.spotify)}" oninput="awData.spotify=this.value" placeholder="link"></div>
+    </div>`;
+  if (step===2) return `<h2>TU HISTORIA</h2><div class="sub">3 preguntas que definen tu raíz.</div>
+    <div class="wiz-field"><label>¿De dónde vengo?</label><textarea class="textarea" oninput="awData.hist.from=this.value" placeholder="Tu origen, tu contexto…">${s(awData.hist.from)}</textarea></div>
+    <div class="wiz-field"><label>¿Qué me mueve?</label><textarea class="textarea" oninput="awData.hist.drive=this.value" placeholder="Tu motor, tu misión…">${s(awData.hist.drive)}</textarea></div>
+    <div class="wiz-field"><label>¿A quién le hablo?</label><textarea class="textarea" oninput="awData.hist.who=this.value" placeholder="A quién va dirigida tu música…">${s(awData.hist.who)}</textarea></div>`;
+  if (step===3) return `<h2>REFERENCIAS SONORAS</h2><div class="sub">3 artistas que te inspiran — no que suenas igual, sino qué te mueve de ellos.</div>
+    ${[0,1,2].map(i => `<div class="stepper-row" style="grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px">
+      <div class="wiz-field" style="margin:0"><label>Artista ${i+1}</label><input class="input" value="${s(awData.refs[i].a)}" oninput="awData.refs[${i}].a=this.value"></div>
+      <div class="wiz-field" style="margin:0"><label>¿Qué te inspira?</label><input class="input" value="${s(awData.refs[i].why)}" oninput="awData.refs[${i}].why=this.value"></div>
+    </div>`).join('')}`;
+  if (step===4) return `<h2>ESTÉTICA VISUAL</h2><div class="sub">3 palabras que describen tu mundo visual + tu color dominante.</div>
+    <div class="stepper-row" style="grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px">
+      <div class="wiz-field" style="margin:0"><label>Palabra 1</label><input class="input" value="${s(awData.aes.w1)}" oninput="awData.aes.w1=this.value"></div>
+      <div class="wiz-field" style="margin:0"><label>Palabra 2</label><input class="input" value="${s(awData.aes.w2)}" oninput="awData.aes.w2=this.value"></div>
+      <div class="wiz-field" style="margin:0"><label>Palabra 3</label><input class="input" value="${s(awData.aes.w3)}" oninput="awData.aes.w3=this.value"></div>
+    </div>
+    <div class="wiz-field"><label>Color dominante</label><input class="input" value="${s(awData.aes.color)}" oninput="awData.aes.color=this.value" placeholder="Ej. dorado y negro, #e8ff47"></div>`;
+  if (step===5) return `<h2>FAN IDEAL</h2><div class="sub">Describe en ~5 líneas a la persona que más conecta contigo.</div>
+    <div class="wiz-field"><textarea class="textarea" style="min-height:150px" oninput="awData.fan=this.value" placeholder="Edad, qué siente, qué escucha, dónde vive, qué le mueve…">${s(awData.fan)}</textarea></div>`;
+  // step 6
+  return `<h2>REVISIÓN IA</h2><div class="sub">La IA toma tus respuestas y genera tu bio, tono, narrativa y keywords. Esto se vuelve el "system prompt base" de todos los generadores.</div>
+    <div style="margin-bottom:6px"><button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="awGenerar()">✨ ${awData.generated?'Regenerar':'Generar'} ADN con IA</button></div>
+    ${aiHintHTML(buildADNPrompt(), 800)}
+    <div id="aw-result" style="margin-top:14px">${awData.generated ? awResultHTML(awData.generated) : '<div class="empty-hint">Genera el ADN para revisarlo. (También puedes crear el artista sin IA y completar el ADN luego en su perfil.)</div>'}</div>`;
+}
+function awResultHTML(g) {
+  return `
+    <div class="wiz-field"><label>Bio · 1 línea</label><input class="input" value="${s(g.bio_1line)}" oninput="awData.generated.bio_1line=this.value"></div>
+    <div class="wiz-field"><label>Bio · ~100 palabras</label><textarea class="textarea" oninput="awData.generated.bio_100=this.value">${s(g.bio_100)}</textarea></div>
+    <div class="wiz-field"><label>Bio · ~300 palabras</label><textarea class="textarea" style="min-height:120px" oninput="awData.generated.bio_300=this.value">${s(g.bio_300)}</textarea></div>
+    <div class="stepper-row" style="grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
+      <div class="wiz-field" style="margin:0"><label>Tono de comunicación</label><input class="input" value="${s(g.tono)}" oninput="awData.generated.tono=this.value"></div>
+      <div class="wiz-field" style="margin:0"><label>Keywords</label><input class="input" value="${s((g.keywords||[]).join(', '))}" oninput="awData.generated.keywords=this.value.split(',').map(x=>x.trim()).filter(Boolean)"></div>
+    </div>
+    <div class="wiz-field"><label>Narrativa de campaña base</label><textarea class="textarea" oninput="awData.generated.narrativa=this.value">${s(g.narrativa)}</textarea></div>`;
+}
+function buildADNPrompt() {
+  const r = awData.refs.map(x => x.a && x.why ? `${x.a} (${x.why})` : x.a).filter(Boolean).join('; ') || '—';
+  return `Eres estratega de marca de artistas musicales. Con base en el onboarding, genera el ADN del artista.
+
+NOMBRE: ${s(awData.name)} · Género: ${s(awData.genre)} · País: ${s(awData.country)}
+HISTORIA — De dónde vengo: ${s(awData.hist.from)} | Qué me mueve: ${s(awData.hist.drive)} | A quién le hablo: ${s(awData.hist.who)}
+REFERENCIAS SONORAS: ${r}
+ESTÉTICA: ${[awData.aes.w1,awData.aes.w2,awData.aes.w3].filter(Boolean).join(', ')} · Color: ${s(awData.aes.color)}
+FAN IDEAL: ${s(awData.fan)}
+
+Devuelve SOLO un objeto JSON válido, en español, con esta forma:
+{
+ "bio_1line": "bio en 1 línea potente",
+ "bio_100": "bio de ~100 palabras",
+ "bio_300": "bio de ~300 palabras",
+ "tono": "tono de comunicación definido en 1 frase",
+ "narrativa": "narrativa de campaña base en 2-3 frases",
+ "keywords": ["8 a 12 keywords estratégicos de marca"]
+}`;
+}
+async function awGenerar() {
+  if (!aiReady()) { abrirAISettings(); return; }
+  const res = document.getElementById('aw-result');
+  res.innerHTML = '<div class="empty-hint">✨ Generando ADN…</div>';
+  try {
+    const { text } = await callClaude(buildADNPrompt(), 1500);
+    const obj = parseJSONObj(text);
+    if (!obj) throw new Error('La IA no devolvió un ADN válido.');
+    awData.generated = obj;
+    awRender();
+  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`; }
+}
+function awFinish() {
+  const name = (awData.name || '').trim() || 'Nuevo Artista';
+  const g = awData.generated;
+  const a = makeArtist(name, {
+    genre: awData.genre, country: awData.country,
+    socials: { ig: awData.ig, tiktok: awData.tiktok, youtube:'', x:'' },
+    dsps: { spotify: awData.spotify, apple:'', ytmusic:'', other:'' },
+    bio: g ? { oneLine: g.bio_1line || '', short: g.bio_100 || '', long: g.bio_300 || '' } : { oneLine:'', short:'', long:'' },
+    keywords: g ? (Array.isArray(g.keywords) ? g.keywords.join(', ') : s(g.keywords)) : '',
+    adn: Object.assign(emptyADN(), {
+      identity: { history: awData.hist.from, mission: awData.hist.drive, vision:'', values:'' },
+      personality: { archetypes: [], tone: g ? g.tono : '', expression:'' },
+      universe: { themes:'', conflicts:'', messages: g ? g.narrativa : '' },
+      aesthetics: { colors: awData.aes.color, photoStyle: [awData.aes.w1,awData.aes.w2,awData.aes.w3].filter(Boolean).join(', ') },
+      sound: { genres: awData.genre, influences: awData.refs.map(r => r.a).filter(Boolean).join(', '), references: awData.refs.map(r => r.a && r.why ? `${r.a} (${r.why})` : r.a).filter(Boolean).join(' · ') },
+      audience: { current:'', ideal: awData.fan, buyer:'' },
+    }),
+  });
+  normalizeArtist(a);
+  artists.push(a); saveArtists();
+  currentArtistId = a.id; saveActiveArtist(); currentLaunchId = null;
+  closeArtistWizard();
   renderSidebarArtist(); renderAllLaunches();
   showPage('perfil');
 }
