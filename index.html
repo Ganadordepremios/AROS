@@ -2089,6 +2089,27 @@
   </div>
 </div>
 
+<!-- ── MODAL SINCRONIZACIÓN (Supabase) ── -->
+<div class="boxdrop-overlay" id="modal-sync" onclick="cerrarSync(event)">
+  <div class="boxdrop" style="width:540px;max-width:96vw">
+    <div class="boxdrop-header">
+      <div class="boxdrop-title">☁ SINCRONIZACIÓN</div>
+      <div class="boxdrop-close" onclick="cerrarSync()">✕</div>
+    </div>
+    <div class="boxdrop-body" style="padding:24px">
+      <div class="empty-hint" style="margin-bottom:16px">Conecta un proyecto de <strong style="color:var(--text-muted)">Supabase</strong> para compartir los datos entre dispositivos y el equipo. Sin conectar, todo sigue funcionando local en este navegador.</div>
+      <div class="field" style="margin-bottom:14px"><label>Project URL</label><input class="input" id="sync-url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="field" style="margin-bottom:14px"><label>anon public key</label><input class="input" id="sync-key" type="password" placeholder="eyJhbGciOi..."></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="conectarSupabase()">Conectar y sincronizar</button>
+        <button class="btn btn-ghost" onclick="desconectarSupabase()">Desconectar</button>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:11px" id="sync-status">Sin conectar</span>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:14px;line-height:1.6;font-family:var(--font-mono)">La nube es la fuente de verdad: al conectar, baja los datos del proyecto. Cada cambio se sube automáticamente. La <strong style="color:var(--text-muted)">anon key</strong> es pública por diseño; protégela con RLS/Auth.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── CENTRO DE PRODUCCIÓN (Módulo 9) ── -->
 <div class="boxdrop-overlay" id="prod-modal" onclick="closeProd(event)">
   <div class="boxdrop">
@@ -4257,7 +4278,8 @@ const SEED_ARTISTS = [
     ],
   })),
 ];
-function saveArtists() { localStorage.setItem('ao_artists', JSON.stringify(artists)); }
+function saveArtistsLocal() { localStorage.setItem('ao_artists', JSON.stringify(artists)); }
+function saveArtists() { saveArtistsLocal(); scheduleCloudSync(); }
 
 let artists = [];
 try { artists = JSON.parse(localStorage.getItem('ao_artists')); } catch(e){}
@@ -4334,7 +4356,8 @@ try { launches = JSON.parse(localStorage.getItem('ao_launches')); } catch(e){}
 if (!Array.isArray(launches) || !launches.length) { launches = SEED_LAUNCHES.map(normalizeLaunch); saveLaunches(); }
 else { launches = launches.map(normalizeLaunch); }
 
-function saveLaunches() { localStorage.setItem('ao_launches', JSON.stringify(launches)); }
+function saveLaunchesLocal() { localStorage.setItem('ao_launches', JSON.stringify(launches)); }
+function saveLaunches() { saveLaunchesLocal(); scheduleCloudSync(); }
 
 // ── Contexto de lanzamiento activo ──
 function activeLaunch() {
@@ -4519,6 +4542,7 @@ function borrarLanzamiento(id) {
   if (!confirm(`¿Eliminar el lanzamiento “${l ? l.name : ''}”? Esta acción no se puede deshacer.`)) return;
   launches = launches.filter(x => x.id !== id);
   saveLaunches(); renderAllLaunches();
+  cloudDelete('launches', id);
   if (editingId === id) cerrarWizard();
   if (currentLaunchId === id) { currentLaunchId = null; showPage('lanzamientos'); }
 }
@@ -5227,6 +5251,7 @@ function renderSidebarArtist() {
     </div>`).join('')
     + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
+    + `<div class="artist-menu-item" onclick="abrirSync()">☁ Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div>`
     + `<div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`;
 }
@@ -5524,6 +5549,106 @@ document.addEventListener('click', function(e) {
 });
 
 // ══════════════════════════════════════════
+// SINCRONIZACIÓN EN LA NUBE (Supabase)
+// ══════════════════════════════════════════
+let _sb = null, _cloudTimer = null, syncState = 'off';
+function supaCfg() { try { return JSON.parse(localStorage.getItem('ao_supabase')) || {}; } catch (e) { return {}; } }
+function saveSupaCfg(c) { localStorage.setItem('ao_supabase', JSON.stringify(c)); }
+function cloudEnabled() { const c = supaCfg(); return !!(c.url && c.key); }
+function ensureSupabaseLib() {
+  return new Promise((res, rej) => {
+    if (window.supabase && window.supabase.createClient) return res();
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    sc.onload = () => res(); sc.onerror = () => rej(new Error('No se pudo cargar la librería de Supabase (¿sin internet?)'));
+    document.head.appendChild(sc);
+  });
+}
+async function getSb() {
+  const c = supaCfg(); if (!c.url || !c.key) return null;
+  await ensureSupabaseLib();
+  if (!_sb) _sb = window.supabase.createClient(c.url, c.key);
+  return _sb;
+}
+function setSyncStatus(state, msg) {
+  syncState = state;
+  const map = { off:['○','var(--text-dim)','Sin conectar'], syncing:['◍','var(--beat)','Sincronizando…'], ok:['●','#4ade80','Sincronizado'], error:['●','var(--accent2)', msg || 'Error'] };
+  const m = map[state] || map.off;
+  const st = document.getElementById('sync-status'); if (st) { st.textContent = m[2]; st.style.color = m[1]; }
+  const dot = document.getElementById('sync-menu-dot'); if (dot) { dot.textContent = m[0]; dot.style.color = m[1]; }
+}
+function scheduleCloudSync() {
+  if (!cloudEnabled()) return;
+  clearTimeout(_cloudTimer);
+  _cloudTimer = setTimeout(cloudSyncAll, 1500);
+}
+async function cloudSyncAll() {
+  if (!cloudEnabled()) return;
+  try {
+    const sb = await getSb(); if (!sb) return;
+    setSyncStatus('syncing');
+    const now = new Date().toISOString();
+    const aRows = artists.map(a => ({ id: a.id, data: a, updated_at: now }));
+    const lRows = launches.map(l => ({ id: l.id, artist_id: l.artistId, data: l, updated_at: now }));
+    const r1 = await sb.from('artists').upsert(aRows);
+    const r2 = await sb.from('launches').upsert(lRows);
+    if (r1.error) throw new Error(r1.error.message);
+    if (r2.error) throw new Error(r2.error.message);
+    setSyncStatus('ok');
+  } catch (e) { setSyncStatus('error', e.message); }
+}
+async function cloudLoad() {
+  try {
+    const sb = await getSb(); if (!sb) return;
+    setSyncStatus('syncing');
+    const [ar, lr] = await Promise.all([ sb.from('artists').select('data'), sb.from('launches').select('data') ]);
+    if (ar.error) throw new Error(ar.error.message);
+    if (lr.error) throw new Error(lr.error.message);
+    const hasCloud = (ar.data && ar.data.length) || (lr.data && lr.data.length);
+    if (hasCloud) {
+      if (ar.data && ar.data.length) artists = ar.data.map(r => normalizeArtist(r.data));
+      launches = (lr.data || []).map(r => normalizeLaunch(r.data));
+      saveArtistsLocal(); saveLaunchesLocal();
+      if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
+      renderSidebarArtist(); renderAllLaunches();
+      const p = (document.querySelector('.page.active') || {}).id;
+      if (p === 'page-perfil' || p === 'page-adn') renderArtistForms();
+      setSyncStatus('ok');
+    } else {
+      await cloudSyncAll(); // nube vacía → subimos lo local como semilla
+    }
+  } catch (e) { setSyncStatus('error', e.message); }
+}
+async function cloudDelete(table, id) {
+  if (!cloudEnabled()) return;
+  try { const sb = await getSb(); if (sb) await sb.from(table).delete().eq('id', id); } catch (e) {}
+}
+// Modal de conexión
+function abrirSync() {
+  toggleArtistMenu(false);
+  const c = supaCfg();
+  document.getElementById('sync-url').value = c.url || '';
+  document.getElementById('sync-key').value = c.key || '';
+  setSyncStatus(cloudEnabled() ? syncState : 'off');
+  document.getElementById('modal-sync').classList.add('open');
+}
+function cerrarSync(e) { if (!e || e.target === document.getElementById('modal-sync')) document.getElementById('modal-sync').classList.remove('open'); }
+async function conectarSupabase() {
+  const url = document.getElementById('sync-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('sync-key').value.trim();
+  if (!url || !key) { setSyncStatus('error', 'Falta URL o anon key'); return; }
+  saveSupaCfg({ url, key }); _sb = null;
+  setSyncStatus('syncing');
+  await cloudLoad();
+  renderSidebarArtist();
+}
+function desconectarSupabase() {
+  localStorage.removeItem('ao_supabase'); _sb = null; setSyncStatus('off');
+  renderSidebarArtist();
+  document.getElementById('modal-sync').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
 // TEMA (light / dark)
 // ══════════════════════════════════════════
 function applyTheme(t) {
@@ -5556,6 +5681,9 @@ renderAllLaunches();
 })();
 
 iniciarBanco();
+
+// sincronización en la nube al arrancar (si está configurada)
+if (cloudEnabled()) { setSyncStatus('syncing'); cloudLoad(); } else { setSyncStatus('off'); }
 </script>
 
 </body>
