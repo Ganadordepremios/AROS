@@ -19,6 +19,9 @@
     --text-muted: #888;
     --text-dim: #555;
     --shadow: rgba(0,0,0,0.5);
+    --glow: rgba(93,214,44,0.28);
+    --card-top: rgba(255,255,255,0.028);
+    --hairline: rgba(255,255,255,0.06);
     --font-display: 'Bebas Neue', sans-serif;
     --font-body: 'DM Sans', sans-serif;
     --font-mono: 'Space Mono', monospace;
@@ -35,7 +38,10 @@
     --text: #161616;
     --text-muted: #6a6a6a;
     --text-dim: #9a9a9a;
-    --shadow: rgba(0,0,0,0.12);
+    --shadow: rgba(0,0,0,0.1);
+    --glow: rgba(51,116,24,0.22);
+    --card-top: rgba(255,255,255,0.6);
+    --hairline: rgba(0,0,0,0.04);
   }
   html { background: var(--bg); }
 
@@ -1041,6 +1047,61 @@
     .stat-value { font-size: 30px; }
     .lh-name { font-size: 26px; }
   }
+
+  /* ════════════════════════════════════════ */
+  /* ── POLISH / GLASS · GLOW ── */
+  /* ════════════════════════════════════════ */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(55% 45% at 85% -5%, var(--glow), transparent 60%),
+      radial-gradient(45% 40% at -5% 105%, var(--glow), transparent 55%);
+    opacity: 0.5;
+  }
+  .sidebar, .main { position: relative; z-index: 1; }
+
+  /* tarjetas con gradiente sutil + sombra suave */
+  .panel, .stat-card, .panel-card, .idea-card, .learn-card, .kanban-col,
+  .ref-page-card, .launch-card, .goal-row, .boxdrop, .wiz-panel {
+    background-image: linear-gradient(180deg, var(--card-top), transparent 42%);
+    box-shadow: 0 6px 24px var(--shadow);
+    border-color: var(--hairline);
+  }
+  .stat-card { border-radius: 12px; }
+  .panel { border-radius: 12px; }
+
+  /* hover con lift + borde acento */
+  .launch-card:hover, .idea-card:hover, .ref-page-card:hover, .kanban-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  /* barra superior de stat-card como gradiente con glow */
+  .stat-card::before { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); box-shadow: 0 0 16px var(--glow); }
+
+  /* botón primario con gradiente + glow */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    box-shadow: 0 4px 16px var(--glow);
+  }
+  .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 6px 22px var(--glow); }
+
+  /* nav activo con glow lateral */
+  .nav-item.active { box-shadow: inset 2px 0 0 var(--accent); }
+
+  /* progreso/timeline con glow */
+  .progress-fill { box-shadow: 0 0 14px var(--glow); }
+
+  /* avatares y portadas con un poco de profundidad */
+  .artist-avatar { box-shadow: 0 2px 10px var(--shadow); }
+  .launch-cover { box-shadow: inset 0 -40px 60px rgba(0,0,0,0.35); }
+
+  /* donut */
+  .donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; }
+  .donut-legend .dl { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+  .donut-legend .dl b { color: var(--text); font-family: var(--font-mono); margin-left: auto; padding-left: 16px; }
+  .donut-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
   /* ════════════════════════════════════════ */
   /* ── CAMPAIGN PLANNER WIZARD ── */
@@ -3118,6 +3179,23 @@ function launchProgress(l) {
   items.forEach(c => { byStage[stageOf((c.production && c.production.estado) || 'pendiente')]++; });
   return { total, published, pct: total ? Math.round(published / total * 100) : 0, byStage };
 }
+function donutSVG(segments, size, thickness, centerLabel, centerSub) {
+  size = size || 130; thickness = thickness || 16;
+  const r = (size - thickness) / 2, cx = size/2, cy = size/2, C = 2 * Math.PI * r;
+  const total = segments.reduce((a, sg) => a + sg.value, 0) || 1;
+  let offset = 0;
+  const arcs = segments.filter(sg => sg.value > 0).map(sg => {
+    const len = sg.value / total * C;
+    const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${sg.color}" stroke-width="${thickness}" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="round"></circle>`;
+    offset += len; return el;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${thickness}"></circle>
+    ${arcs}
+    ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Bebas Neue" font-size="${size*0.28}">${centerLabel}</text>` : ''}
+    ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Space Mono" font-size="${size*0.08}">${centerSub}</text>` : ''}
+  </svg>`;
+}
 function kanbanCardHTML(launchId, ci) {
   const col = catColor(ci.cat);
   const est = (ci.production && ci.production.estado) || 'pendiente';
@@ -3812,7 +3890,7 @@ function metricsTimeSeriesHTML(entries) {
     const h = Math.round(e.value / max * 100); const last = i === best.length - 1;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;justify-content:flex-end;height:100%">
       <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted)">${fmtNum(e.value)}</div>
-      <div style="background:var(--accent);width:100%;height:${h}%;border-radius:2px 2px 0 0;opacity:${last?1:0.4}"></div>
+      <div style="background:linear-gradient(180deg,var(--accent),var(--accent-dark));width:100%;height:${h}%;border-radius:4px 4px 0 0;opacity:${last?1:0.55};box-shadow:${last?'0 0 14px var(--glow)':'none'}"></div>
       <div style="font-family:var(--font-mono);font-size:8px;color:${last?'var(--accent)':'var(--text-dim)'}">${s(e.date).slice(5)}</div>
     </div>`;
   }).join('');
@@ -4484,17 +4562,22 @@ function renderLaunchDetail() {
       </div>
     </div>
 
-    ${(function(){ const pr = launchProgress(l); return `
+    ${(function(){ const pr = launchProgress(l);
+      const segs = [{value:pr.byStage.pre,color:'#a78bfa'},{value:pr.byStage.prod,color:'var(--accent)'},{value:pr.byStage.post,color:'#38bdf8'}];
+      return `
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">📈</span><span class="ph-title">Progreso de Producción</span>
-        <span class="ph-sub">${pr.published}/${pr.total} publicadas · ${pr.pct}%</span></div>
-      <div class="progress-track" style="margin-bottom:12px"><div class="progress-fill" style="width:${pr.pct}%"></div></div>
-      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">
-        <span>🟡 Preproducción: ${pr.byStage.pre}</span>
-        <span>🎥 Producción: ${pr.byStage.prod}</span>
-        <span>✂️ Postproducción: ${pr.byStage.post}</span>
+        <span class="ph-sub">${pr.published}/${pr.total} publicadas</span></div>
+      <div class="donut-wrap">
+        <div>${donutSVG(segs, 132, 16, pr.pct + '%', 'completo')}</div>
+        <div class="donut-legend" style="flex:1;min-width:180px">
+          <div class="dl"><span class="donut-dot" style="background:#a78bfa"></span> Preproducción <b>${pr.byStage.pre}</b></div>
+          <div class="dl"><span class="donut-dot" style="background:var(--accent)"></span> Producción <b>${pr.byStage.prod}</b></div>
+          <div class="dl"><span class="donut-dot" style="background:#38bdf8"></span> Postproducción <b>${pr.byStage.post}</b></div>
+          <div class="progress-track" style="margin-top:6px"><div class="progress-fill" style="width:${pr.pct}%"></div></div>
+        </div>
       </div>
-      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('calendario');setTimeout(()=>setCalView('kanban'),50)">▤ Ver Tablero de Producción</button>
+      <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="showPage('calendario');setTimeout(()=>setCalView('kanban'),50)">▤ Ver Tablero de Producción</button>
     </div>`; })()}
 
     <div class="panel">
