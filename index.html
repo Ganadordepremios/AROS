@@ -818,6 +818,12 @@
   .goal-btn.on-accept { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,0.1); }
   .goal-btn.on-reject { border-color:var(--accent2); color:var(--accent2); background:rgba(255,71,87,0.1); }
 
+  /* ── CONTENIDO IA: mini-tabs ── */
+  .ctabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .ctab { padding: 8px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.5px; }
+  .ctab:hover { color: var(--text); }
+  .ctab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
   /* ── CALENDARIO: toolbar, vistas, kanban ── */
   .cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
   .view-toggle, .range-sel { display: flex; gap: 4px; }
@@ -1809,6 +1815,7 @@
             <div class="brief-thumb-card" id="bd-thumb-card"></div>
           </div>
         </div>
+        <div id="bd-content-result" style="margin-top:18px"></div>
       </div>
 
     </div><!-- /boxdrop-body -->
@@ -1947,6 +1954,7 @@
       <div class="boxdrop-tab" data-ptab="guion" onclick="prodTab('guion',this)">Guión</div>
       <div class="boxdrop-tab" data-ptab="shots" onclick="prodTab('shots',this)">Shot List</div>
       <div class="boxdrop-tab" data-ptab="assets" onclick="prodTab('assets',this)">Assets</div>
+      <div class="boxdrop-tab" data-ptab="content" onclick="prodTab('content',this)" style="color:#a78bfa">✨ Contenido IA</div>
     </div>
     <div class="boxdrop-body" id="prod-body"></div>
   </div>
@@ -2839,8 +2847,11 @@ function openRefBoxdrop(idx) {
   document.getElementById('bd-actions').innerHTML = `
     <button id="bd-sel-btn" onclick="(function(b){ const on = toggleIdea(${idx}, null); b.innerHTML = on ? '★ Seleccionada' : '☆ ${selLabel}'; b.style.color = on ? 'var(--accent)' : 'var(--text-muted)'; b.style.borderColor = on ? 'rgba(232,255,71,0.3)' : 'var(--border)'; })(this)"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'rgba(232,255,71,0.3)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${sel?'★ Seleccionada':'☆ '+selLabel}</button>
+    <button onclick="generarContenidoBanco(${idx})"
+      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(167,139,250,0.4);background:transparent;color:#a78bfa;transition:all 0.15s">✨ Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(232,255,71,0.3);background:rgba(232,255,71,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>`;
+  const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-brief').classList.add('active');
@@ -3078,6 +3089,7 @@ function ensureProduction(ci) {
   p.guion = Array.isArray(p.guion) ? p.guion : [];
   p.shots = Array.isArray(p.shots) ? p.shots : [];
   p.assets = Array.isArray(p.assets) ? p.assets : [];
+  p.content = (p.content && typeof p.content === 'object') ? p.content : null;
   return p;
 }
 function openProduction(launchId, itemId) {
@@ -3124,6 +3136,7 @@ function renderProd() {
   if (prodActiveTab === 'brief') body.innerHTML = prodBriefHTML(ci, p);
   else if (prodActiveTab === 'guion') body.innerHTML = prodGuionHTML(p);
   else if (prodActiveTab === 'shots') body.innerHTML = prodShotsHTML(p);
+  else if (prodActiveTab === 'content') body.innerHTML = prodContentHTML(ci, p);
   else body.innerHTML = prodAssetsHTML(ci, p);
 }
 function prodBriefHTML(ci, p) {
@@ -3187,6 +3200,135 @@ function prodAssetsHTML(ci, p) {
 function prodAssetAdd() { ensureProduction(prodItem()).assets.push({ label:'', link:'' }); saveLaunches(); renderProd(); }
 function prodAssetDel(i) { ensureProduction(prodItem()).assets.splice(i, 1); saveLaunches(); renderProd(); }
 function prodAssetSet(i, k, v) { ensureProduction(prodItem()).assets[i][k] = v; saveLaunches(); }
+
+// ── FASE 1: Generador de contenido real con IA ──
+function buildContentPrompt(ci) {
+  const l = launches.find(x => x.id === prodCtx.launchId) || activeLaunch() || {};
+  const art = (artists.find(a => a.id === l.artistId)) || activeArtist() || {};
+  const adn = art.adn || {}; const d = l.dna || {}; const p = ci.production || {};
+  return contentPromptText({
+    name: art.name, genre: art.genre, country: art.country,
+    tone: (adn.personality || {}).tone, audience: (adn.audience || {}).ideal,
+    launch: l.name, about: d.about, emotion: d.emotion, message: d.message, keywords: d.keywords,
+    title: ci.title, cat: ci.cat, hook: p.hook || ci.hook, brief: p.descripcion || ci.comentarios,
+  });
+}
+function buildContentPromptFromRef(r, l, art) {
+  const adn = (art && art.adn) || {}; const d = (l && l.dna) || {};
+  return contentPromptText({
+    name: art && art.name, genre: art && art.genre, country: art && art.country,
+    tone: (adn.personality || {}).tone, audience: (adn.audience || {}).ideal,
+    launch: l && l.name, about: d.about, emotion: d.emotion, message: d.message, keywords: d.keywords,
+    title: r.title, cat: (r.cat || [])[0], hook: r.hook, brief: r.comentarios,
+  });
+}
+function contentPromptText(x) {
+  return `Eres copywriter y creador de contenido musical para redes (TikTok/Reels/Shorts). Genera el contenido para UNA pieza, alineado al ADN del artista y a la campaña.
+
+ARTISTA: ${s(x.name)} · Género: ${s(x.genre)} · País: ${s(x.country)}
+Tono de comunicación: ${s(x.tone)} · Audiencia ideal: ${s(x.audience)}
+CAMPAÑA (${s(x.launch)}): Concepto: ${s(x.about)} · Emoción: ${s(x.emotion)} · Mensaje: ${s(x.message)} · Keywords: ${s(x.keywords)}
+PIEZA: ${s(x.title)} · Categoría: ${s(x.cat)} · Hook de referencia: ${s(x.hook)} · Brief: ${s(x.brief)}
+
+Devuelve SOLO un objeto JSON válido (sin texto extra), en español, con esta forma exacta:
+{
+ "hook": "gancho hablado para los primeros 3 segundos, 1 frase potente",
+ "script": "guión de 30-60s con estructura HOOK / DESARROLLO / CTA, con marcas de tiempo y saltos de línea (\\n)",
+ "caption_ig": "caption para Instagram (hasta ~120 palabras, con saltos de línea y 1-2 emojis)",
+ "caption_tiktok": "caption para TikTok, corto y directo (1-2 líneas)",
+ "story": "texto para una story con CTA claro (1-2 líneas)",
+ "hashtags": ["10 a 15 hashtags relevantes por género y país, sin espacios, sin repetir"]
+}`;
+}
+function prodContentHTML(ci, p) {
+  const c = p.content;
+  const promptStr = buildContentPrompt(ci);
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarContenidoIA()">✨ ${c ? 'Regenerar' : 'Generar'} contenido</button>
+      ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
+    </div>
+    ${aiHintHTML(promptStr, 1000)}
+    <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, script y hashtags a partir del ADN del artista + el Campaign DNA + esta pieza.</div>'}</div>`;
+}
+async function generarContenidoIA() {
+  const ci = prodItem(); if (!ci) return;
+  if (!aiReady()) { abrirAISettings(); return; }
+  const res = document.getElementById('prod-content-result');
+  res.innerHTML = '<div class="empty-hint">✨ Generando contenido…</div>';
+  try {
+    const { text } = await callClaude(buildContentPrompt(ci), 1600);
+    const obj = parseJSONObj(text);
+    if (!obj) throw new Error('La IA no devolvió contenido en formato válido.');
+    obj.at = Date.now();
+    ensureProduction(ci).content = obj;
+    saveLaunches();
+    renderProd();
+  } catch (e) {
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`;
+  }
+}
+
+// Render compartido (producción y banco)
+let viewContent = null;
+function contentResultHTML(c) {
+  viewContent = c;
+  const tags = (c.hashtags || []);
+  return `<div class="content-result">
+    <div class="ctabs">
+      <span class="ctab active" data-ctab="caption" onclick="contentTab('caption',this)">Caption</span>
+      <span class="ctab" data-ctab="script" onclick="contentTab('script',this)">Script</span>
+      <span class="ctab" data-ctab="hashtags" onclick="contentTab('hashtags',this)">Hashtags</span>
+    </div>
+    <div data-cpane="caption">
+      ${contentBlock('Hook (primeros 3s)', 'hook')}
+      ${contentBlock('Caption · Instagram', 'caption_ig')}
+      ${contentBlock('Caption · TikTok', 'caption_tiktok')}
+      ${contentBlock('Story', 'story')}
+    </div>
+    <div data-cpane="script" style="display:none">
+      ${contentBlock('Guión 30–60s', 'script', true)}
+    </div>
+    <div data-cpane="hashtags" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContent('hashtags',this)">Copiar todos</button></div>
+      <div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('') || '—'}</div>
+    </div>
+  </div>`;
+}
+function contentBlock(label, key, pre) {
+  const v = s(viewContent ? viewContent[key] : '');
+  return `<div style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContent('${key}',this)">Copiar</button></div>
+    <div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'}">${v || '—'}</div>
+  </div>`;
+}
+function contentTab(name, el) {
+  const wrap = el.closest('.content-result'); if (!wrap) return;
+  wrap.querySelectorAll('[data-cpane]').forEach(p => p.style.display = p.dataset.cpane === name ? '' : 'none');
+  wrap.querySelectorAll('.ctab').forEach(t => t.classList.toggle('active', t.dataset.ctab === name));
+}
+function copyContent(key, btn) {
+  if (!viewContent) return;
+  const v = key === 'hashtags' ? (viewContent.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContent[key]);
+  if (navigator.clipboard) navigator.clipboard.writeText(v);
+  if (btn) { const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = t; }, 1200); }
+}
+// Banco: generación transitoria desde una referencia
+async function generarContenidoBanco(idx) {
+  if (!aiReady()) { abrirAISettings(); return; }
+  const r = referencias[idx]; if (!r) return;
+  const a = activeLaunch(); const art = activeArtist() || {};
+  const res = document.getElementById('bd-content-result');
+  res.innerHTML = '<div class="empty-hint">✨ Generando contenido…</div>';
+  try {
+    const { text } = await callClaude(buildContentPromptFromRef(r, a, art), 1600);
+    const obj = parseJSONObj(text);
+    if (!obj) throw new Error('La IA no devolvió contenido válido.');
+    res.innerHTML = contentResultHTML(obj);
+  } catch (e) {
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`;
+  }
+}
 
 // ══════════════════════════════════════════
 // OBJETIVOS SMART (scoped al lanzamiento activo)
