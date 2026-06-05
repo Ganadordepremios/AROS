@@ -1,0 +1,3 @@
+.claude/
+*.json
+.DS_Store
