@@ -1346,7 +1346,7 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
-  <div class="logo">Tempo OS<span>Sistema operativo musical · v0.9.0&#8209;alpha</span></div>
+  <div class="logo">Tempo OS<span>Sistema operativo musical · v0.10.0&#8209;alpha</span></div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
@@ -2162,15 +2162,25 @@
       <div class="boxdrop-close" onclick="cerrarSync()">✕</div>
     </div>
     <div class="boxdrop-body" style="padding:24px">
-      <div class="empty-hint" style="margin-bottom:16px">Conecta un proyecto de <strong style="color:var(--text-muted)">Supabase</strong> para compartir los datos entre dispositivos y el equipo. Sin conectar, todo sigue funcionando local en este navegador.</div>
-      <div class="field" style="margin-bottom:14px"><label>Project URL</label><input class="input" id="sync-url" placeholder="https://xxxx.supabase.co"></div>
-      <div class="field" style="margin-bottom:14px"><label>anon public key</label><input class="input" id="sync-key" type="password" placeholder="eyJhbGciOi..."></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="conectarSupabase()">Conectar y sincronizar</button>
-        <button class="btn btn-ghost" onclick="desconectarSupabase()">Desconectar</button>
-        <span style="margin-left:auto;font-family:var(--font-mono);font-size:11px" id="sync-status">Sin conectar</span>
+      <!-- Estado de sincronización (visible para todos) -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:500">Estado</span>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:12px" id="sync-status">Sin conectar</span>
       </div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:14px;line-height:1.6;font-family:var(--font-mono)">La nube es la fuente de verdad: al conectar, baja los datos del proyecto. Cada cambio se sube automáticamente. La <strong style="color:var(--text-muted)">anon key</strong> es pública por diseño; protégela con RLS/Auth.</div>
+      <div class="empty-hint" id="sync-note-user" style="margin-top:12px">Tus datos se guardan y sincronizan automáticamente en la nube del equipo. No necesitas configurar nada.</div>
+
+      <!-- Backend (solo super-admin): credenciales del proyecto -->
+      <div id="sync-admin" style="display:none">
+        <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px;font-size:10px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px">⚙ BACKEND · SOLO ADMIN</div>
+        <div class="empty-hint" style="margin-bottom:14px">Credenciales del proyecto de <strong style="color:var(--text-muted)">Supabase</strong>. Vienen horneadas en la app; edítalas solo si cambias de proyecto.</div>
+        <div class="field" style="margin-bottom:14px"><label>Project URL</label><input class="input" id="sync-url" placeholder="https://xxxx.supabase.co"></div>
+        <div class="field" style="margin-bottom:14px"><label>anon public key</label><input class="input" id="sync-key" type="password" placeholder="eyJhbGciOi..."></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="conectarSupabase()">Guardar y reconectar</button>
+          <button class="btn btn-ghost" onclick="desconectarSupabase()">Restablecer a default</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:14px;line-height:1.6;font-family:var(--font-mono)">La nube es la fuente de verdad. La <strong style="color:var(--text-muted)">anon key</strong> es pública por diseño; la seguridad la dan RLS + Auth.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -4869,7 +4879,7 @@ function renderIdeas() {
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">⚡</span><span class="ph-title">Generar Ideas</span>
-        <button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="abrirAISettings()">⚙ API</button>
+        ${(isAdmin() || !authed()) ? '<button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="abrirAISettings()">⚙ API</button>' : ''}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cantidad</span>
@@ -5115,6 +5125,7 @@ async function generarIdeasIA() {
   }
 }
 function abrirAISettings() {
+  if (authed() && !isAdmin()) return; // config de IA: solo super-admin en modo equipo
   const ai = aiSettings();
   document.getElementById('ai-key').value = ai.key;
   document.getElementById('ai-model').value = ai.model;
@@ -5332,8 +5343,7 @@ function renderSidebarArtist() {
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
     + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">⚙ Mi cuenta</div><div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>` : '')
     + `<div class="artist-menu-item" onclick="abrirSync()">☁ Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
-    + `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div>`
-    + `<div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`;
+    + (authed() ? '' : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
 }
 function toggleArtistMenu(force) {
   const menu = document.getElementById('artist-menu');
@@ -5572,7 +5582,7 @@ function renderArtistForms() {
   const vis = document.getElementById('perfil-visibility');
   if (vis) vis.innerHTML = authed()
     ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px">VISIBILIDAD</span>
-       <select class="input" style="padding:4px 8px;font-size:11px;width:auto" onchange="setArtistVisibility('${a.id}',this.value)">
+       <select class="input" style="padding:4px 8px;font-size:11px;width:auto" ${canEdit()?'':'disabled'} onchange="setArtistVisibility('${a.id}',this.value)">
          <option value="team" ${(a.visibility||'team')==='team'?'selected':''}>Todo el equipo</option>
          <option value="private" ${a.visibility==='private'?'selected':''}>Solo yo</option>
        </select>`
@@ -5640,7 +5650,19 @@ document.addEventListener('click', function(e) {
 // SINCRONIZACIÓN EN LA NUBE (Supabase)
 // ══════════════════════════════════════════
 let _sb = null, _cloudTimer = null, syncState = 'off';
-function supaCfg() { try { return JSON.parse(localStorage.getItem('ao_supabase')) || {}; } catch (e) { return {}; } }
+// ── Credenciales del proyecto, horneadas en la app (la anon key es PÚBLICA por diseño; la protege RLS+Auth) ──
+// Los usuarios comunes nunca las ven ni las teclean. El super-admin puede sobreescribirlas (se guardan en localStorage).
+const TEMPO_SUPABASE = {
+  url: 'https://fzemsxyrzyssxprewwzs.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6ZW1zeHlyenlzc3hwcmV3d3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTI3OTcsImV4cCI6MjA5NjI2ODc5N30.6rZw5gzIhUryZOzC2Mx4-kgrZSxWtjXSXS_-EL--FUg' // anon key pública (la protege RLS+Auth)
+};
+// Solo estos correos ven el "backend" (credenciales Supabase + config de IA).
+const ADMIN_EMAILS = ['josh@hookspa.com'];
+function isAdmin() { return !!(_user && ADMIN_EMAILS.indexOf(((_user.email)||'').toLowerCase()) >= 0); }
+function supaCfg() {
+  let c = {}; try { c = JSON.parse(localStorage.getItem('ao_supabase')) || {}; } catch (e) {}
+  return { url: c.url || TEMPO_SUPABASE.url, key: c.key || TEMPO_SUPABASE.key };
+}
 function saveSupaCfg(c) { localStorage.setItem('ao_supabase', JSON.stringify(c)); }
 function cloudEnabled() { const c = supaCfg(); return !!(c.url && c.key); }
 function ensureSupabaseLib() {
@@ -5689,7 +5711,9 @@ async function cloudLoad() {
   try {
     const sb = await getSb(); if (!sb) return;
     setSyncStatus('syncing');
-    const [ar, lr] = await Promise.all([ sb.from('artists').select('data'), sb.from('launches').select('data') ]);
+    const aq = sb.from('artists').select('data');  if (_teamId) aq.eq('team_id', _teamId);
+    const lq = sb.from('launches').select('data'); if (_teamId) lq.eq('team_id', _teamId);
+    const [ar, lr] = await Promise.all([ aq, lq ]);
     if (ar.error) throw new Error(ar.error.message);
     if (lr.error) throw new Error(lr.error.message);
     // La nube es la ÚNICA fuente de verdad (aunque esté vacía). Nunca subimos residuos locales.
@@ -5711,9 +5735,17 @@ async function cloudDelete(table, id) {
 // Modal de conexión
 function abrirSync() {
   toggleArtistMenu(false);
-  const c = supaCfg();
-  document.getElementById('sync-url').value = c.url || '';
-  document.getElementById('sync-key').value = c.key || '';
+  const admin = isAdmin();
+  const adminBox = document.getElementById('sync-admin');
+  const userNote = document.getElementById('sync-note-user');
+  if (adminBox) adminBox.style.display = admin ? '' : 'none';
+  if (userNote) userNote.style.display = admin ? 'none' : '';
+  if (admin) {
+    let raw = {}; try { raw = JSON.parse(localStorage.getItem('ao_supabase')) || {}; } catch (e) {}
+    const c = supaCfg();
+    const su = document.getElementById('sync-url'); if (su) su.value = raw.url || c.url || '';
+    const sk = document.getElementById('sync-key'); if (sk) sk.value = raw.key || '';
+  }
   setSyncStatus(cloudEnabled() ? syncState : 'off');
   document.getElementById('modal-sync').classList.add('open');
 }
@@ -5727,15 +5759,17 @@ async function conectarSupabase() {
   setTimeout(() => location.reload(), 400); // recarga → authInit muestra el login
 }
 function desconectarSupabase() {
-  if (!confirm('¿Desconectar de la nube? La app volverá a modo local (demo) en este navegador.')) return;
+  if (!confirm('¿Restablecer las credenciales a las horneadas por defecto en este navegador?')) return;
   localStorage.removeItem('ao_supabase'); _sb = null; setSyncStatus('off');
   location.reload();
 }
 
 // ── AUTH + EQUIPOS + INVITACIONES ──
 let _user = null, _teamId = null, _teamMembers = [], _teamName = 'Mi equipo', _myRole = 'owner';
+let _teams = []; // todos los equipos del usuario: [{id, name, role}]
 function authed() { return !!(_user && _teamId); }
-function myRole() { if (!authed()) return 'owner'; const m = _teamMembers.find(x => x.user_id === (_user && _user.id)); return (m && m.role) || 'editor'; }
+function activeTeam() { return _teams.find(t => t.id === _teamId) || null; }
+function myRole() { if (!authed()) return 'owner'; const t = activeTeam(); return (t && t.role) || 'editor'; }
 function canEdit() { return myRole() !== 'lector'; }
 function isOwner() { return myRole() === 'owner'; }
 function applyRolePerms() {
@@ -5762,30 +5796,94 @@ async function handleSession(session) {
 }
 async function onAuthed() {
   const sb = await getSb();
+  let invitedTeam = null;
   const pend = localStorage.getItem('ao_pending_invite');
   if (pend) {
-    try { const r = await sb.rpc('accept_invite', { tok: pend }); if (!r.error && r.data) _teamId = r.data; } catch (e) {}
+    try { const r = await sb.rpc('accept_invite', { tok: pend }); if (!r.error && r.data) invitedTeam = r.data; } catch (e) {}
     localStorage.removeItem('ao_pending_invite');
     try { history.replaceState(null, '', location.pathname); } catch (e) {}
   }
-  if (!_teamId) {
+  await loadTeams();
+  if (!_teams.length) {
     const r = await sb.rpc('provision_team');
     if (r.error) { agStatus('Error de equipo: ' + r.error.message, true); showAuthGate(true); return; }
-    _teamId = r.data;
+    await loadTeams();
   }
+  // Si vino por invitación, abrir ese equipo; si no, el guardado o el primero.
+  const saved = localStorage.getItem('ao_active_team');
+  const pick = (invitedTeam && _teams.find(t => t.id === invitedTeam)) ? invitedTeam
+             : (_teams.find(t => t.id === saved) ? saved : (_teams[0] && _teams[0].id));
+  _teamId = pick || null;
+  if (_teamId) localStorage.setItem('ao_active_team', _teamId);
   await loadTeam();
   showAuthGate(false);
   await cloudLoad();
   renderSidebarArtist();
   setSyncStatus('ok');
 }
+// Carga TODOS los equipos del usuario (para el selector multi-equipo)
+async function loadTeams() {
+  const sb = await getSb(); if (!sb || !_user) return;
+  const tm = await sb.from('team_members').select('team_id, role').eq('user_id', _user.id);
+  const rows = tm.data || [];
+  const ids = rows.map(r => r.team_id);
+  let names = {};
+  if (ids.length) {
+    const tn = await sb.from('teams').select('id, name').in('id', ids);
+    (tn.data || []).forEach(t => { names[t.id] = t.name; });
+  }
+  _teams = rows.map(r => ({ id: r.team_id, role: r.role, name: names[r.team_id] || 'Mi equipo' }));
+}
+// Carga miembros + nombre del equipo ACTIVO
 async function loadTeam() {
   const sb = await getSb(); if (!sb || !_teamId) return;
   const tm = await sb.from('team_members').select('user_id, role, email').eq('team_id', _teamId);
   _teamMembers = tm.data || [];
-  const tn = await sb.from('teams').select('name').eq('id', _teamId).single();
-  _teamName = (tn.data && tn.data.name) || 'Mi equipo';
+  const t = activeTeam();
+  _teamName = (t && t.name) || 'Mi equipo';
   applyRolePerms();
+}
+// Cambiar de equipo activo
+async function switchTeam(id) {
+  if (id === _teamId || !_teams.find(t => t.id === id)) return;
+  _teamId = id; localStorage.setItem('ao_active_team', id);
+  setSyncStatus('syncing');
+  await loadTeam();
+  await cloudLoad();
+  renderSidebarArtist();
+  if (document.getElementById('modal-team').classList.contains('open')) renderTeamModal();
+  setSyncStatus('ok');
+}
+// Crear un equipo nuevo (RPC create_team en Supabase) y cambiarse a él
+async function createTeam() {
+  const sb = await getSb(); if (!sb) return;
+  const name = (prompt('Nombre del nuevo equipo:') || '').trim();
+  if (!name) return;
+  const r = await sb.rpc('create_team', { team_name: name });
+  if (r.error) { alert('No se pudo crear el equipo: ' + r.error.message); return; }
+  await loadTeams();
+  await switchTeam(r.data);
+}
+// Mover un artista (y sus lanzamientos) a otro equipo
+async function moveArtistToTeam(artistId, targetId) {
+  if (!targetId || targetId === _teamId) return;
+  const a = artists.find(x => x.id === artistId); if (!a) return;
+  if (!confirm(`¿Mover "${s(a.name)}" y sus lanzamientos al equipo "${s((_teams.find(t=>t.id===targetId)||{}).name)}"? Dejará de verse en el equipo actual.`)) return;
+  const sb = await getSb(); if (!sb) return;
+  try {
+    setSyncStatus('syncing');
+    const r1 = await sb.from('artists').update({ team_id: targetId }).eq('id', artistId);
+    if (r1.error) throw new Error(r1.error.message);
+    await sb.from('launches').update({ team_id: targetId }).eq('artist_id', artistId);
+    // quitar de la vista local del equipo actual
+    artists = artists.filter(x => x.id !== artistId);
+    launches = launches.filter(l => l.artistId !== artistId);
+    if (currentArtistId === artistId) currentArtistId = artists[0] && artists[0].id;
+    saveArtistsLocal(); saveLaunchesLocal();
+    renderSidebarArtist(); renderAllLaunches();
+    if (document.getElementById('modal-team').classList.contains('open')) renderTeamModal();
+    setSyncStatus('ok');
+  } catch (e) { setSyncStatus('error', e.message); alert('No se pudo mover: ' + e.message); }
 }
 async function signIn() {
   const sb = await getSb(); agStatus('Entrando…');
@@ -5816,10 +5914,36 @@ function cerrarTeam(e) { if (!e || e.target === document.getElementById('modal-t
 function renderTeamModal() {
   const body = document.getElementById('team-body');
   const me = _user ? _user.email : '';
+  const canEditName = isOwner();
+  // Selector de equipos (si hay más de uno) + crear nuevo
+  const teamsList = _teams.map(t => {
+    const active = t.id === _teamId;
+    return `<div onclick="switchTeam('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;background:${active?'rgba(255,107,48,0.06)':'transparent'}">
+      <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(t.name||'?').slice(0,1)}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${s(t.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(t.role)}</div></div>
+      ${active?'<span style="color:var(--accent);font-size:12px">● activo</span>':'<span style="font-size:11px;color:var(--text-dim)">cambiar →</span>'}
+    </div>`;
+  }).join('');
+  // Panel de asignación de artistas al equipo
+  const otherTeams = _teams.filter(t => t.id !== _teamId);
+  const assignList = canEdit() && artists.length ? artists.map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(a.name||'?').slice(0,1)}</div>
+      <span style="flex:1;font-size:13px">${s(a.name)}</span>
+      ${otherTeams.length ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="if(this.value){moveArtistToTeam('${a.id}',this.value);this.value='';}">
+        <option value="">Mover a…</option>
+        ${otherTeams.map(t => `<option value="${t.id}">${s(t.name)}</option>`).join('')}
+      </select>` : '<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">—</span>'}
+    </div>`).join('') : `<div class="empty-hint">${artists.length ? 'Crea otro equipo para poder mover artistas.' : 'No hay artistas en este equipo.'}</div>`;
   body.innerHTML = `
-    <div class="field" style="margin-bottom:16px"><label>Nombre del equipo</label>
-      <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}"><button class="btn btn-ghost" onclick="renameTeam()">Guardar</button></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🏷</span><span class="ph-title">Tus equipos (${_teams.length})</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">${teamsList}</div>
+    <button class="btn btn-ghost" style="margin-bottom:18px;font-size:12px" onclick="createTeam()">+ Crear equipo nuevo</button>
+    <div class="field" style="margin-bottom:16px"><label>Nombre del equipo activo</label>
+      <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}" ${canEditName?'':'disabled'}>${canEditName?'<button class="btn btn-ghost" onclick="renameTeam()">Guardar</button>':''}</div>
     </div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🎤</span><span class="ph-title">Artistas de ${s(_teamName)} (${artists.length})</span><span class="ph-sub">asigna a otro equipo</span></div>
+    <div style="margin-bottom:18px">${assignList}</div>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">👥</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
     <div style="margin-bottom:18px">${_teamMembers.map(m => {
       const mine = m.user_id === (_user && _user.id);
@@ -5850,7 +5974,9 @@ async function renameTeam() {
   const sb = await getSb(); if (!sb || !_teamId) return;
   const name = agVal('team-name').trim() || 'Mi equipo';
   await sb.from('teams').update({ name }).eq('id', _teamId);
-  _teamName = name; renderSidebarArtist();
+  _teamName = name;
+  const t = activeTeam(); if (t) t.name = name;
+  renderSidebarArtist(); renderTeamModal();
 }
 async function createInvite() {
   const sb = await getSb(); if (!sb || !_teamId) return;
@@ -5871,6 +5997,7 @@ function copyInvite(btn) {
 }
 // visibilidad por artista
 function setArtistVisibility(id, vis) {
+  if (!canEdit()) return; // el rol solo limita edición, no la visibilidad de lectura
   const a = artists.find(x => x.id === id); if (!a) return;
   a.visibility = vis; saveArtists(); // el upsert lleva la nueva visibilidad → RLS aplica quién la ve
   renderArtistForms();
@@ -5899,6 +6026,15 @@ function renderCuenta() {
     <div class="field" style="margin-bottom:10px"><input class="input" id="acc-pass" type="password" placeholder="Nueva contraseña (mín. 6)"></div>
     <button class="btn btn-primary" onclick="cambiarPassword()">Actualizar contraseña</button>
     <div id="acc-status" style="font-family:var(--font-mono);font-size:11px;margin-top:10px;min-height:14px;color:var(--text-muted)"></div>
+
+    <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px"></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">💾</span><span class="ph-title">Respaldo de datos</span></div>
+    <div class="empty-hint" style="margin-bottom:12px">Exporta una copia (.json) de tus artistas y lanzamientos, o restaura desde un archivo. La API key no se incluye por seguridad.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="exportarDatos()">⤓ Exportar backup (.json)</button>
+      <button class="btn btn-ghost" onclick="importarDatos()">⤒ Importar backup</button>
+    </div>
+
     <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Equipo: ${s(_teamName)} · rol ${s(myRole())}</span>
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
