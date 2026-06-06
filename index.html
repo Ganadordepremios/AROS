@@ -1404,6 +1404,7 @@
     <div class="topbar-title" id="page-title">DASHBOARD</div>
     <div class="topbar-actions">
       <button class="btn btn-ghost" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" style="padding:7px 11px">🌙</button>
+      <button class="btn btn-ghost hide-sm" id="topbar-signout" onclick="signOutTempo()" title="Cerrar sesión" style="display:none">⎋ Salir</button>
       <button class="btn btn-ghost" id="btn-sheet-config" onclick="abrirImportCSV()" style="display:none">↑ Importar CSV</button>
       <button class="btn btn-ghost hide-sm">+ Referencia</button>
       <button class="btn btn-primary" onclick="abrirWizard()">+ Nuevo Lanzamiento</button>
@@ -5284,6 +5285,7 @@ function renderSidebarArtist() {
   const a = activeArtist();
   document.getElementById('sb-avatar').textContent = a ? up(a.name).slice(0,1) : '?';
   document.getElementById('sb-name').textContent = a ? a.name : '—';
+  const so = document.getElementById('topbar-signout'); if (so) so.style.display = authed() ? '' : 'none';
   const menu = document.getElementById('artist-menu');
   menu.innerHTML = artists.map(ar => `
     <div class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
