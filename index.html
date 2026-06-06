@@ -1143,6 +1143,19 @@
     animation: popIn 0.35s ease;
   }
 
+  /* ── MODO LECTOR (rol 'lector') ── */
+  body.role-lector .topbar .btn-primary,
+  body.role-lector .del-btn,
+  body.role-lector .artist-menu-add,
+  body.role-lector .launch-card.add { display: none !important; }
+  body.role-lector [data-bind], body.role-lector [data-bind-array] { pointer-events: none; opacity: 0.7; }
+  .role-pill { display: none; }
+  body.role-lector .role-pill {
+    display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 1px; color: var(--beat); border: 1px solid var(--beat);
+    padding: 4px 9px; border-radius: 20px;
+  }
+
   /* ════════════════════════════════════════ */
   /* ── CAMPAIGN PLANNER WIZARD ── */
   /* ════════════════════════════════════════ */
@@ -1333,7 +1346,7 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
-  <div class="logo">Tempo OS<span>Sistema operativo musical</span></div>
+  <div class="logo">Tempo OS<span>Sistema operativo musical · v0.9.0&#8209;alpha</span></div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
@@ -1402,11 +1415,11 @@
   <div class="topbar">
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">☰</button>
     <div class="topbar-title" id="page-title">DASHBOARD</div>
+    <span class="role-pill">👁 Modo lectura</span>
     <div class="topbar-actions">
       <button class="btn btn-ghost" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" style="padding:7px 11px">🌙</button>
       <button class="btn btn-ghost hide-sm" id="topbar-signout" onclick="signOutTempo()" title="Cerrar sesión" style="display:none">⎋ Salir</button>
       <button class="btn btn-ghost" id="btn-sheet-config" onclick="abrirImportCSV()" style="display:none">↑ Importar CSV</button>
-      <button class="btn btn-ghost hide-sm">+ Referencia</button>
       <button class="btn btn-primary" onclick="abrirWizard()">+ Nuevo Lanzamiento</button>
     </div>
   </div>
@@ -2120,7 +2133,16 @@
       <button class="btn btn-ghost" onclick="signUp()">Crear cuenta</button>
       <button class="btn btn-ghost" onclick="signInMagic()" style="margin-left:auto">✉ Enlace mágico</button>
     </div>
-    <div id="ag-status" style="font-family:var(--font-mono);font-size:11px;margin-top:16px;min-height:16px;color:var(--text-muted)"></div>
+    <div style="margin-top:14px"><span onclick="forgotPassword()" style="font-size:11px;color:var(--accent);cursor:pointer;font-family:var(--font-mono)">¿Olvidaste tu contraseña?</span></div>
+    <div id="ag-status" style="font-family:var(--font-mono);font-size:11px;margin-top:12px;min-height:16px;color:var(--text-muted)"></div>
+  </div>
+</div>
+
+<!-- ── MODAL MI CUENTA ── -->
+<div class="boxdrop-overlay" id="modal-account" onclick="cerrarCuenta(event)">
+  <div class="boxdrop" style="width:480px;max-width:96vw">
+    <div class="boxdrop-header"><div class="boxdrop-title">⚙ MI CUENTA</div><div class="boxdrop-close" onclick="cerrarCuenta()">✕</div></div>
+    <div class="boxdrop-body" id="account-body" style="padding:24px"></div>
   </div>
 </div>
 
@@ -5295,7 +5317,7 @@ function renderSidebarArtist() {
     </div>`).join('')
     + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
-    + (authed() ? `<div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>` : '')
+    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">⚙ Mi cuenta</div><div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>` : '')
     + `<div class="artist-menu-item" onclick="abrirSync()">☁ Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div>`
     + `<div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`;
@@ -5631,7 +5653,7 @@ function setSyncStatus(state, msg) {
   const dot = document.getElementById('sync-menu-dot'); if (dot) { dot.textContent = m[0]; dot.style.color = m[1]; }
 }
 function scheduleCloudSync() {
-  if (!cloudEnabled() || !authed()) return;
+  if (!cloudEnabled() || !authed() || !canEdit()) return;
   clearTimeout(_cloudTimer);
   _cloudTimer = setTimeout(cloudSyncAll, 1500);
 }
@@ -5657,19 +5679,16 @@ async function cloudLoad() {
     const [ar, lr] = await Promise.all([ sb.from('artists').select('data'), sb.from('launches').select('data') ]);
     if (ar.error) throw new Error(ar.error.message);
     if (lr.error) throw new Error(lr.error.message);
-    const hasCloud = (ar.data && ar.data.length) || (lr.data && lr.data.length);
-    if (hasCloud) {
-      if (ar.data && ar.data.length) artists = ar.data.map(r => normalizeArtist(r.data));
-      launches = (lr.data || []).map(r => normalizeLaunch(r.data));
-      saveArtistsLocal(); saveLaunchesLocal();
-      if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
-      renderSidebarArtist(); renderAllLaunches();
-      const p = (document.querySelector('.page.active') || {}).id;
-      if (p === 'page-perfil' || p === 'page-adn') renderArtistForms();
-      setSyncStatus('ok');
-    } else {
-      await cloudSyncAll(); // nube vacía → subimos lo local como semilla
-    }
+    // La nube es la ÚNICA fuente de verdad (aunque esté vacía). Nunca subimos residuos locales.
+    artists = (ar.data || []).map(r => normalizeArtist(r.data));
+    launches = (lr.data || []).map(r => normalizeLaunch(r.data));
+    saveArtistsLocal(); saveLaunchesLocal();
+    if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
+    renderSidebarArtist(); renderAllLaunches();
+    const p = (document.querySelector('.page.active') || {}).id;
+    if (p === 'page-perfil' || p === 'page-adn') renderArtistForms();
+    if (p === 'page-dashboard') renderDashboard();
+    setSyncStatus('ok');
   } catch (e) { setSyncStatus('error', e.message); }
 }
 async function cloudDelete(table, id) {
@@ -5701,8 +5720,17 @@ function desconectarSupabase() {
 }
 
 // ── AUTH + EQUIPOS + INVITACIONES ──
-let _user = null, _teamId = null, _teamMembers = [], _teamName = 'Mi equipo';
+let _user = null, _teamId = null, _teamMembers = [], _teamName = 'Mi equipo', _myRole = 'owner';
 function authed() { return !!(_user && _teamId); }
+function myRole() { if (!authed()) return 'owner'; const m = _teamMembers.find(x => x.user_id === (_user && _user.id)); return (m && m.role) || 'editor'; }
+function canEdit() { return myRole() !== 'lector'; }
+function isOwner() { return myRole() === 'owner'; }
+function applyRolePerms() {
+  const r = authed() ? myRole() : null;
+  document.body.classList.toggle('role-lector', r === 'lector');
+  document.body.classList.toggle('role-editor', r === 'editor');
+  document.body.classList.toggle('role-owner', r === 'owner');
+}
 const agVal = id => (document.getElementById(id) || {}).value || '';
 function agStatus(msg, err) { const el = document.getElementById('ag-status'); if (el) { el.textContent = msg; el.style.color = err ? 'var(--accent2)' : 'var(--text-muted)'; } }
 function showAuthGate(show) { const g = document.getElementById('auth-gate'); if (g) g.style.display = show ? 'flex' : 'none'; }
@@ -5744,6 +5772,7 @@ async function loadTeam() {
   _teamMembers = tm.data || [];
   const tn = await sb.from('teams').select('name').eq('id', _teamId).single();
   _teamName = (tn.data && tn.data.name) || 'Mi equipo';
+  applyRolePerms();
 }
 async function signIn() {
   const sb = await getSb(); agStatus('Entrando…');
@@ -5778,12 +5807,23 @@ function renderTeamModal() {
     <div class="field" style="margin-bottom:16px"><label>Nombre del equipo</label>
       <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}"><button class="btn btn-ghost" onclick="renameTeam()">Guardar</button></div>
     </div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">👥</span><span class="ph-title">Miembros (${_teamMembers.length})</span></div>
-    <div style="margin-bottom:18px">${_teamMembers.map(m => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(m.email||'?').slice(0,1)}</div>
-      <span style="flex:1;font-size:13px">${s(m.email)||m.user_id}${m.email===me?' <span style="color:var(--text-dim)">(tú)</span>':''}</span>
-      <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(m.role)}</span>
-    </div>`).join('')}</div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">👥</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
+    <div style="margin-bottom:18px">${_teamMembers.map(m => {
+      const mine = m.user_id === (_user && _user.id);
+      const roleCtl = (isOwner() && !mine)
+        ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="updateMemberRole('${m.user_id}',this.value)">
+             <option value="owner" ${m.role==='owner'?'selected':''}>Owner</option>
+             <option value="editor" ${m.role==='editor'?'selected':''}>Miembro</option>
+             <option value="lector" ${m.role==='lector'?'selected':''}>Lector</option>
+           </select>`
+        : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(m.role)}</span>`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(m.email||'?').slice(0,1)}</div>
+        <span style="flex:1;font-size:13px">${s(m.email)||m.user_id}${mine?' <span style="color:var(--text-dim)">(tú)</span>':''}</span>
+        ${roleCtl}
+      </div>`;
+    }).join('')}</div>
+    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve.</div>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">✉</span><span class="ph-title">Invitar al equipo</span></div>
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace y compártelo por correo o WhatsApp. Quien lo abra e inicie sesión se unirá a tu equipo.</div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
@@ -5821,6 +5861,43 @@ function setArtistVisibility(id, vis) {
   const a = artists.find(x => x.id === id); if (!a) return;
   a.visibility = vis; saveArtists(); // el upsert lleva la nueva visibilidad → RLS aplica quién la ve
   renderArtistForms();
+}
+async function updateMemberRole(userId, role) {
+  const sb = await getSb(); if (!sb) return;
+  const r = await sb.from('team_members').update({ role }).eq('team_id', _teamId).eq('user_id', userId);
+  if (r && r.error) { alert(r.error.message); return; }
+  await loadTeam(); renderTeamModal();
+}
+// olvidé mi contraseña (desde el login)
+async function forgotPassword() {
+  const sb = await getSb(); const email = agVal('ag-email');
+  if (!email) return agStatus('Escribe tu correo para recuperar la contraseña', true);
+  const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+  if (r.error) agStatus(r.error.message, true); else agStatus('Enviamos un enlace para restablecer tu contraseña a ' + email);
+}
+// ajustes de cuenta
+function abrirCuenta() { toggleArtistMenu(false); renderCuenta(); document.getElementById('modal-account').classList.add('open'); }
+function cerrarCuenta(e) { if (!e || e.target === document.getElementById('modal-account')) document.getElementById('modal-account').classList.remove('open'); }
+function renderCuenta() {
+  const body = document.getElementById('account-body');
+  body.innerHTML = `
+    <div class="field" style="margin-bottom:18px"><label>Correo</label><input class="input" value="${s(_user ? _user.email : '')}" readonly></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🔑</span><span class="ph-title">Cambiar contraseña</span></div>
+    <div class="field" style="margin-bottom:10px"><input class="input" id="acc-pass" type="password" placeholder="Nueva contraseña (mín. 6)"></div>
+    <button class="btn btn-primary" onclick="cambiarPassword()">Actualizar contraseña</button>
+    <div id="acc-status" style="font-family:var(--font-mono);font-size:11px;margin-top:10px;min-height:14px;color:var(--text-muted)"></div>
+    <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Equipo: ${s(_teamName)} · rol ${s(myRole())}</span>
+      <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
+    </div>`;
+}
+async function cambiarPassword() {
+  const sb = await getSb(); const pass = (document.getElementById('acc-pass') || {}).value || '';
+  const st = document.getElementById('acc-status');
+  if (pass.length < 6) { st.style.color = 'var(--accent2)'; st.textContent = 'Mínimo 6 caracteres'; return; }
+  const r = await sb.auth.updateUser({ password: pass });
+  if (r.error) { st.style.color = 'var(--accent2)'; st.textContent = r.error.message; }
+  else { st.style.color = '#4ade80'; st.textContent = '✓ Contraseña actualizada'; }
 }
 
 // ══════════════════════════════════════════
