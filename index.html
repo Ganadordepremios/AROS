@@ -4996,9 +4996,22 @@ function aiSettings() {
 }
 
 // ── Capa de IA reutilizable (todos los módulos) ──
-function aiReady() { return !!aiSettings().key; }
+// En modo equipo (con sesión) la IA está lista vía Edge Function (key en el servidor).
+// En modo demo, requiere key local.
+function aiReady() { return (typeof cloudEnabled === 'function' && cloudEnabled() && authed()) || !!aiSettings().key; }
 async function callClaude(prompt, maxTokens) {
   const ai = aiSettings();
+  // ── Modo equipo: proxy seguro (Edge Function 'claude') — la key NUNCA toca el cliente ──
+  if (cloudEnabled() && authed()) {
+    const sb = await getSb();
+    const { data, error } = await sb.functions.invoke('claude', {
+      body: { prompt, model: ai.model, max_tokens: maxTokens || ai.maxTokens },
+    });
+    if (error) throw new Error(error.message || 'Error de la función claude (¿está desplegada?)');
+    if (data && data.error) throw new Error(data.error);
+    return { text: (data && data.text) || '', usage: (data && data.usage) || {}, ai };
+  }
+  // ── Modo demo: key directa en el cliente ──
   if (!ai.key) throw new Error('NO_KEY');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
