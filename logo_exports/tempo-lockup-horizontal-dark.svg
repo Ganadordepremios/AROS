@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 504 100" fill="none">
+  <defs></defs>
+  <g>
+    <path d="M22 86 L37 22 L63 22 L78 86 Z" stroke="#FF6B35" stroke-width="5" stroke-linejoin="round"></path>
+    <g transform="rotate(8 50 80)">
+      <line x1="50" y1="80" x2="50" y2="8" stroke="#FF6B35" stroke-width="5" stroke-linecap="round"></line>
+      <rect x="42" y="43.6" width="16" height="6.8" rx="1.4" fill="#FF6B35"></rect>
+      <circle cx="50" cy="8" r="4.6" fill="#FF6B35"></circle>
+    </g>
+  </g>
+  <text x="124" y="84" font-family="&#39;Bebas Neue&#39;, sans-serif" font-size="96" letter-spacing="5" fill="#F5F5F5">TEMPO</text>
+</svg>
