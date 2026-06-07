@@ -15,10 +15,23 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Precios por modelo (US$ por 1M tokens: [entrada, salida]) para el costo estimado.
+const PRICES: Record<string, [number, number]> = {
+  "claude-3-5-haiku-latest": [0.80, 4.00],
+  "claude-3-haiku-20240307": [0.25, 1.25],
+  "claude-3-5-sonnet-latest": [3.00, 15.00],
+  "claude-sonnet-4-20250514": [3.00, 15.00],
+  "claude-3-opus-latest": [15.00, 75.00],
+};
+function costOf(model: string, inTok: number, outTok: number): number {
+  const p = PRICES[model] || PRICES["claude-3-5-haiku-latest"];
+  return inTok / 1e6 * p[0] + outTok / 1e6 * p[1];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { prompt, model, max_tokens } = await req.json();
+    const { prompt, model, max_tokens, team_id, feature } = await req.json();
     if (!prompt) return j({ error: "missing prompt" }, 400);
 
     // Usuario autenticado (del JWT que envía el cliente)
@@ -48,13 +61,19 @@ Deno.serve(async (req) => {
     const text = (data.content || []).map((b: any) => b.text || "").join("");
     const usage = data.usage || {};
 
-    // Métrica de uso (para cobro). Requiere la tabla ai_usage (ver SQL).
+    // Métrica de uso (para cobro / dashboard admin). Requiere la tabla ai_usage (ver SQL).
     try {
+      const mdl = model || "claude-3-5-haiku-latest";
+      const inTok = usage.input_tokens || 0;
+      const outTok = usage.output_tokens || 0;
       await supa.from("ai_usage").insert({
+        team_id: team_id || null,
         user_id: user.id,
-        model: model || "claude-3-5-haiku-latest",
-        in_tokens: usage.input_tokens || 0,
-        out_tokens: usage.output_tokens || 0,
+        model: mdl,
+        in_tokens: inTok,
+        out_tokens: outTok,
+        cost: costOf(mdl, inTok, outTok),
+        feature: feature || null,
       });
     } catch (_) { /* la métrica es best-effort */ }
 
