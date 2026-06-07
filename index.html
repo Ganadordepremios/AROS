@@ -75,13 +75,15 @@
   .sidebar::-webkit-scrollbar { width: 0; }
 
   .logo {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    --lh: 22px;                                  /* altura del wordmark; escala todo el lockup */
+    display: flex; align-items: center; gap: calc(var(--lh) * 0.5); flex-wrap: wrap;
     color: var(--text);
     padding: 24px 24px 20px;
     border-bottom: 1px solid var(--border);
   }
-  .logo-mark { height: 30px; width: auto; flex: 0 0 auto; }
-  .logo-word { height: 22px; width: auto; flex: 0 0 auto; }
+  .logo-mark { height: calc(var(--lh) * 1.2); width: auto; flex: 0 0 auto; }  /* icono 1.2× el texto = balanceado */
+  .logo-word { height: var(--lh); width: auto; flex: 0 0 auto; }
+  #auth-gate .logo { --lh: 30px; }              /* login: mismo lockup, más grande (hero) */
   .logo span { color: var(--text-muted); font-size: 10px; font-family: var(--font-body); letter-spacing: 2px; display: block; width: 100%; flex-basis: 100%; margin-top: 4px; text-transform: uppercase; }
 
   .nav-section {
