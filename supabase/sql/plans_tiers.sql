@@ -44,46 +44,25 @@ $$;
 grant execute on function public.reset_monthly_counters(uuid) to authenticated;
 
 -- ──────────────────────────────────────────────────────────────
--- 4) RLS reforzada por rol
---    Ajusta los nombres de política a los que ya tengas. Asume helpers existentes:
---    is_member(team_id), is_editor(team_id), is_owner(team_id).
--- ──────────────────────────────────────────────────────────────
-
--- 4a) Solo OWNER puede modificar team_members (invitar, cambiar rol, asignar is_artist).
-drop policy if exists "team_members owner write" on public.team_members;
-create policy "team_members owner write" on public.team_members
-  for update using (is_owner(team_id)) with check (is_owner(team_id));
-
--- 4b) LECTOR solo SELECT en contenido; escritura solo editor/owner.
---     (Repetir el patrón para cada tabla de contenido.)
--- artists
-drop policy if exists "artists read"  on public.artists;
-drop policy if exists "artists write" on public.artists;
-create policy "artists read"  on public.artists for select using (is_member(team_id));
-create policy "artists write" on public.artists for all
-  using (is_editor(team_id)) with check (is_editor(team_id));
-
--- launches
-drop policy if exists "launches read"  on public.launches;
-drop policy if exists "launches write" on public.launches;
-create policy "launches read"  on public.launches for select using (is_member(team_id));
-create policy "launches write" on public.launches for all
-  using (is_editor(team_id)) with check (is_editor(team_id));
-
--- banco (si tienes tabla 'banco'; si el banco vive dentro de artists/launches, omite)
--- drop policy if exists "banco read"  on public.banco;
--- drop policy if exists "banco write" on public.banco;
--- create policy "banco read"  on public.banco for select using (is_member(team_id));
--- create policy "banco write" on public.banco for all
---   using (is_editor(team_id)) with check (is_editor(team_id));
-
--- calendar (si tienes tabla 'calendar'; si vive dentro de launches.data, omite)
--- drop policy if exists "calendar read"  on public.calendar;
--- drop policy if exists "calendar write" on public.calendar;
--- create policy "calendar read"  on public.calendar for select using (is_member(team_id));
--- create policy "calendar write" on public.calendar for all
---   using (is_editor(team_id)) with check (is_editor(team_id));
-
--- NOTA: con `is_editor` en WRITE, mover artistas entre equipos (UPDATE team_id)
--- requiere que seas editor/owner en AMBOS equipos. Si quieres permitir mover siendo
--- solo miembro, usa is_member en el WITH CHECK del destino.
+-- 4) RLS reforzada por rol — *** NO HACER NADA ***
+--    Verificado en este proyecto (2026-06-06): las políticas existentes YA cumplen
+--    los requisitos de la spec (y mejor: la lectura respeta `visibility`/'Solo yo').
+--    NO recrear estas políticas — hacerlo degradaría la lectura. Dejado como referencia:
+--
+--      artists "artists write"  ALL    using is_editor(team_id) check is_editor(team_id)   ✓ lector no escribe
+--      artists "artists read"   SELECT using is_member(team_id) AND (visibility='team' OR owner=auth.uid())  ✓
+--      launches "launches write" ALL   using is_editor(team_id) check is_editor(team_id)   ✓
+--      launches "launches read" SELECT using is_member(...) AND exists(artist visible)      ✓
+--      team_members "members manage" UPDATE using is_owner(team_id)                          ✓ solo owner gestiona
+--      team_members "members remove" DELETE using is_owner(team_id)                          ✓
+--      team_members "members read"   SELECT using is_member(team_id)                         ✓
+--
+--    => Correr SOLO las secciones 1, 2 y 3 de este archivo.
+--
+--    Para verificar en el futuro:
+--    select tablename, policyname, cmd, qual, with_check
+--    from pg_policies where schemaname='public'
+--      and tablename in ('artists','launches','team_members') order by tablename, cmd;
+--
+--    NOTA: con `is_editor` en WRITE de artists, mover un artista entre equipos
+--    (UPDATE team_id) requiere ser editor/owner en AMBOS equipos (origen y destino).
