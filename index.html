@@ -1143,12 +1143,13 @@
     animation: popIn 0.35s ease;
   }
 
-  /* ── MODO LECTOR (rol 'lector') ── */
+  /* ── MODO LECTOR (rol 'lector') ── botones de edición se ven DESHABILITADOS, no ocultos ── */
   body.role-lector .topbar .btn-primary,
   body.role-lector .del-btn,
   body.role-lector .artist-menu-add,
-  body.role-lector .launch-card.add { display: none !important; }
-  body.role-lector [data-bind], body.role-lector [data-bind-array] { pointer-events: none; opacity: 0.7; }
+  body.role-lector .launch-card.add,
+  body.role-lector .lector-disabled { opacity: 0.4 !important; cursor: not-allowed !important; }
+  body.role-lector [data-bind], body.role-lector [data-bind-array] { pointer-events: none; opacity: 0.6; cursor: not-allowed; }
   .role-pill { display: none; }
   body.role-lector .role-pill {
     display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono);
@@ -1346,7 +1347,7 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
-  <div class="logo">Tempo OS<span>Sistema operativo musical · v0.10.0&#8209;alpha</span></div>
+  <div class="logo">Tempo OS<span>Sistema operativo musical · v0.11.0&#8209;alpha</span></div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
@@ -3948,8 +3949,12 @@ function renderIA() {
 }
 async function generarEstrategiaIA() {
   const art = activeArtist(); if (!art) return;
+  if (!requireCan('use_ia_estrategica')) return;
+  const lim = checkPlanLimit('ia_estrategica');
+  if (!lim.ok) { alert(lim.msg); return; }
   if (!aiReady()) { abrirAISettings(); return; }
   const res = document.getElementById('ia-results');
+  if (lim.note) res.innerHTML = `<div class="empty-hint" style="border-color:var(--beat)">ℹ ${lim.note}</div>`;
   res.innerHTML = '<div class="empty-hint">✨ Analizando estrategia…</div>';
   try {
     const { text } = await callClaude(buildStrategyPrompt(art), 1200);
@@ -4613,6 +4618,7 @@ function renderDashboard() {
 }
 
 function borrarLanzamiento(id) {
+  if (!requireCan('edit_launch')) return;
   const l = launches.find(x => x.id === id);
   if (!confirm(`¿Eliminar el lanzamiento “${l ? l.name : ''}”? Esta acción no se puede deshacer.`)) return;
   launches = launches.filter(x => x.id !== id);
@@ -4879,7 +4885,8 @@ function renderIdeas() {
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">⚡</span><span class="ph-title">Generar Ideas</span>
-        ${(isAdmin() || !authed()) ? '<button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="abrirAISettings()">⚙ API</button>' : ''}
+        ${ideasRestantes() !== null ? `<span class="ph-sub" style="margin-left:auto;color:${ideasRestantes()>0?'var(--text-muted)':'var(--accent2)'}">${ideasRestantes()} de 12 ideas restantes este mes</span>` : ''}
+        ${(isAdmin() || !authed()) ? `<button class="btn btn-ghost" style="${ideasRestantes()!==null?'':'margin-left:auto;'}padding:4px 10px;font-size:11px" onclick="abrirAISettings()">⚙ API</button>` : ''}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cantidad</span>
@@ -5104,8 +5111,11 @@ function parseIdeasJSON(text) {
 }
 async function generarIdeasIA() {
   const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  const lim = checkPlanLimit('ideas_ia');
+  if (!lim.ok) { alert(lim.msg); return; }
   const ai = aiSettings();
-  if (!ai.key) { abrirAISettings(); return; }
+  if (!aiReady()) { abrirAISettings(); return; }
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const prompt = buildIdeaPrompt(a, count);
   const res = document.getElementById('ideas-results');
@@ -5119,7 +5129,9 @@ async function generarIdeasIA() {
       hook: x.hook || '', objetivo: x.objetivo || '', descripcion: x.descripcion || '', refLink: '', source: 'ia'
     }));
     a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    bumpTeamCounter('ideas_generadas_mes'); // cuota mensual (solo cuenta si BILLING_ENFORCED)
     saveLaunches(); renderResults();
+    if (typeof updateCostLine === 'function') updateCostLine();
   } catch (e) {
     res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">⚠ Error con la IA: ${s(e.message)}.<br>Revisa tu API key / modelo en ⚙ API. (También puede ser límite de CORS o de créditos.)</div>`;
   }
@@ -5163,6 +5175,13 @@ const getVal = id => { const el = document.getElementById(id); return el ? el.va
 const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
 
 function abrirWizard(id) {
+  // Permisos por rol + límite de tier (este último solo aplica si BILLING_ENFORCED)
+  if (id) { if (!requireCan('edit_launch')) return; }
+  else {
+    if (!requireCan('create_launch')) return;
+    const lim = checkPlanLimit('create_launch');
+    if (!lim.ok) { alert(lim.msg); return; }
+  }
   editingId = id || null;
   wizStepN = 1;
   const l = editingId ? launches.find(x => x.id === editingId) : null;
@@ -5520,6 +5539,7 @@ function awFinish() {
 
 // ── Export / Import (backup local, Fase 0) ──
 function exportarDatos() {
+  if (!requireCan('export')) return;
   toggleArtistMenu(false);
   const ai = aiSettings();
   const data = {
@@ -5620,6 +5640,7 @@ function renderTeam() {
     </div>`).join('');
 }
 function agregarMiembro() {
+  if (!requireCan('edit_perfil_adn')) return;
   const a = activeArtist(); if (!a) return;
   const name = prompt('Nombre del miembro:'); if (!name) return;
   const role = prompt('Rol (ej. Manager, Productor, Editor):') || '';
@@ -5627,6 +5648,7 @@ function agregarMiembro() {
   saveArtists(); renderTeam();
 }
 function quitarMiembro(i) {
+  if (!requireCan('edit_perfil_adn')) return;
   const a = activeArtist(); if (!a || !a.team[i]) return;
   a.team.splice(i,1); saveArtists(); renderTeam();
 }
@@ -5635,6 +5657,7 @@ function quitarMiembro(i) {
 document.addEventListener('input', function(e) {
   const el = e.target.closest && e.target.closest('[data-bind]');
   if (!el) return;
+  if (!canDo('edit_perfil_adn')) { return; } // lector/sin permiso: no guarda (campos van deshabilitados visualmente)
   const a = activeArtist(); if (!a) return;
   setPath(a, el.dataset.bind, el.value);
   saveArtists();
@@ -5767,6 +5790,107 @@ function desconectarSupabase() {
 // ── AUTH + EQUIPOS + INVITACIONES ──
 let _user = null, _teamId = null, _teamMembers = [], _teamName = 'Mi equipo', _myRole = 'owner';
 let _teams = []; // todos los equipos del usuario: [{id, name, role}]
+// ── PLANES / TIERS / ASIENTOS (v0.11) ──
+let _teamPlan = 'free';   // 'free' | 'pro' | 'manager' | 'custom'
+let _isArtist = false;    // el miembro actual es "el artista" del equipo
+let _teamCounters = { ideas_generadas_mes: 0, ideas_reset_date: null, banco_refreshes: 0, banco_refreshes_reset_date: null };
+
+// ════════════════════════════════════════════════════════════════
+// CAPA DE PERMISOS Y LÍMITES
+// ────────────────────────────────────────────────────────────────
+// BILLING_ENFORCED controla SOLO los límites ligados a pago (tiers/cuotas).
+// Hoy en false → ningún límite numérico aplica (operación libre sin pagos).
+// Los permisos por ROL (canDo) SIEMPRE están activos: son colaboración, no pago.
+// Para abrir TODO durante desarrollo (incluidos roles), poner DEV_OPEN = true.
+// ════════════════════════════════════════════════════════════════
+const BILLING_ENFORCED = false;
+const DEV_OPEN = false;
+
+// Permisos por rol/asiento (no dependen de pago)
+function canDo(action) {
+  if (DEV_OPEN || !authed()) return true; // demo/dev: todo permitido
+  const role = myRole();      // 'owner' | 'editor' | 'lector'
+  const artist = _isArtist;
+  switch (action) {
+    case 'create_launch':
+    case 'edit_launch':
+    case 'use_ia_estrategica':
+    case 'use_generador_ia':
+    case 'export':
+    case 'banco_add':
+    case 'calendar_edit':
+      return role === 'owner' || role === 'editor';
+    case 'edit_perfil_adn':
+      return role === 'owner' || artist;
+    case 'invite_members':
+    case 'manage_roles':
+    case 'assign_artist':
+      return role === 'owner';
+    default:
+      return true; // ver = libre para todos
+  }
+}
+// Guard para handlers: si no puede, avisa y devuelve false.
+function requireCan(action, msg) {
+  if (canDo(action)) return true;
+  alert(msg || 'Solo lectura · necesitas rol Editor u Owner para hacer esto.');
+  return false;
+}
+
+// Límites numéricos por tier (ligados a pago). Devuelve { ok, msg }.
+// Con BILLING_ENFORCED=false siempre { ok:true } → no limita nada.
+function checkPlanLimit(kind, ctx) {
+  if (!BILLING_ENFORCED || DEV_OPEN) return { ok: true };
+  ctx = ctx || {};
+  const plan = _teamPlan;
+  const resetMsg = () => {
+    const d = _teamCounters.ideas_reset_date ? new Date(_teamCounters.ideas_reset_date) : new Date();
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return next.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+  };
+  switch (kind) {
+    case 'create_launch': {
+      const active = launches.filter(l => l.status === 'active').length;
+      if (plan === 'free' && active >= 1)
+        return { ok: false, msg: 'Completa tu lanzamiento actual para iniciar uno nuevo. (Plan Free)' };
+      return { ok: true };
+    }
+    case 'banco_add': {
+      if (plan === 'free' && (referencias.length >= 50))
+        return { ok: false, msg: 'Alcanzaste el límite de 50 referencias del plan Free.' };
+      return { ok: true };
+    }
+    case 'banco_refresh': {
+      if (plan === 'free' && (_teamCounters.banco_refreshes || 0) >= 2)
+        return { ok: false, msg: 'Usaste tus 2 actualizaciones del banco este mes (plan Free). Vuelven el ' + resetMsg() + '.' };
+      return { ok: true };
+    }
+    case 'ideas_ia': {
+      if (['pro', 'manager'].indexOf(plan) >= 0 && (_teamCounters.ideas_generadas_mes || 0) >= 12)
+        return { ok: false, msg: 'Alcanzaste las 12 ideas de este mes. Vuelven el ' + resetMsg() + '.' };
+      return { ok: true };
+    }
+    case 'ia_estrategica': {
+      const done = launches.filter(l => l.status === 'complete').length;
+      if (done < 3)
+        return { ok: false, msg: 'La IA estratégica se activa después de tu 3er lanzamiento completado.' };
+      return { ok: true, note: done < 5 ? 'Mejores resultados a partir del 5to lanzamiento completado.' : null };
+    }
+    default:
+      return { ok: true };
+  }
+}
+// Incrementa un contador del equipo en Supabase (best-effort).
+async function bumpTeamCounter(field) {
+  if (!BILLING_ENFORCED) return;
+  _teamCounters[field] = (_teamCounters[field] || 0) + 1;
+  try { const sb = await getSb(); if (sb && _teamId) await sb.from('teams').update({ [field]: _teamCounters[field] }).eq('id', _teamId); } catch (e) {}
+}
+// Ideas restantes del mes (para mostrar en UI). null = sin límite aplicable.
+function ideasRestantes() {
+  if (!BILLING_ENFORCED || ['pro', 'manager'].indexOf(_teamPlan) < 0) return null;
+  return Math.max(0, 12 - (_teamCounters.ideas_generadas_mes || 0));
+}
 function authed() { return !!(_user && _teamId); }
 function activeTeam() { return _teams.find(t => t.id === _teamId) || null; }
 function myRole() { if (!authed()) return 'owner'; const t = activeTeam(); return (t && t.role) || 'editor'; }
@@ -5774,9 +5898,13 @@ function canEdit() { return myRole() !== 'lector'; }
 function isOwner() { return myRole() === 'owner'; }
 function applyRolePerms() {
   const r = authed() ? myRole() : null;
-  document.body.classList.toggle('role-lector', r === 'lector');
+  const lector = r === 'lector';
+  document.body.classList.toggle('role-lector', lector);
   document.body.classList.toggle('role-editor', r === 'editor');
   document.body.classList.toggle('role-owner', r === 'owner');
+  const tip = 'Solo lectura · necesitas rol Editor u Owner';
+  const nb = document.querySelector('.topbar .btn-primary');
+  if (nb) nb.title = lector ? tip : '';
 }
 const agVal = id => (document.getElementById(id) || {}).value || '';
 function agStatus(msg, err) { const el = document.getElementById('ag-status'); if (el) { el.textContent = msg; el.style.color = err ? 'var(--accent2)' : 'var(--text-muted)'; } }
@@ -5837,8 +5965,29 @@ async function loadTeams() {
 // Carga miembros + nombre del equipo ACTIVO
 async function loadTeam() {
   const sb = await getSb(); if (!sb || !_teamId) return;
-  const tm = await sb.from('team_members').select('user_id, role, email').eq('team_id', _teamId);
+  // Reset mensual de contadores (best-effort; no rompe si el RPC no existe aún)
+  try { await sb.rpc('reset_monthly_counters', { tid: _teamId }); } catch (e) {}
+  // Miembros + is_artist (con fallback si la columna aún no existe)
+  let tm = await sb.from('team_members').select('user_id, role, email, is_artist').eq('team_id', _teamId);
+  if (tm.error) tm = await sb.from('team_members').select('user_id, role, email').eq('team_id', _teamId);
   _teamMembers = tm.data || [];
+  const mine = _teamMembers.find(m => m.user_id === (_user && _user.id));
+  _isArtist = !!(mine && mine.is_artist);
+  // Plan + contadores del equipo (con fallback si las columnas aún no existen)
+  _teamPlan = 'free';
+  _teamCounters = { ideas_generadas_mes: 0, ideas_reset_date: null, banco_refreshes: 0, banco_refreshes_reset_date: null };
+  try {
+    const tr = await sb.from('teams').select('plan, ideas_generadas_mes, ideas_reset_date, banco_refreshes, banco_refreshes_reset_date').eq('id', _teamId).single();
+    if (!tr.error && tr.data) {
+      _teamPlan = tr.data.plan || 'free';
+      _teamCounters = {
+        ideas_generadas_mes: tr.data.ideas_generadas_mes || 0,
+        ideas_reset_date: tr.data.ideas_reset_date || null,
+        banco_refreshes: tr.data.banco_refreshes || 0,
+        banco_refreshes_reset_date: tr.data.banco_refreshes_reset_date || null,
+      };
+    }
+  } catch (e) {}
   const t = activeTeam();
   _teamName = (t && t.name) || 'Mi equipo';
   applyRolePerms();
@@ -5867,6 +6016,7 @@ async function createTeam() {
 // Mover un artista (y sus lanzamientos) a otro equipo
 async function moveArtistToTeam(artistId, targetId) {
   if (!targetId || targetId === _teamId) return;
+  if (!requireCan('assign_artist')) return;
   const a = artists.find(x => x.id === artistId); if (!a) return;
   if (!confirm(`¿Mover "${s(a.name)}" y sus lanzamientos al equipo "${s((_teams.find(t=>t.id===targetId)||{}).name)}"? Dejará de verse en el equipo actual.`)) return;
   const sb = await getSb(); if (!sb) return;
@@ -5954,13 +6104,18 @@ function renderTeamModal() {
              <option value="lector" ${m.role==='lector'?'selected':''}>Lector</option>
            </select>`
         : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(m.role)}</span>`;
+      const artistCtl = isOwner()
+        ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
+             <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">🎤</label>`
+        : (m.is_artist ? '<span style="font-size:10px;color:var(--accent)" title="Artista del equipo">🎤</span>' : '');
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(m.email||'?').slice(0,1)}</div>
         <span style="flex:1;font-size:13px">${s(m.email)||m.user_id}${mine?' <span style="color:var(--text-dim)">(tú)</span>':''}</span>
+        ${artistCtl}
         ${roleCtl}
       </div>`;
     }).join('')}</div>
-    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve.</div>
+    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve · 🎤 = el artista (puede editar Perfil/ADN).</div>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">✉</span><span class="ph-title">Invitar al equipo</span></div>
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace y compártelo por correo o WhatsApp. Quien lo abra e inicie sesión se unirá a tu equipo.</div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
@@ -5971,6 +6126,7 @@ function renderTeamModal() {
     </div>`;
 }
 async function renameTeam() {
+  if (!requireCan('manage_roles')) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
   const name = agVal('team-name').trim() || 'Mi equipo';
   await sb.from('teams').update({ name }).eq('id', _teamId);
@@ -5979,6 +6135,7 @@ async function renameTeam() {
   renderSidebarArtist(); renderTeamModal();
 }
 async function createInvite() {
+  if (!requireCan('invite_members')) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
   const tok = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('inv-' + Date.now() + Math.random().toString(36).slice(2));
   const r = await sb.from('invites').insert({ token: tok, team_id: _teamId });
@@ -6002,7 +6159,24 @@ function setArtistVisibility(id, vis) {
   a.visibility = vis; saveArtists(); // el upsert lleva la nueva visibilidad → RLS aplica quién la ve
   renderArtistForms();
 }
+// Marcar/desmarcar al artista del equipo (único por equipo → limpia los demás primero)
+async function assignArtist(userId, makeArtist) {
+  if (!requireCan('assign_artist')) return;
+  const sb = await getSb(); if (!sb || !_teamId) return;
+  try {
+    if (makeArtist) {
+      await sb.from('team_members').update({ is_artist: false }).eq('team_id', _teamId);
+      const r = await sb.from('team_members').update({ is_artist: true }).eq('team_id', _teamId).eq('user_id', userId);
+      if (r.error) throw new Error(r.error.message);
+    } else {
+      const r = await sb.from('team_members').update({ is_artist: false }).eq('team_id', _teamId).eq('user_id', userId);
+      if (r.error) throw new Error(r.error.message);
+    }
+    await loadTeam(); renderTeamModal();
+  } catch (e) { alert('No se pudo asignar el artista: ' + e.message); }
+}
 async function updateMemberRole(userId, role) {
+  if (!requireCan('manage_roles')) return;
   const sb = await getSb(); if (!sb) return;
   const r = await sb.from('team_members').update({ role }).eq('team_id', _teamId).eq('user_id', userId);
   if (r && r.error) { alert(r.error.message); return; }
