@@ -2221,6 +2221,14 @@
     </div>
   </div>
 </div>
+<!-- ── MODAL META MANUAL (guiada) ── -->
+<div class="boxdrop-overlay" id="modal-goal" style="z-index:2900" onclick="cerrarMetaModal(event)">
+  <div class="boxdrop" style="width:440px;max-width:94vw">
+    <div class="boxdrop-header"><div class="boxdrop-title">🎯 NUEVA META</div><div class="boxdrop-close" onclick="cerrarMetaModal()">✕</div></div>
+    <div class="boxdrop-body" id="goal-body" style="padding:22px"></div>
+  </div>
+</div>
+
 <!-- ── TOAST (avisos transitorios) ── -->
 <div id="ui-toast" style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:3200;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw"></div>
 
@@ -3803,23 +3811,37 @@ function renderObjetivos() {
   const hint = document.getElementById('obj-aihint');
   if (hint) hint.innerHTML = a ? aiHintHTML(buildGoalsPrompt(a), 600) : '';
   const host = document.getElementById('objetivos-list');
+  const art = activeArtist();
   if (!a) { host.innerHTML = ''; return; }
   if (!a.goals.length) {
-    host.innerHTML = `<div class="empty-hint">Aún no hay objetivos para “${s(a.name)}”. Usa “✨ Sugerir con IA” (según ADN, campaña e histórico) o agrégalos con “+ Meta manual”.</div>`;
+    // Generar-una-vez: si hay info suficiente, IA lista y aún no se intentó → genera y guarda
+    if (hasGoalInfo(a, art) && aiReady() && canDo('use_generador_ia') && !a.goalsAITried) {
+      a.goalsAITried = true; saveLaunches();
+      host.innerHTML = `<div class="empty-hint">✨ Generando sugerencias de metas con IA (según ADN, campaña e histórico)…</div>`;
+      sugerirObjetivosIA(true);
+      return;
+    }
+    if (!hasGoalInfo(a, art)) {
+      host.innerHTML = `<div class="empty-hint">No hay suficiente información para sugerir metas todavía.<br>
+        <span style="color:var(--text-muted)">Agrégalas con <b>“+ Meta manual”</b>, o completa el <b>ADN</b> del artista y los datos del lanzamiento (fecha, campaña). Tener métricas de lanzamientos anteriores también ayuda a que la IA proponga metas.</span></div>`;
+    } else {
+      host.innerHTML = `<div class="empty-hint">Aún no hay metas para “${s(a.name)}”. Usa <b>“✨ Sugerir con IA”</b> o <b>“+ Meta manual”</b>.</div>`;
+    }
     return;
   }
   host.innerHTML = a.goals.map((g, i) => {
     const cls = g.status === 'accepted' ? ' accepted' : (g.status === 'rejected' ? ' rejected' : '');
     const accOn = g.status === 'accepted' ? ' on-accept' : '';
     const rejOn = g.status === 'rejected' ? ' on-reject' : '';
+    const dl = g.deadline ? ` · 📅 ${g.deadline}` : '';
     return `<div class="goal-row${cls}">
       <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'}">${s(g.icon)}</div>
-      <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}</div></div>
+      <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}${dl}</div></div>
       <div class="goal-target">${s(g.target)}<small>OBJETIVO</small></div>
-      <div class="goal-ai">${s(g.ai || '')}</div>
+      <div class="goal-ai">${s(g.ai || (g.source === 'manual' ? 'manual' : ''))}</div>
       <div class="goal-actions">
         <div class="goal-btn accept${accOn}" title="Aceptar" onclick="goalSetStatus(${i},'accepted')">✓</div>
-        <div class="goal-btn reject${rejOn}" title="Rechazar" onclick="goalSetStatus(${i},'rejected')">✕</div>
+        <div class="goal-btn reject${rejOn}" title="Quitar" onclick="goalSetStatus(${i},'rejected')">✕</div>
       </div>
     </div>`;
   }).join('');
@@ -3830,14 +3852,97 @@ function goalSetStatus(i, status) {
   a.goals[i].status = (a.goals[i].status === status) ? 'proposed' : status;
   saveLaunches(); renderObjetivos();
 }
+// ── Catálogo de plataformas/métricas POR ARTISTA (reutilizable) ──
+const DEFAULT_METRIC_CATALOG = [
+  { name: 'Spotify',   metrics: ['Streams', 'Oyentes mensuales', 'Seguidores', 'Saves'] },
+  { name: 'YouTube',   metrics: ['Suscriptores', 'Reproducciones', 'Likes'] },
+  { name: 'TikTok',    metrics: ['Seguidores', 'Likes', 'Reproducciones', 'Saves'] },
+  { name: 'Instagram', metrics: ['Seguidores', 'Likes', 'Alcance', 'Saves', 'Reproducciones'] },
+];
+function artistCatalog(art) {
+  if (!art) return DEFAULT_METRIC_CATALOG.map(p => ({ name: p.name, metrics: p.metrics.slice() }));
+  if (!art.metricCatalog || !Array.isArray(art.metricCatalog.platforms) || !art.metricCatalog.platforms.length) {
+    art.metricCatalog = { platforms: DEFAULT_METRIC_CATALOG.map(p => ({ name: p.name, metrics: p.metrics.slice() })) };
+  }
+  return art.metricCatalog.platforms;
+}
+// Fecha límite sugerida = cierre del lanzamiento (drop + días de post)
+function launchEndDate(l) {
+  if (!l || !l.date) return '';
+  const d = new Date(l.date + 'T00:00:00'); d.setDate(d.getDate() + (l.postDays != null ? l.postDays : 21));
+  return d.toISOString().slice(0, 10);
+}
+// ¿Hay suficiente info para sugerir metas con IA?
+function hasGoalInfo(a, art) {
+  const adn = (art && art.adn) || {};
+  const adnFilled = !!((adn.sound && adn.sound.genres) || (adn.audience && adn.audience.ideal) || (adn.universe && adn.universe.themes) || (adn.personality && adn.personality.tone));
+  const d = (a && a.dna) || {};
+  const dnaFilled = !!(d.about || d.message || d.emotion);
+  let hist = false;
+  try { hist = (artistLaunches() || []).some(l => latestEntries(l.metricEntries).length); } catch (e) {}
+  return adnFilled || dnaFilled || hist;
+}
+
+// ── Meta manual GUIADA (plataforma → métrica → objetivo → fecha) ──
+let _metaSel = { platform: null, metric: null };
 function agregarMetaManual() {
   const a = activeLaunch();
-  if (!a) return;
-  const metric = prompt('Métrica (ej. Spotify Streams):');
-  if (!metric) return;
-  const target = prompt('Objetivo (ej. 100K):') || '—';
-  a.goals.push({ icon:'🎯', bg:'rgba(255,107,48,0.12)', metric, sub:'Meta manual', target, ai:'', status:'accepted' });
+  if (!a) { uiAlert('Primero crea o selecciona un lanzamiento para agregarle metas.'); return; }
+  if (!requireCan('edit_launch')) return;
+  const cats = artistCatalog(activeArtist());
+  _metaSel = { platform: (cats[0] || {}).name || null, metric: null };
+  renderMetaModal();
+  document.getElementById('modal-goal').classList.add('open');
+}
+function cerrarMetaModal(e) { if (!e || e.target === document.getElementById('modal-goal')) document.getElementById('modal-goal').classList.remove('open'); }
+function renderMetaModal() {
+  const art = activeArtist(), a = activeLaunch();
+  const cats = artistCatalog(art);
+  const cur = cats.find(p => p.name === _metaSel.platform) || cats[0] || { metrics: [] };
+  const platOpts = cats.map(p => `<option ${p.name === _metaSel.platform ? 'selected' : ''}>${s(p.name)}</option>`).join('') + '<option value="__add">➕ otra plataforma…</option>';
+  const metricOpts = (cur.metrics || []).map(m => `<option ${m === _metaSel.metric ? 'selected' : ''}>${s(m)}</option>`).join('') + '<option value="__add">➕ otra métrica…</option>';
+  document.getElementById('goal-body').innerHTML = `
+    <div class="field" style="margin-bottom:12px"><label>Plataforma</label>
+      <select class="input" id="meta-plat" onchange="metaPlatChange(this.value)">${platOpts}</select></div>
+    <div class="field" style="margin-bottom:12px"><label>Métrica</label>
+      <select class="input" id="meta-metric" onchange="metaMetricChange(this.value)">${metricOpts}</select></div>
+    <div class="field" style="margin-bottom:12px"><label>Objetivo</label>
+      <input class="input" id="meta-target" placeholder="ej. 100K, +5K, 2M" value="${s(_metaSel.target || '')}"></div>
+    <div class="field"><label>Fecha límite <span style="color:var(--text-dim);font-weight:400;font-size:10px">· sugerida: cierre del lanzamiento (editable)</span></label>
+      <input class="input" id="meta-deadline" type="date" value="${launchEndDate(a)}"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="guardarMetaManual()">Agregar meta</button>`;
+}
+async function metaPlatChange(v) {
+  _metaSel.target = (document.getElementById('meta-target') || {}).value || '';
+  if (v === '__add') {
+    const name = (await uiPrompt('Nombre de la plataforma:', { title: 'Nueva plataforma' }) || '').trim();
+    if (name) { const cats = artistCatalog(activeArtist()); if (!cats.find(p => p.name.toLowerCase() === name.toLowerCase())) { cats.push({ name, metrics: [] }); saveArtists(); } _metaSel.platform = name; }
+    _metaSel.metric = null; renderMetaModal(); return;
+  }
+  _metaSel.platform = v; _metaSel.metric = null; renderMetaModal();
+}
+async function metaMetricChange(v) {
+  _metaSel.target = (document.getElementById('meta-target') || {}).value || '';
+  if (v === '__add') {
+    const m = (await uiPrompt('Nombre de la métrica:', { title: 'Nueva métrica' }) || '').trim();
+    if (m) { const p = artistCatalog(activeArtist()).find(x => x.name === _metaSel.platform); if (p && !p.metrics.find(x => x.toLowerCase() === m.toLowerCase())) { p.metrics.push(m); saveArtists(); } _metaSel.metric = m; }
+    renderMetaModal(); return;
+  }
+  _metaSel.metric = v;
+}
+function guardarMetaManual() {
+  const a = activeLaunch(); if (!a) return;
+  const plat = document.getElementById('meta-plat').value;
+  const metric = document.getElementById('meta-metric').value;
+  if (plat === '__add' || metric === '__add') { uiAlert('Elige una plataforma y una métrica.'); return; }
+  const target = (document.getElementById('meta-target').value || '').trim();
+  if (!target) { uiAlert('Escribe el objetivo (el número a alcanzar).'); return; }
+  const deadline = document.getElementById('meta-deadline').value || '';
+  const ic = platIcon(plat);
+  a.goals.push({ icon: ic[0], bg: ic[1], platform: plat, metric, sub: plat, target, deadline, ai: '', status: 'accepted', source: 'manual' });
   saveLaunches(); renderObjetivos();
+  document.getElementById('modal-goal').classList.remove('open');
+  uiToast('✓ Meta agregada');
 }
 const PLAT_ICON = { spotify:['🎧','rgba(74,222,128,0.12)'], tiktok:['📱','rgba(255,0,80,0.12)'], instagram:['📷','rgba(225,48,108,0.12)'], youtube:['▶','rgba(255,0,0,0.12)'], apple:['🍎','rgba(255,255,255,0.08)'] };
 function platIcon(p) {
@@ -3859,18 +3964,23 @@ ${hist}
 Devuelve SOLO un array JSON (4-6 objetos), sin texto extra:
 {"platform":"Spotify|TikTok|Instagram|YouTube","metric":"nombre de la métrica","sub":"ventana de tiempo","target":"valor objetivo (ej. 150K, +5K, 2M)"}`;
 }
-async function sugerirObjetivosIA() {
+async function sugerirObjetivosIA(auto) {
   const a = activeLaunch(); if (!a) return;
-  if (!aiReady()) { abrirAISettings(); return; }
+  a.goalsAITried = true;
+  if (!aiReady()) { if (!auto) abrirAISettings(); else renderObjetivos(); return; }
+  if (!auto && !requireCan('use_generador_ia')) return;
   const host = document.getElementById('objetivos-list');
   host.insertAdjacentHTML('afterbegin', '<div id="obj-loading" class="empty-hint" style="margin-bottom:10px">✨ Proponiendo objetivos con IA…</div>');
   try {
-    const { text, usage, ai } = await callClaude(buildGoalsPrompt(a), 800);
+    const { text } = await callClaude(buildGoalsPrompt(a), 800, 'objetivos');
     const arr = parseJSONArray(text);
     if (!arr.length) throw new Error('La IA no devolvió objetivos válidos.');
+    // Regenerar: quitar metas IA previas, conservar las manuales
+    a.goals = (a.goals || []).filter(g => g.source === 'manual');
+    const end = launchEndDate(a);
     arr.forEach(g => {
       const ic = platIcon(g.platform);
-      a.goals.push({ icon: ic[0], bg: ic[1], metric: s(g.metric) || 'Meta', sub: s(g.sub) || 'IA', target: s(g.target) || '—', ai: 'IA', status: 'proposed' });
+      a.goals.push({ icon: ic[0], bg: ic[1], platform: s(g.platform), metric: s(g.metric) || 'Meta', sub: s(g.sub) || s(g.platform) || 'IA', target: s(g.target) || '—', deadline: end, ai: 'IA', status: 'proposed' });
     });
     saveLaunches(); renderObjetivos();
   } catch (e) {
@@ -5329,13 +5439,25 @@ function wizRender() {
 function wizNext() { if (wizStepN < 4) { wizStepN++; wizRender(); } else { wizFinish(); } }
 function wizPrev() { if (wizStepN > 1) { wizStepN--; wizRender(); } }
 
-function wizFinish() {
+async function wizFinish() {
   const data = wizCollect();
   const wasEditing = editingId;
   if (wasEditing) {
     const i = launches.findIndex(x => x.id === wasEditing);
     if (i >= 0) launches[i] = data; else launches.push(data);
   } else {
+    // ¿Arrastrar metas del lanzamiento anterior del mismo artista?
+    const prev = launches.filter(l => l.artistId === data.artistId && (l.goals || []).length)
+      .sort((x, y) => (y.date || '').localeCompare(x.date || ''))[0];
+    if (prev) {
+      const keep = await uiConfirm(`¿Mantener las metas del lanzamiento anterior (“${s(prev.name)}”) en este nuevo lanzamiento, o empezar con metas nuevas?`,
+        { title: 'Metas del lanzamiento', okText: 'Mantenerlas', cancelText: 'Empezar nuevas' });
+      if (keep) {
+        const end = launchEndDate(data);
+        data.goals = (prev.goals || []).map(g => Object.assign({}, g, { status: 'proposed', deadline: end }));
+        data.goalsAITried = true; // ya tiene metas, no auto-generar
+      }
+    }
     launches.push(data);
   }
   saveLaunches();
@@ -6288,7 +6410,9 @@ function uiModal(mode, message, opts) {
   const iw = document.getElementById('ui-input-wrap'), inp = document.getElementById('ui-input');
   iw.style.display = mode === 'prompt' ? '' : 'none';
   if (mode === 'prompt') { inp.value = opts.def || ''; inp.placeholder = opts.placeholder || ''; }
-  document.getElementById('ui-cancel').style.display = mode === 'alert' ? 'none' : '';
+  const cancel = document.getElementById('ui-cancel');
+  cancel.style.display = mode === 'alert' ? 'none' : '';
+  cancel.textContent = opts.cancelText || 'Cancelar';
   const ok = document.getElementById('ui-ok');
   ok.textContent = opts.okText || (mode === 'alert' ? 'OK' : mode === 'confirm' ? 'Confirmar' : 'Aceptar');
   ok.style.borderColor = opts.danger ? 'rgba(255,77,77,.5)' : '';
