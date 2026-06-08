@@ -3834,9 +3834,18 @@ function renderObjetivos() {
     const accOn = g.status === 'accepted' ? ' on-accept' : '';
     const rejOn = g.status === 'rejected' ? ' on-reject' : '';
     const dl = g.deadline ? ` · 📅 ${g.deadline}` : '';
+    const pr = goalProgress(a, g);
+    let progHTML = '';
+    if (pr.actual != null) {
+      const pct = pr.pct, barW = pct == null ? 0 : Math.min(100, pct);
+      const col = pct == null ? 'var(--text-dim)' : (pct >= 100 ? '#4ade80' : pct >= 60 ? 'var(--accent)' : 'var(--beat)');
+      progHTML = `<div style="margin-top:6px;max-width:240px">
+        <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${col};transition:width .3s"></div></div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:3px">logrado ${fmtNum(pr.actual)}${pct != null ? ` · <span style="color:${col}">${pct}%</span>` : ' (objetivo relativo)'}</div></div>`;
+    }
     return `<div class="goal-row${cls}">
       <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'}">${s(g.icon)}</div>
-      <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}${dl}</div></div>
+      <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}${dl}</div>${progHTML}</div>
       <div class="goal-target">${s(g.target)}<small>OBJETIVO</small></div>
       <div class="goal-ai">${s(g.ai || (g.source === 'manual' ? 'manual' : ''))}</div>
       <div class="goal-actions">
@@ -3881,6 +3890,43 @@ function hasGoalInfo(a, art) {
   let hist = false;
   try { hist = (artistLaunches() || []).some(l => latestEntries(l.metricEntries).length); } catch (e) {}
   return adnFilled || dnaFilled || hist;
+}
+// ── Objetivos ↔ Métricas: el resultado real sale del módulo de Métricas ──
+function parseTarget(str) {
+  if (str == null) return null;
+  const t = String(str).trim().replace(/^[+~≈]/, '').replace(/,/g, '').toLowerCase();
+  const m = t.match(/^([\d.]+)\s*([km]?)/);
+  if (!m) return null;
+  let n = parseFloat(m[1]); if (isNaN(n)) return null;
+  if (m[2] === 'k') n *= 1e3; else if (m[2] === 'm') n *= 1e6;
+  return n;
+}
+function isRelativeTarget(str) { return /^[+]/.test(String(str || '').trim()); }
+// Empareja la meta con la métrica importada (CSV/screenshot/manual) del lanzamiento
+function goalProgress(l, g) {
+  if (!l || !g || !g.metric) return { actual: null, pct: null };
+  const entries = latestEntries(l.metricEntries || []);
+  const gm = g.metric.toLowerCase();
+  const e = entries.find(x => (x.metric || '').toLowerCase() === gm)
+    || entries.find(x => (x.metric || '').toLowerCase().includes(gm) || gm.includes((x.metric || '').toLowerCase()));
+  if (!e) return { actual: null, pct: null };
+  const actual = Number(e.value);
+  const tgt = parseTarget(g.target);
+  const pct = (tgt && !isRelativeTarget(g.target)) ? Math.max(0, Math.round(actual / tgt * 100)) : null;
+  return { actual, pct };
+}
+// Resumen objetivo-vs-logrado para alimentar IA Estratégica y Aprendizajes
+function goalsVsActuals(art) {
+  const lines = [];
+  (artistLaunches() || []).forEach(l => {
+    (l.goals || []).filter(g => g.status !== 'rejected').forEach(g => {
+      const pr = goalProgress(l, g);
+      const got = pr.actual != null ? fmtNum(pr.actual) : 'sin dato';
+      const pc = pr.pct != null ? ` (${pr.pct}%${pr.pct >= 100 ? ' ✓ cumplida' : ''})` : '';
+      lines.push(`- [${l.name}] ${g.platform || ''} ${g.metric}: objetivo ${g.target} · logrado ${got}${pc}`);
+    });
+  });
+  return lines.join('\n') || '(sin metas registradas)';
 }
 
 // ── Meta manual GUIADA (plataforma → métrica → objetivo → fecha) ──
@@ -4031,8 +4077,10 @@ function buildLearningsPrompt(art) {
 ARTISTA: ${s(art.name)}
 LANZAMIENTOS:
 ${ls}
+OBJETIVOS SMART (meta establecida vs. logrado real, según métricas):
+${goalsVsActuals(art)}
 
-Devuelve SOLO un array JSON (3-6 objetos), sin texto extra:
+Basa los aprendizajes en dónde se cumplió o no la meta (qué se hizo cuando se superó el objetivo, qué faltó cuando no). Devuelve SOLO un array JSON (3-6 objetos), sin texto extra:
 {"type":"good|bad|neutral","tag":"contexto corto","q":"aprendizaje en una frase","a":"explicación 1-2 frases","meta":"dato/metric corto"}`;
 }
 async function generarAprendizajesIA() {
@@ -4074,6 +4122,8 @@ function buildStrategyPrompt(art) {
 ARTISTA: ${s(art.name)} · Géneros: ${s((adn.sound || {}).genres)} · Audiencia: ${s((adn.audience || {}).ideal)} · Tono: ${s((adn.personality || {}).tone)}
 LANZAMIENTOS:
 ${ls}
+OBJETIVOS SMART (meta vs. logrado real):
+${goalsVsActuals(art)}
 APRENDIZAJES:
 ${learn}
 
