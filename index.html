@@ -1363,6 +1363,9 @@
     <div class="nav-item" data-page="lanzamientos" onclick="showPage('lanzamientos')">
       <span class="icon">◎</span> Lanzamientos
     </div>
+    <div class="nav-item" data-page="label" id="nav-label" onclick="showPage('label')" style="display:none">
+      <span class="icon">⊞</span> Label
+    </div>
   </div>
 
   <div class="nav-section">
@@ -1464,6 +1467,18 @@
     <!-- ── DETALLE DE LANZAMIENTO (centro) ── -->
     <div class="page" id="page-launch">
       <div class="fade-in" id="launch-detail"></div>
+    </div>
+
+    <!-- ── DASHBOARD DEL LABEL (todos los artistas) ── -->
+    <div class="page" id="page-label">
+      <div class="module-intro fade-in">
+        <div>
+          <h2>DASHBOARD DEL LABEL</h2>
+          <p>Rendimiento de todos los artistas del equipo según el cumplimiento de sus objetivos SMART. Ordenado para que veas primero a quién darle más atención.</p>
+        </div>
+      </div>
+      <div class="dashboard-grid fade-in" id="label-stats" style="margin-bottom:18px"></div>
+      <div class="fade-in" id="label-list"></div>
     </div>
 
     <!-- ── PERFIL DEL ARTISTA (Módulo 1) ── -->
@@ -2937,7 +2952,7 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   document.getElementById('page-title').textContent = up(titles[id] || id);
   document.getElementById('btn-sheet-config').style.display = id === 'banco' ? '' : 'none';
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
@@ -2951,6 +2966,7 @@ function showPage(id) {
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
   if (id === 'dashboard')    renderDashboard();
+  if (id === 'label')        renderLabel();
   document.querySelector('.content').scrollTop = 0;
 }
 
@@ -3927,6 +3943,69 @@ function goalsVsActuals(art) {
     });
   });
   return lines.join('\n') || '(sin metas registradas)';
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD DEL LABEL (rendimiento por artista, para staff)
+// ══════════════════════════════════════════
+function artistPerformance(art) {
+  const ls = launches.filter(l => l.artistId === art.id);
+  const withGoals = ls.filter(l => (l.goals || []).some(g => g.status !== 'rejected'));
+  const latest = withGoals.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+    || ls.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
+  const pcts = []; let totalGoals = 0, met = 0;
+  if (latest) {
+    (latest.goals || []).filter(g => g.status !== 'rejected').forEach(g => {
+      totalGoals++;
+      const pr = goalProgress(latest, g);
+      if (pr.pct != null) { const p = Math.min(100, pr.pct); pcts.push(p); if (p >= 100) met++; }
+    });
+  }
+  const avg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : null;
+  const end = latest ? launchEndDate(latest) : '';
+  const dleft = end ? diasRestantes(end) : null;
+  let sig = '⚪', label = 'Sin métricas', rank = 2; // rank: 0=rojo(prioridad), 1=amarillo, 2=neutro, 3=verde
+  if (avg != null) {
+    if (avg >= 100) { sig = '🟢'; label = 'Meta cumplida'; rank = 3; }
+    else if (avg >= 60) { sig = '🟡'; label = 'Cerca'; rank = 1; }
+    else { sig = '🔴'; label = 'Necesita atención'; rank = 0; }
+    if (avg < 100 && dleft != null && dleft < 0) { sig = '🔴'; label = 'Atrasado'; rank = 0; }
+  }
+  return { latest, avg, totalGoals, met, end, dleft, sig, label, rank, measured: pcts.length };
+}
+function updateLabelNav() {
+  const el = document.getElementById('nav-label'); if (!el) return;
+  // Visible para staff cuando hay 2+ artistas. (La privacidad del artista lo ocultará en su build.)
+  el.style.display = (artists.length >= 2) ? '' : 'none';
+}
+function renderLabel() {
+  const statsHost = document.getElementById('label-stats');
+  const listHost = document.getElementById('label-list');
+  if (!artists.length) { statsHost.innerHTML = ''; listHost.innerHTML = '<div class="empty-hint">No hay artistas en este equipo todavía.</div>'; return; }
+  const perf = artists.map(a => ({ art: a, p: artistPerformance(a) }));
+  perf.sort((x, y) => (x.p.rank - y.p.rank) || ((x.p.avg == null ? 999 : x.p.avg) - (y.p.avg == null ? 999 : y.p.avg)));
+  const need = perf.filter(x => x.p.rank === 0).length;
+  const onTrack = perf.filter(x => x.p.rank === 3).length;
+  const card = (label, val, sub) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
+  statsHost.innerHTML = card('Artistas', artists.length, '') + card('Necesitan atención', need, need ? '🔴 priorízalos' : 'todo en orden') + card('Cumpliendo metas', onTrack, '🟢');
+  listHost.innerHTML = perf.map(({ art, p }) => {
+    const col = p.rank === 0 ? 'var(--accent2)' : p.rank === 1 ? 'var(--beat)' : p.rank === 3 ? '#4ade80' : 'var(--text-dim)';
+    const launchInfo = p.latest ? `${s(p.latest.name)} · ${(STATUS_MAP[p.latest.status] || {}).tag || p.latest.status}` : 'sin lanzamientos';
+    const cierre = p.end ? `${p.end}${p.dleft != null ? ` (${p.dleft >= 0 ? 'en ' + p.dleft + 'd' : Math.abs(p.dleft) + 'd atrás'})` : ''}` : '—';
+    const bar = p.avg != null ? `<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:180px;margin-top:6px"><div style="height:100%;width:${Math.min(100, p.avg)}%;background:${col}"></div></div>` : '';
+    return `<div onclick="setActiveArtist('${art.id}');showPage('objetivos')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:15px;font-weight:600">${p.sig} ${s(art.name)}</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
+        ${bar}
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--font-display);font-size:26px;color:${col}">${p.avg != null ? p.avg + '%' : '—'}</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(p.label)}${p.totalGoals ? ` · ${p.met}/${p.totalGoals} metas` : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Meta manual GUIADA (plataforma → métrica → objetivo → fecha) ──
@@ -5558,6 +5637,7 @@ function wizCalcTimeline() {
 // ══════════════════════════════════════════
 function renderSidebarArtist() {
   const a = activeArtist();
+  if (typeof updateLabelNav === 'function') updateLabelNav();
   document.getElementById('sb-avatar').textContent = a ? up(a.name).slice(0,1) : '?';
   document.getElementById('sb-name').textContent = a ? a.name : '—';
   const so = document.getElementById('topbar-signout'); if (so) so.style.display = authed() ? '' : 'none';
