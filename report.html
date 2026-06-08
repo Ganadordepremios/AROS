@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tempo OS · Reporte de Lanzamiento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Paleta TEMPO */
+  --bg:#060808;--surface:#101510;--card:#1a201a;--border:#2a312a;--border2:#3a423a;
+  --ink:#F5F0F5;--sub:#9aa39a;--dim:#5a635a;
+  --accent:#FF6B30;--beat:#FFAA00;
+  /* colores por plataforma (funcionales en las gráficas) */
+  --gads:#FF6B30;--yt:#ff0000;--meta:#4dc9ff;--spotify:#1db954;--organic:#FFAA00;--insight:#a78bfa;
+  --serif:'Bebas Neue',sans-serif;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(167,139,250,.07),transparent),
+  radial-gradient(ellipse 40% 30% at 90% 50%,rgba(255,77,109,.05),transparent);}
+#setup{max-width:920px;margin:0 auto;padding:52px 32px 100px}
+.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:48px}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gads),var(--insight));display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:.06em}
+.hero{margin-bottom:48px}
+.hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gads);margin-bottom:14px}
+.hero h1{font-family:var(--serif);font-size:clamp(44px,7vw,80px);line-height:1;font-weight:400;letter-spacing:-.02em;margin-bottom:14px}
+.hero h1 em{font-style:italic;color:var(--sub)}
+.hero p{color:var(--sub);font-size:15px;max-width:520px;line-height:1.65;font-weight:300}
+.section-label{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.past-zone{border:1.5px dashed var(--border2);border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;position:relative;margin-bottom:44px;background:var(--surface)}
+.past-zone:hover,.past-zone.over{border-color:var(--insight);background:rgba(167,139,250,.05)}
+.past-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.past-icon{width:38px;height:38px;border-radius:9px;background:rgba(167,139,250,.12);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.past-text .t1{font-size:14px;font-weight:600;margin-bottom:2px}
+.past-text .t2{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.past-loaded{display:none;margin-left:auto;align-items:center;gap:10px;font-family:var(--mono);font-size:11px}
+.past-loaded.show{display:flex}
+.past-loaded .pname{color:var(--insight);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.past-loaded .pclear{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 2px}
+.past-loaded .pclear:hover{color:var(--gads)}
+.scenario-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sc-pill{padding:10px 20px;border-radius:100px;border:1.5px solid var(--border2);background:var(--surface);color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px}
+.sc-pill .pd{width:7px;height:7px;border-radius:50%}
+.sc-pill:hover{color:var(--ink);background:var(--card)}
+.sc-pill.active{color:var(--ink)}
+.sc-pill.active[data-sc=conservador]{border-color:var(--spotify);background:rgba(29,185,84,.08);box-shadow:0 0 0 1px var(--spotify)}
+.sc-pill.active[data-sc=realista]{border-color:var(--organic);background:rgba(245,158,11,.08);box-shadow:0 0 0 1px var(--organic)}
+.sc-pill.active[data-sc=ideal]{border-color:var(--gads);background:rgba(255,77,109,.08);box-shadow:0 0 0 1px var(--gads)}
+.sc-desc{font-size:12px;color:var(--dim);margin-bottom:44px;min-height:18px}
+.identity-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:44px}
+@media(max-width:640px){.identity-grid{grid-template-columns:1fr}}
+.id-field{display:flex;flex-direction:column;gap:6px}
+.id-field label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.id-field input{background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-family:var(--sans);font-size:14px;padding:10px 14px;width:100%;transition:border-color .18s}
+.id-field input:focus{outline:none;border-color:var(--border2)}
+.id-field input::placeholder{color:var(--dim)}
+.sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px;margin-bottom:28px}
+.src-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s}
+.src-card.has-data{border-color:var(--border2)}
+.src-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.src-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.src-title{font-size:13px;font-weight:600}
+.src-badge{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;border:1px solid var(--border);color:var(--dim)}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:9px;padding:14px;text-align:center;cursor:pointer;transition:all .18s;position:relative;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.drop-zone:hover,.drop-zone.over{border-color:var(--meta);background:rgba(77,201,255,.04)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-label{font-size:12px;color:var(--sub)}
+.dz-hint{font-family:var(--mono);font-size:9px;color:var(--dim)}
+.files-list{margin-top:7px;display:flex;flex-direction:column;gap:4px}
+.file-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border-radius:6px;padding:5px 9px;font-size:11px}
+.file-chip .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.file-chip button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;line-height:1;padding:0 1px}
+.file-chip button:hover{color:var(--gads)}
+.manual-toggle{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;background:none;border:none;cursor:pointer;margin-top:7px;display:block;width:100%;text-align:center;padding:3px;transition:color .15s}
+.src-card-wide{grid-column:span 2}
+@media(max-width:640px){.src-card-wide{grid-column:span 1}}
+.yt-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.yt-sub{display:flex;flex-direction:column;gap:5px}
+.yt-sub-label{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--sub);font-weight:600}
+.yt-mini-dz{min-height:54px;padding:9px}
+.yt-mini-dz .dz-label{font-size:11px}
+.yt-mini-dz .dz-hint{font-size:9px}
+.manual-toggle:hover{color:var(--sub)}
+.manual-form{display:none;margin-top:9px}
+.manual-form.open{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mf-field{display:flex;flex-direction:column;gap:3px}
+.mf-field label{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.mf-field input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--ink);font-family:var(--mono);font-size:11px;padding:6px 9px;width:100%}
+.mf-field input:focus{outline:none;border-color:var(--border2)}
+.mf-field input::placeholder{color:var(--dim)}
+.gen-btn{width:100%;padding:18px 24px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#FF6B30 0%,#c0294d 100%);color:#fff;font-family:var(--sans);font-size:16px;font-weight:800;letter-spacing:-.01em;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:10px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:disabled{opacity:.3;cursor:not-allowed}
+.gen-sub{font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.err{margin-top:10px;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--gads);display:none}
+#report{display:none}
+.report-wrap{max-width:1100px;margin:0 auto;padding:48px 32px 100px}
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:48px;padding-bottom:22px;border-bottom:1px solid var(--border)}
+.back-btn{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);background:none;border:1px solid var(--border);border-radius:7px;padding:8px 14px;cursor:pointer;transition:all .15s}
+.back-btn:hover{color:var(--ink);border-color:var(--border2)}
+.sc-badge{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border-radius:6px}
+.sc-badge.b-conservador{color:var(--spotify);background:rgba(29,185,84,.1);border:1px solid rgba(29,185,84,.25)}
+.sc-badge.b-realista{color:var(--organic);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
+.sc-badge.b-ideal{color:var(--gads);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25)}
+.topbar-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.dl-btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid;white-space:nowrap}
+.dl-html{color:var(--meta);background:rgba(77,201,255,.07);border-color:rgba(77,201,255,.25)}
+.dl-html:hover{background:rgba(77,201,255,.12)}
+.dl-json{color:var(--insight);background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.25)}
+.dl-json:hover{background:rgba(167,139,250,.12)}
+.dl-pptx{color:var(--organic);background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25)}
+.dl-pptx:hover{background:rgba(245,158,11,.12)}
+.dl-pptx:disabled{opacity:.4;cursor:not-allowed}
+.r-identity{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.r-label-badge{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--sub)}
+.r-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.r-title{font-family:var(--serif);font-size:clamp(36px,5.5vw,64px);font-weight:400;line-height:1;letter-spacing:-.02em;margin-bottom:8px}
+.r-title .hi{color:var(--gads);font-style:italic}
+.r-sub{color:var(--sub);font-size:14px;margin-bottom:5px;font-weight:300}
+.r-meta{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.r-div{border:0;height:1px;background:var(--border);margin:40px 0}
+.sec-label2{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.sec-title2{font-family:var(--serif);font-size:clamp(22px,3vw,32px);font-weight:400}
+.sec-head{margin-bottom:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:11px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:15px 13px;position:relative;overflow:hidden}
+.kpi .k-src{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.kpi .k-val{font-family:var(--mono);font-size:20px;font-weight:500;line-height:1;margin-bottom:4px}
+.kpi .k-lbl{font-size:11px;color:var(--sub)}
+.cbox{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px;margin-bottom:12px}
+.cbox-title{font-size:13px;font-weight:600;margin-bottom:3px}
+.cbox-sub{font-size:11px;color:var(--sub);margin-bottom:14px}
+.cv{position:relative;height:230px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:640px){.g2{grid-template-columns:1fr}}
+.cross-callout{background:linear-gradient(135deg,rgba(255,77,109,.06),rgba(255,0,0,.04));border:1px solid rgba(255,77,109,.2);border-radius:13px;padding:18px 20px;margin-bottom:12px}
+.cross-title{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gads);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.cross-body{font-size:13px;color:var(--sub);line-height:1.65;font-weight:300}
+.cross-body strong{color:var(--ink);font-weight:600}
+.col-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.col-tag{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim)}
+.col-tag.mapped{border-color:rgba(61,240,192,.25);color:rgba(61,240,192,.7);background:rgba(61,240,192,.05)}
+.src-tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:5px;margin-right:5px;margin-bottom:3px}
+.ai-block{border:1px solid rgba(167,139,250,.2);border-radius:14px;background:linear-gradient(160deg,rgba(167,139,250,.05),rgba(167,139,250,.01));padding:22px;margin-bottom:12px}
+.ai-label{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--insight)}
+.ai-content{font-size:14px;color:var(--ink);line-height:1.75;font-weight:300}
+.ai-content strong{font-weight:600}
+.ai-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.ai-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.ai-section-title{font-family:var(--serif);font-size:18px;margin-bottom:8px}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th{text-align:right;padding:9px 12px;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border)}
+.cmp-table th:first-child{text-align:left}
+.cmp-table td{text-align:right;padding:10px 12px;border-top:1px solid rgba(255,255,255,.03);font-family:var(--mono);font-size:11px}
+.cmp-table td:first-child{text-align:left;font-family:var(--sans);font-weight:600;font-size:12px}
+.cmp-table td.hi{color:var(--spotify);font-weight:600}
+.sw{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-family:var(--mono);font-size:12px;color:var(--ink);opacity:0;transition:all .3s;pointer-events:none;z-index:100;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(29,185,84,.4);color:var(--spotify)}
+.toast.error{border-color:rgba(255,77,109,.4);color:var(--gads)}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ SETUP ══ -->
+<div id="setup">
+  <div class="logo-row">
+    <div class="logo-mark">⏱</div>
+    <span class="logo-text">Tempo OS · Reporte de Lanzamiento</span>
+  </div>
+  <div class="hero">
+    <div class="hero-eyebrow">Sistema de análisis de lanzamientos</div>
+    <h1>Sube tus datos.<br><em>La IA hace el resto.</em></h1>
+    <p>Importa los datos de las plataformas que tengas. El reporte se adapta a lo disponible y genera insights accionables. Guarda el snapshot .json para retomar en el próximo ciclo.</p>
+  </div>
+
+  <!-- Past report -->
+  <div class="section-label">Cargar reporte anterior</div>
+  <div class="past-zone" id="past-zone" ondragover="pDrag(event,this)" ondragleave="pLeave(this)" ondrop="pDrop(event)">
+    <input type="file" accept=".json" onchange="pInput(event)" id="past-input">
+    <div class="past-icon">📂</div>
+    <div class="past-text">
+      <div class="t1">Arrastra un snapshot .json aquí</div>
+      <div class="t2">Carga un reporte anterior para editarlo o regenerarlo</div>
+    </div>
+    <div class="past-loaded" id="past-loaded">
+      <span class="pname" id="past-fname"></span>
+      <button class="pclear" onclick="clearPast(event)">✕</button>
+    </div>
+  </div>
+
+  <!-- Scenario -->
+  <div class="section-label">Nivel de reporte</div>
+  <div class="scenario-row">
+    <button class="sc-pill" data-sc="conservador" onclick="setSc(this)"><span class="pd" style="background:var(--spotify)"></span>Conservador</button>
+    <button class="sc-pill active" data-sc="realista" onclick="setSc(this)"><span class="pd" style="background:var(--organic)"></span>Realista</button>
+    <button class="sc-pill" data-sc="ideal" onclick="setSc(this)"><span class="pd" style="background:var(--gads)"></span>Ideal</button>
+  </div>
+  <div class="sc-desc" id="sc-desc">KPIs de todas las fuentes, comparativas de eficiencia y análisis cruzado.</div>
+
+  <!-- Identity -->
+  <div class="section-label" style="margin-top:32px">Identidad del proyecto</div>
+  <div class="identity-grid">
+    <div class="id-field"><label>Label / Equipo</label><input id="inp-label" placeholder="Nombre del label"></div>
+    <div class="id-field"><label>Artista</label><input id="inp-artist" placeholder="Nombre del artista"></div>
+    <div class="id-field"><label>Lanzamiento / Canción</label><input id="inp-project" placeholder="Nombre del proyecto"></div>
+  </div>
+
+  <!-- Sources -->
+  <div class="section-label">Fuentes de datos</div>
+  <div class="sources">
+
+    <!-- Google Ads -->
+    <div class="src-card" id="card-gads">
+      <div class="src-header">
+        <div class="src-icon" style="background:rgba(255,77,109,.12)">📢</div>
+        <div class="src-title">Google Ads</div>
+        <span class="src-badge">CSV o manual</span>
+      </div>
+      <div class="drop-zone" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'gads')">
+        <input type="file" multiple accept=".csv" onchange="fi(event,'gads')">
+        <div class="dz-label">Arrastra CSVs o haz clic</div>
+        <div class="dz-hint">Export de Google Ads · un CSV por campaña</div>
+      </div>
+      <div class="files-list" id="fl-gads"></div>
+      <button class="manual-toggle" onclick="toggleManual('gads')">+ Ingresar manualmente</button>
+      <div class="manual-form" id="mf-gads">
+        <div class="mf-field"><label>Campaña</label><input type="text" placeholder="Campaña Marzo" id="mga-name"></div>
+        <div class="mf-field"><label>Impresiones</label><input type="number" placeholder="258000" id="mga-impr"></div>
+        <div class="mf-field"><label>Clics</label><input type="number" placeholder="4200" id="mga-clicks"></div>
+        <div class="mf-field"><label>Gasto USD</label><input type="number" placeholder="251.02" id="mga-cost"></div>
+        <div class="mf-field"><label>CPC efectivo</label><input type="number" placeholder="0.059" id="mga-cpc"></div>
+        <div class="mf-field"><label>CTR %</label><input type="number" placeholder="1.6" id="mga-ctr"></div>
+      </div>
+    </div>
+
+    <!-- YouTube (Studio organic) -->
+    <div class="src-card src-card-wide" id="card-yt">
+      <div class="src-header">
+        <div class="src-icon" style="background:rgba(255,0,0,.12)">▶</div>
+        <div class="src-title">YouTube</div>
+        <span class="src-badge">YouTube Studio · 4 reportes</span>
+      </div>
+      <div class="yt-sub-grid">
+        <div class="yt-sub" id="ytsub-content">
+          <div class="yt-sub-label">📹 Content</div>
+          <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_content')">
+            <input type="file" multiple accept=".csv" onchange="fi(event,'yt_content')">
+            <div class="dz-label">CSV de Content</div>
+            <div class="dz-hint">Views, Watch time, Subs, CTR</div>
+          </div>
+          <div class="files-list" id="fl-yt_content"></div>
+        </div>
+        <div class="yt-sub" id="ytsub-traffic">
+          <div class="yt-sub-label">🚦 Traffic Source</div>
+          <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_traffic')">
+            <input type="file" multiple accept=".csv" onchange="fi(event,'yt_traffic')">
+            <div class="dz-label">CSV de Traffic Source</div>
+            <div class="dz-hint">De dónde vienen las views</div>
+          </div>
+          <div class="files-list" id="fl-yt_traffic"></div>
+        </div>
+        <div class="yt-sub" id="ytsub-geo">
+          <div class="yt-sub-label">🌎 Geography</div>
+          <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_geo')">
+            <input type="file" multiple accept=".csv" onchange="fi(event,'yt_geo')">
+            <div class="dz-label">CSV de Geography</div>
+            <div class="dz-hint">Vistas por país</div>
+          </div>
+          <div class="files-list" id="fl-yt_geo"></div>
+        </div>
+        <div class="yt-sub" id="ytsub-age">
+          <div class="yt-sub-label">👥 Viewers Age</div>
+          <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_age')">
+            <input type="file" multiple accept=".csv" onchange="fi(event,'yt_age')">
+            <div class="dz-label">CSV de Viewers Age</div>
+            <div class="dz-hint">Distribución por edad</div>
+          </div>
+          <div class="files-list" id="fl-yt_age"></div>
+        </div>
+      </div>
+      <button class="manual-toggle" onclick="toggleManual('yt')">+ Ingresar manualmente</button>
+      <div class="manual-form" id="mf-yt">
+        <div class="mf-field"><label>Total Views</label><input type="number" placeholder="78000" id="myt-views"></div>
+        <div class="mf-field"><label>Watch Time (hrs)</label><input type="number" placeholder="1840" id="myt-watch"></div>
+        <div class="mf-field"><label>Subscribers</label><input type="number" placeholder="540" id="myt-subs"></div>
+        <div class="mf-field"><label>Avg duration (seg)</label><input type="number" placeholder="85" id="myt-avgdur"></div>
+        <div class="mf-field"><label>Impresiones</label><input type="number" placeholder="258000" id="myt-impr"></div>
+        <div class="mf-field"><label>CTR %</label><input type="number" placeholder="4.5" id="myt-ctr"></div>
+      </div>
+    </div>
+
+    <!-- Meta -->
+    <div class="src-card" id="card-meta">
+      <div class="src-header">
+        <div class="src-icon" style="background:rgba(77,201,255,.12)">📱</div>
+        <div class="src-title">Meta Ads</div>
+        <span class="src-badge">CSV o manual</span>
+      </div>
+      <div class="drop-zone" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'meta')">
+        <input type="file" multiple accept=".csv" onchange="fi(event,'meta')">
+        <div class="dz-label">Arrastra CSVs o haz clic</div>
+        <div class="dz-hint">Export de Meta Ads Manager</div>
+      </div>
+      <div class="files-list" id="fl-meta"></div>
+      <button class="manual-toggle" onclick="toggleManual('meta')">+ Ingresar manualmente</button>
+      <div class="manual-form" id="mf-meta">
+        <div class="mf-field"><label>Campaña</label><input type="text" placeholder="Meta Marzo" id="mm-name"></div>
+        <div class="mf-field"><label>Impresiones</label><input type="number" placeholder="320000" id="mm-impr"></div>
+        <div class="mf-field"><label>Alcance</label><input type="number" placeholder="210000" id="mm-reach"></div>
+        <div class="mf-field"><label>ThruPlays</label><input type="number" placeholder="45000" id="mm-plays"></div>
+        <div class="mf-field"><label>Gasto USD</label><input type="number" placeholder="180.00" id="mm-cost"></div>
+        <div class="mf-field"><label>Clics</label><input type="number" placeholder="2300" id="mm-clicks"></div>
+      </div>
+    </div>
+
+    <!-- Spotify -->
+    <div class="src-card" id="card-spotify">
+      <div class="src-header">
+        <div class="src-icon" style="background:rgba(29,185,84,.12)">🎧</div>
+        <div class="src-title">Spotify for Artists</div>
+        <span class="src-badge">CSV o manual</span>
+      </div>
+      <div class="drop-zone" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'spotify')">
+        <input type="file" multiple accept=".csv" onchange="fi(event,'spotify')">
+        <div class="dz-label">Arrastra CSVs o haz clic</div>
+        <div class="dz-hint">Streams, audiencia o ambos</div>
+      </div>
+      <div class="files-list" id="fl-spotify"></div>
+      <button class="manual-toggle" onclick="toggleManual('spotify')">+ Ingresar manualmente</button>
+      <div class="manual-form" id="mf-spotify">
+        <div class="mf-field"><label>Canción / Álbum</label><input type="text" placeholder="Nombre del track" id="ms-name"></div>
+        <div class="mf-field"><label>Streams</label><input type="number" placeholder="14043" id="ms-streams"></div>
+        <div class="mf-field"><label>Oyentes únicos</label><input type="number" placeholder="6548" id="ms-listeners"></div>
+        <div class="mf-field"><label>Guardados</label><input type="number" placeholder="622" id="ms-saves"></div>
+        <div class="mf-field"><label>Playlist adds</label><input type="number" placeholder="89" id="ms-playlists"></div>
+        <div class="mf-field"><label>Str./oyente</label><input type="number" placeholder="2.15" id="ms-spl"></div>
+      </div>
+    </div>
+
+    <!-- Organic -->
+    <div class="src-card" id="card-organic">
+      <div class="src-header">
+        <div class="src-icon" style="background:rgba(245,158,11,.12)">📊</div>
+        <div class="src-title">Redes Orgánicas</div>
+        <span class="src-badge">CSV o manual</span>
+      </div>
+      <div class="drop-zone" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'organic')">
+        <input type="file" multiple accept=".csv" onchange="fi(event,'organic')">
+        <div class="dz-label">Arrastra CSVs o haz clic</div>
+        <div class="dz-hint">TikTok, IG, YouTube Studio</div>
+      </div>
+      <div class="files-list" id="fl-organic"></div>
+      <button class="manual-toggle" onclick="toggleManual('organic')">+ Ingresar manualmente</button>
+      <div class="manual-form" id="mf-organic">
+        <div class="mf-field"><label>Plataforma</label><input type="text" placeholder="TikTok / Instagram" id="mo-platform"></div>
+        <div class="mf-field"><label>Views / Impresiones</label><input type="number" placeholder="120000" id="mo-impr"></div>
+        <div class="mf-field"><label>Alcance</label><input type="number" placeholder="85000" id="mo-reach"></div>
+        <div class="mf-field"><label>Likes</label><input type="number" placeholder="4200" id="mo-likes"></div>
+        <div class="mf-field"><label>Comentarios</label><input type="number" placeholder="380" id="mo-comments"></div>
+        <div class="mf-field"><label>Compartidos</label><input type="number" placeholder="910" id="mo-shares"></div>
+        <div class="mf-field" style="grid-column:span 2"><label>Guardados</label><input type="number" placeholder="1200" id="mo-saves"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="err" id="err"></div>
+  <button class="gen-btn" id="gen-btn" onclick="generate()" disabled>
+    <span id="gen-label">Generar reporte con IA</span>
+    <span class="gen-sub" id="gen-sub">— selecciona al menos una fuente —</span>
+  </button>
+</div>
+
+<!-- ══════════════ REPORT ══ -->
+<div id="report">
+  <div class="report-wrap">
+    <div class="topbar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="sc-badge" id="r-badge"></span>
+      <div class="topbar-actions">
+        <button class="dl-btn dl-json" onclick="dlJSON()">⬇ Snapshot .json</button>
+        <button class="dl-btn dl-pptx" id="dl-pptx-btn" onclick="dlPPTX()">⬇ Presentación .pptx</button>
+        <button class="dl-btn dl-html" onclick="dlHTML()">⬇ Reporte .html</button>
+      </div>
+    </div>
+    <div id="report-body"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script>
+// ── STATE ──────────────────────────────────────────────
+const ST={
+  sc:'realista',
+  files:{gads:[],yt_content:[],yt_traffic:[],yt_geo:[],yt_age:[],meta:[],spotify:[],organic:[]},
+  parsedData:null,
+  csvHeaders:{},
+  identity:{label:'',artist:'',project:''},
+  aiInsights:null,
+  charts:[],
+  snapshot:null,
+};
+
+const SC_DESC={
+  conservador:'KPIs esenciales de las fuentes disponibles y recomendaciones básicas.',
+  realista:'KPIs de todas las fuentes, comparativas de eficiencia y análisis cruzado.',
+  ideal:'Diagnóstico estratégico completo, costo por resultado y hoja de ruta para el equipo.'
+};
+const COLORS={gads:'#FF6B30',yt:'#ff4444',meta:'#4dc9ff',spotify:'#1db954',organic:'#f59e0b',insight:'#a78bfa'};
+const CAMP_COLS=['#FF6B30','#4dc9ff','#f59e0b','#a78bfa','#34d399','#fb923c'];
+
+// ── TOAST ──────────────────────────────────────────────
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show '+(type==='error'?'error':'success');
+  setTimeout(()=>{t.className='toast';},3000);
+}
+
+// ── SCENARIO ───────────────────────────────────────────
+function setSc(btn){
+  document.querySelectorAll('.sc-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');ST.sc=btn.dataset.sc;
+  document.getElementById('sc-desc').textContent=SC_DESC[ST.sc];
+  updateBtn();
+}
+
+// ── PAST SNAPSHOT ──────────────────────────────────────
+function pDrag(e,el){e.preventDefault();el.classList.add('over')}
+function pLeave(el){el.classList.remove('over')}
+function pDrop(e){e.preventDefault();document.getElementById('past-zone').classList.remove('over');loadSnapshot(e.dataTransfer.files[0])}
+function pInput(e){loadSnapshot(e.target.files[0]);e.target.value=''}
+function clearPast(e){
+  e.stopPropagation();e.preventDefault();
+  ST.snapshot=null;
+  document.getElementById('past-fname').textContent='';
+  document.getElementById('past-loaded').classList.remove('show');
+  document.getElementById('past-input').value='';
+}
+function loadSnapshot(file){
+  if(!file||!file.name.endsWith('.json')){toast('Necesita ser un .json generado por esta herramienta','error');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const snap=JSON.parse(e.target.result);
+      if(!snap._lrg)throw new Error('Formato no reconocido');
+      ST.snapshot=snap;
+      if(snap.identity){
+        document.getElementById('inp-label').value=snap.identity.label||'';
+        document.getElementById('inp-artist').value=snap.identity.artist||'';
+        document.getElementById('inp-project').value=snap.identity.project||'';
+      }
+      ST.sc=snap.sc||'realista';
+      document.querySelectorAll('.sc-pill').forEach(b=>b.classList.toggle('active',b.dataset.sc===ST.sc));
+      document.getElementById('sc-desc').textContent=SC_DESC[ST.sc];
+      if(snap.manual){
+        Object.entries(snap.manual).forEach(([src,vals])=>{
+          if(!vals||!Object.keys(vals).length)return;
+          document.getElementById('mf-'+src)?.classList.add('open');
+          Object.entries(vals).forEach(([id,val])=>{const inp=document.getElementById(id);if(inp)inp.value=val;});
+        });
+      }
+      if(snap.csvHeaders) ST.csvHeaders=snap.csvHeaders;
+      document.getElementById('past-fname').textContent=file.name;
+      document.getElementById('past-loaded').classList.add('show');
+      updateBtn();
+      toast('✓ Snapshot cargado — '+file.name);
+    }catch(err){toast('Error al leer el archivo: '+err.message,'error');}
+  };
+  reader.readAsText(file);
+}
+
+// ── DROP/FILE HANDLING ─────────────────────────────────
+function ev(e,el){e.preventDefault();el.classList.add('over')}
+function el(el){el.classList.remove('over')}
+function ed(e,src){e.preventDefault();e.currentTarget.classList.remove('over');addFiles(e.dataTransfer.files,src)}
+function fi(e,src){addFiles(e.target.files,src);e.target.value=''}
+function addFiles(list,src){
+  Array.from(list).forEach(f=>{
+    if(!f.name.endsWith('.csv'))return;
+    if(ST.files[src].find(x=>x.name===f.name))return;
+    ST.files[src].push(f);
+  });
+  renderFiles(src);updateBtn();
+}
+function removeFile(src,name){ST.files[src]=ST.files[src].filter(f=>f.name!==name);renderFiles(src);updateBtn();}
+function renderFiles(src){
+  const col=SRC_COLORS[src]||COLORS[src]||'#8a8a9a';
+  const list=document.getElementById('fl-'+src);
+  if(!list)return;
+  list.innerHTML=ST.files[src].map(f=>`
+    <div class="file-chip"><span style="width:6px;height:6px;border-radius:50%;background:${col};flex-shrink:0"></span>
+    <span class="fn">${f.name}</span><button onclick="removeFile('${src}','${f.name}')">✕</button></div>`).join('');
+  if(src.startsWith('yt_')){
+    document.getElementById('card-yt')?.classList.toggle('has-data',ytHasFiles());
+  } else {
+    document.getElementById('card-'+src)?.classList.toggle('has-data',ST.files[src].length>0);
+  }
+}
+function toggleManual(src){document.getElementById('mf-'+src).classList.toggle('open');updateBtn();}
+
+function hasAnySource(){
+  return Object.values(ST.files).some(a=>a.length>0)||
+    ['gads','yt','meta','spotify','organic'].some(s=>{
+      const mf=document.getElementById('mf-'+s);
+      if(!mf?.classList.contains('open'))return false;
+      return Array.from(mf.querySelectorAll('input[type=number]')).some(i=>i.value.trim()!=='');
+    })||!!ST.snapshot||!!(ST.prefillMetrics&&ST.prefillMetrics.length);
+}
+function ytHasFiles(){return ST.files.yt_content.length||ST.files.yt_traffic.length||ST.files.yt_geo.length||ST.files.yt_age.length;}
+function updateBtn(){
+  const btn=document.getElementById('gen-btn');
+  const sub=document.getElementById('gen-sub');
+  const ok=hasAnySource();btn.disabled=!ok;
+  if(ok){
+    const parts=[];
+    if(ST.files.gads.length||document.getElementById('mf-gads').classList.contains('open'))parts.push('Google Ads');
+    if(ytHasFiles()||document.getElementById('mf-yt').classList.contains('open'))parts.push('YouTube');
+    if(ST.files.meta.length||document.getElementById('mf-meta').classList.contains('open'))parts.push('Meta');
+    if(ST.files.spotify.length||document.getElementById('mf-spotify').classList.contains('open'))parts.push('Spotify');
+    if(ST.files.organic.length||document.getElementById('mf-organic').classList.contains('open'))parts.push('Orgánico');
+    if(ST.snapshot&&!parts.length)parts.push('Snapshot');
+    sub.textContent=parts.join(' + ')+' · '+ST.sc;
+  }else{sub.textContent='— selecciona al menos una fuente —';}
+}
+
+// ── CSV PARSING ─────────────────────────────────────────
+function parseCSV(file){
+  return new Promise(res=>Papa.parse(file,{header:true,skipEmptyLines:true,
+    complete:r=>{
+      if(r.meta?.fields) ST.csvHeaders[file.name]=r.meta.fields;
+      res(r.data);
+    },
+    error:()=>res([])
+  }));
+}
+
+function stripAccents(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function parseDuration(val){
+  if(typeof val==='number')return val;
+  const s=String(val).trim();
+  const m=s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+  if(m){
+    if(m[3]!==undefined)return +m[1]*3600 + +m[2]*60 + +m[3];
+    return +m[1]*60 + +m[2];
+  }
+  const n=parseFloat(s.replace(/[,$%\s]/g,''));
+  return isNaN(n)?0:n;
+}
+function getCol(row,...names){
+  const keys=Object.keys(row);
+  const norm=s=>stripAccents(s.toLowerCase()).replace(/[\s_\-\.\(\)\/]/g,'');
+  for(const n of names){
+    const k=keys.find(k=>norm(k).includes(norm(n)));
+    if(k&&row[k]!==undefined&&row[k]!=='--'&&row[k]!==''){
+      const raw=String(row[k]);
+      const v=raw.includes(':')?parseDuration(raw):parseFloat(raw.replace(/[,$%\s]/g,''));
+      if(!isNaN(v))return{val:v,col:k};
+    }
+  }
+  return{val:0,col:null};
+}
+const gc=(row,...names)=>getCol(row,...names).val;
+function getDate(row){
+  const keys=Object.keys(row);
+  const k=keys.find(k=>['date','day','fecha','dia','week','semana'].some(n=>k.toLowerCase().includes(n)));
+  return k?row[k]:'';
+}
+
+function detectMappings(headers,src){
+  if(!headers)return{};
+  const map={};
+  headers.forEach(h=>{
+    const hn=stripAccents(h.toLowerCase()).replace(/[\s_\-\.\(\)\/]/g,'');
+    if(['impression','impr','impresion'].some(n=>hn.includes(n)))map.impressions=h;
+    if(['view','vista','visualiz','reproduc'].some(n=>hn.includes(n))&&!hn.includes('review'))map.views=h;
+    if(['click','clic'].some(n=>hn.includes(n)))map.clicks=h;
+    if(['cost','gasto','spend','amount','importe'].some(n=>hn.includes(n)))map.cost=h;
+    if(['ctr','clickthrough'].some(n=>hn.includes(n)))map.ctr=h;
+    if(['reach','alcance'].some(n=>hn.includes(n)))map.reach=h;
+    if(['thruplays','videoplays','videoplay'].some(n=>hn.includes(n)))map.plays=h;
+    if(['stream','reproduc','play'].some(n=>hn.includes(n))&&src==='spotify')map.streams=h;
+    if(['listener','oyente','unique'].some(n=>hn.includes(n)))map.listeners=h;
+    if(['save','guard'].some(n=>hn.includes(n)))map.saves=h;
+    if(['playlist','add'].some(n=>hn.includes(n)))map.playlists=h;
+    if(['like','heart','megusta'].some(n=>hn.includes(n)))map.likes=h;
+    if(['comment','comentario'].some(n=>hn.includes(n)))map.comments=h;
+    if(['share','compart','repost'].some(n=>hn.includes(n)))map.shares=h;
+  });
+  return map;
+}
+
+function normalizeGAds(rows,fname){
+  return rows.map(r=>({
+    src:'gads',campaign:fname.replace(/\.csv$/i,''),date:getDate(r),
+    impressions:gc(r,'impression','impr','impresion'),
+    clicks:gc(r,'click','clic'),
+    cost:gc(r,'cost','gasto','spend','amount','importe'),
+    cpc:gc(r,'cpc','costperclick'),
+    ctr:gc(r,'ctr','clickthroughrate'),
+  })).filter(r=>r.date||r.impressions||r.clicks);
+}
+
+function ytDimension(row,keys){
+  const ks=Object.keys(row);
+  for(const target of keys){
+    const norm=s=>stripAccents(s.toLowerCase()).replace(/[\s_\-\.\(\)\/]/g,'');
+    const k=ks.find(k=>norm(k).includes(norm(target)));
+    if(k&&row[k]!==undefined&&row[k]!=='')return String(row[k]).trim();
+  }
+  for(const k of ks){
+    const v=row[k];
+    if(typeof v==='string'&&v.trim()&&isNaN(parseFloat(v.replace(/[,$%\s]/g,'')))) return v.trim();
+  }
+  return '(Total)';
+}
+
+// ── FIX: helper para detectar filas de Total ──────────────
+function isTotalRow(val){
+  if(!val) return false;
+  const v=String(val).trim().toLowerCase();
+  return v==='total'||v==='totales'||v==='grand total'||v==='totals'||v==='total general'||v==='totale'||v==='(total)';
+}
+
+function normalizeYTContent(rows){
+  return rows.map(r=>({
+    title:ytDimension(r,['content','video','title','titulo']),
+    views:gc(r,'view','vista'),
+    watchHours:gc(r,'watchtimehours','watchtime','watch_time','tiempodevisualizacionhoras','tiempodevisualizacion','tiempodereproduccion','horasdevisualizacion','horas'),
+    subscribers:gc(r,'subscriber','suscript'),
+    avgDuration:gc(r,'averageviewduration','avgviewduration','avgduration','duracionpromediodevistas','duracionmediadevisualizacion','duracionpromedio','duracionmedia','duracion'),
+    impressions:gc(r,'impression','impr','impresion'),
+    ctr:gc(r,'clickthroughrate','ctr','tasadeclics'),
+  // FIX: excluir filas cuya dimensión sea "Total"
+  })).filter(r=>(r.views||r.watchHours||r.impressions)&&!isTotalRow(r.title));
+}
+
+function normalizeYTTraffic(rows){
+  return rows.map(r=>({
+    source:ytDimension(r,['trafficsource','traffic','source','fuente','origen']),
+    views:gc(r,'view','vista'),
+    watchHours:gc(r,'watchtimehours','watchtime','watch_time','tiempodevisualizacionhoras','tiempodevisualizacion','tiempodereproduccion','horasdevisualizacion','horas','tiempo'),
+    subscribers:gc(r,'subscriber','suscript'),
+    avgDuration:gc(r,'averageviewduration','avgviewduration','avgduration','duracionpromedio'),
+    impressions:gc(r,'impression','impr','impresion'),
+    ctr:gc(r,'clickthroughrate','ctr','tasadeclics'),
+  // FIX: excluir filas cuya dimensión sea "Total"
+  })).filter(r=>(r.views||r.watchHours)&&!isTotalRow(r.source));
+}
+
+function normalizeYTGeo(rows){
+  return rows.map(r=>({
+    country:ytDimension(r,['geography','country','pais','region']),
+    views:gc(r,'view','vista'),
+    watchHours:gc(r,'watchtimehours','watchtime','watch_time','tiempodevisualizacionhoras','tiempodevisualizacion','tiempodereproduccion','horasdevisualizacion','horas','tiempo'),
+    avgDuration:gc(r,'averageviewduration','avgviewduration','avgduration','duracionpromedio'),
+  // FIX: excluir filas cuya dimensión sea "Total"
+  })).filter(r=>(r.views||r.watchHours)&&!isTotalRow(r.country));
+}
+
+function normalizeYTAge(rows){
+  return rows.map(r=>({
+    ageGroup:ytDimension(r,['vieweragegroup','viewerage','agegroup','ageRange','age','edad']),
+    views:gc(r,'view','vista'),
+    avgDuration:gc(r,'averageviewduration','avgviewduration','avgduration','duracionpromedio'),
+    watchHours:gc(r,'watchtimehours','watchtime','watch_time','tiempodevisualizacionhoras','tiempodevisualizacion','tiempodereproduccion','horasdevisualizacion','horas','tiempo'),
+  // FIX: excluir filas cuya dimensión sea "Total"
+  })).filter(r=>(r.views||r.watchHours)&&!isTotalRow(r.ageGroup));
+}
+
+function normalizeMeta(rows,fname){
+  return rows.map(r=>({
+    src:'meta',campaign:fname.replace(/\.csv$/i,''),date:getDate(r),
+    impressions:gc(r,'impression','impr'),
+    reach:gc(r,'reach','alcance'),
+    views:gc(r,'thruplays','videoplays','videoplay','play','vista','view'),
+    cost:gc(r,'amountspent','spent','spend','gasto','cost','importe','amount'),
+    clicks:gc(r,'click','clic'),
+  })).filter(r=>r.date||r.impressions||r.views);
+}
+
+function normalizeSpotify(rows){
+  return rows.map(r=>({
+    src:'spotify',date:getDate(r),
+    track:(()=>{const k=Object.keys(r).find(k=>['track','song','canci','title'].some(n=>k.toLowerCase().includes(n)));return k?r[k]:'';})(),
+    streams:gc(r,'stream','reproduc','play'),
+    listeners:gc(r,'listener','oyente','unique'),
+    saves:gc(r,'save','guard'),
+    playlists:gc(r,'playlist','add'),
+  })).filter(r=>r.streams||r.listeners);
+}
+
+function normalizeOrganic(rows,fname){
+  const platform=fname.toLowerCase().includes('tiktok')?'TikTok':
+    fname.toLowerCase().includes('instagram')||fname.toLowerCase().includes('ig')?'Instagram':
+    fname.toLowerCase().includes('youtube')?'YouTube':'Social';
+  return rows.map(r=>({
+    src:'organic',platform,date:getDate(r),
+    impressions:gc(r,'impression','view','impresion','reach','alcance'),
+    reach:gc(r,'reach','alcance'),
+    likes:gc(r,'like','heart','megusta'),
+    comments:gc(r,'comment','comentario'),
+    shares:gc(r,'share','compart','repost'),
+    saves:gc(r,'save','guard','bookmark'),
+  })).filter(r=>r.impressions||r.likes);
+}
+
+function aggRows(rows,fields){const out={};fields.forEach(f=>{out[f]=rows.reduce((s,r)=>s+(r[f]||0),0)});return out;}
+
+function ytTotals(ytData){
+  const t={views:0,watchHours:0,subscribers:0,avgDuration:0,impressions:0,ctr:0,hasData:false};
+  if(ytData.content&&ytData.content.length){
+    t.hasData=true;
+    t.views=ytData.content.reduce((s,r)=>s+(r.views||0),0);
+    t.watchHours=ytData.content.reduce((s,r)=>s+(r.watchHours||0),0);
+    t.subscribers=ytData.content.reduce((s,r)=>s+(r.subscribers||0),0);
+    t.impressions=ytData.content.reduce((s,r)=>s+(r.impressions||0),0);
+    const totV=t.views||1;
+    t.avgDuration=ytData.content.reduce((s,r)=>s+(r.avgDuration||0)*(r.views||0),0)/totV;
+    t.ctr=t.impressions>0?ytData.content.reduce((s,r)=>s+(r.ctr||0)*(r.impressions||0),0)/t.impressions:0;
+  } else if(ytData.traffic&&ytData.traffic.length){
+    t.hasData=true;
+    t.views=ytData.traffic.reduce((s,r)=>s+(r.views||0),0);
+    t.watchHours=ytData.traffic.reduce((s,r)=>s+(r.watchHours||0),0);
+    t.subscribers=ytData.traffic.reduce((s,r)=>s+(r.subscribers||0),0);
+    t.impressions=ytData.traffic.reduce((s,r)=>s+(r.impressions||0),0);
+    const totV=t.views||1;
+    t.avgDuration=ytData.traffic.reduce((s,r)=>s+(r.avgDuration||0)*(r.views||0),0)/totV;
+    t.ctr=t.impressions>0?ytData.traffic.reduce((s,r)=>s+(r.ctr||0)*(r.impressions||0),0)/t.impressions:0;
+  } else if(ytData.geo&&ytData.geo.length){
+    t.hasData=true;
+    t.views=ytData.geo.reduce((s,r)=>s+(r.views||0),0);
+    t.watchHours=ytData.geo.reduce((s,r)=>s+(r.watchHours||0),0);
+    const totV=t.views||1;
+    t.avgDuration=ytData.geo.reduce((s,r)=>s+(r.avgDuration||0)*(r.views||0),0)/totV;
+  }
+  if(ytData.manual){
+    t.hasData=true;
+    t.views=t.views||ytData.manual.views||0;
+    t.watchHours=t.watchHours||ytData.manual.watchHours||0;
+    t.subscribers=t.subscribers||ytData.manual.subscribers||0;
+    t.impressions=t.impressions||ytData.manual.impressions||0;
+    t.avgDuration=t.avgDuration||ytData.manual.avgDuration||0;
+    t.ctr=t.ctr||ytData.manual.ctr||0;
+  }
+  return t;
+}
+function ytHasAnyData(ytData){
+  return!!(ytData.content?.length||ytData.traffic?.length||ytData.geo?.length||ytData.age?.length||ytData.manual);
+}
+
+// ── COLLECT DATA ───────────────────────────────────────
+async function collectData(){
+  const data={gads:[],yt:{content:[],traffic:[],geo:[],age:[],manual:null},meta:[],spotify:[],organic:[]};
+  if(ST.snapshot?.data){
+    const sd=ST.snapshot.data;
+    if(!ST.files.gads.length)   data.gads=[...(sd.gads||[])];
+    if(!ytHasFiles()){
+      const ytSnap=sd.yt||{};
+      data.yt.content=[...(ytSnap.content||[])];
+      data.yt.traffic=[...(ytSnap.traffic||[])];
+      data.yt.geo=[...(ytSnap.geo||[])];
+      data.yt.age=[...(ytSnap.age||[])];
+      if(ytSnap.manual)data.yt.manual=ytSnap.manual;
+    }
+    if(!ST.files.meta.length)   data.meta=[...(sd.meta||[])];
+    if(!ST.files.spotify.length)data.spotify=[...(sd.spotify||[])];
+    if(!ST.files.organic.length)data.organic=[...(sd.organic||[])];
+  }
+  for(const f of ST.files.gads)       {const r=await parseCSV(f);data.gads.push(...normalizeGAds(r,f.name));}
+  for(const f of ST.files.yt_content) {const r=await parseCSV(f);data.yt.content.push(...normalizeYTContent(r));}
+  for(const f of ST.files.yt_traffic) {const r=await parseCSV(f);data.yt.traffic.push(...normalizeYTTraffic(r));}
+  for(const f of ST.files.yt_geo)     {const r=await parseCSV(f);data.yt.geo.push(...normalizeYTGeo(r));}
+  for(const f of ST.files.yt_age)     {const r=await parseCSV(f);data.yt.age.push(...normalizeYTAge(r));}
+  for(const f of ST.files.meta)       {const r=await parseCSV(f);data.meta.push(...normalizeMeta(r,f.name));}
+  for(const f of ST.files.spotify)    {const r=await parseCSV(f);data.spotify.push(...normalizeSpotify(r));}
+  for(const f of ST.files.organic)    {const r=await parseCSV(f);data.organic.push(...normalizeOrganic(r,f.name));}
+
+  // Manual entries
+  const mga=document.getElementById('mf-gads');
+  if(mga.classList.contains('open')&&document.getElementById('mga-clicks').value)
+    data.gads.push({src:'gads',campaign:document.getElementById('mga-name').value||'Google Ads',
+      impressions:+document.getElementById('mga-impr').value||0,
+      clicks:+document.getElementById('mga-clicks').value||0,
+      cost:+document.getElementById('mga-cost').value||0,
+      cpc:+document.getElementById('mga-cpc').value||0,
+      ctr:+document.getElementById('mga-ctr').value||0,manual:true});
+
+  const myt=document.getElementById('mf-yt');
+  if(myt.classList.contains('open')&&document.getElementById('myt-views').value){
+    data.yt.manual={
+      views:+document.getElementById('myt-views').value||0,
+      watchHours:+document.getElementById('myt-watch').value||0,
+      subscribers:+document.getElementById('myt-subs').value||0,
+      avgDuration:+document.getElementById('myt-avgdur').value||0,
+      impressions:+document.getElementById('myt-impr').value||0,
+      ctr:+document.getElementById('myt-ctr').value||0,
+    };
+  }
+
+  const mm=document.getElementById('mf-meta');
+  if(mm.classList.contains('open')&&document.getElementById('mm-plays').value)
+    data.meta.push({src:'meta',campaign:document.getElementById('mm-name').value||'Meta Ads',
+      impressions:+document.getElementById('mm-impr').value||0,
+      reach:+document.getElementById('mm-reach').value||0,
+      views:+document.getElementById('mm-plays').value||0,
+      cost:+document.getElementById('mm-cost').value||0,
+      clicks:+document.getElementById('mm-clicks').value||0,manual:true});
+
+  const ms=document.getElementById('mf-spotify');
+  if(ms.classList.contains('open')&&document.getElementById('ms-streams').value){
+    const streams=+document.getElementById('ms-streams').value||0;
+    const listeners=+document.getElementById('ms-listeners').value||0;
+    data.spotify.push({src:'spotify',track:document.getElementById('ms-name').value||'Track',
+      streams,listeners,saves:+document.getElementById('ms-saves').value||0,
+      playlists:+document.getElementById('ms-playlists').value||0,
+      spl:+document.getElementById('ms-spl').value||(listeners>0?streams/listeners:0),manual:true});
+  }
+
+  const mo=document.getElementById('mf-organic');
+  if(mo.classList.contains('open')&&document.getElementById('mo-impr').value)
+    data.organic.push({src:'organic',platform:document.getElementById('mo-platform').value||'Social',
+      impressions:+document.getElementById('mo-impr').value||0,
+      reach:+document.getElementById('mo-reach').value||0,
+      likes:+document.getElementById('mo-likes').value||0,
+      comments:+document.getElementById('mo-comments').value||0,
+      shares:+document.getElementById('mo-shares').value||0,
+      saves:+document.getElementById('mo-saves').value||0,manual:true});
+
+  return data;
+}
+
+function captureManualFields(){
+  const out={};
+  ['gads','yt','meta','spotify','organic'].forEach(src=>{
+    const mf=document.getElementById('mf-'+src);
+    if(!mf?.classList.contains('open'))return;
+    const vals={};
+    mf.querySelectorAll('input').forEach(inp=>{if(inp.value.trim())vals[inp.id]=inp.value.trim();});
+    if(Object.keys(vals).length)out[src]=vals;
+  });
+  return out;
+}
+
+const SRC_COLORS={gads:'#FF6B30',yt_content:'#ff4444',yt_traffic:'#ff4444',yt_geo:'#ff4444',yt_age:'#ff4444',meta:'#4dc9ff',spotify:'#1db954',organic:'#f59e0b'};
+
+// ── BUILD AI CONTEXT ───────────────────────────────────
+function buildContext(data,identity,sc){
+  const lines=[];
+  lines.push(`Artista: ${identity.artist||'[sin especificar]'}`);
+  lines.push(`Label: ${identity.label||'[sin especificar]'}`);
+  lines.push(`Lanzamiento: ${identity.project||'[sin especificar]'}`);
+  lines.push(`Nivel: ${sc}`,'');
+
+  // Métricas y objetivos precargados desde Tempo OS (orgánico / metas SMART)
+  if(ST.prefillMetrics && ST.prefillMetrics.length){
+    lines.push('MÉTRICAS Y OBJETIVOS (desde Tempo OS):');
+    ST.prefillMetrics.forEach(m=>{
+      const got = m.value!=null ? m.value : 'sin dato';
+      const goal = m.target ? ` · objetivo ${m.target}${m.pct!=null?` (${m.pct}%)`:''}` : '';
+      lines.push(`- ${m.platform||''} ${m.metric}: ${got}${goal}`);
+    });
+    lines.push('');
+  }
+
+  if(data.gads.length){
+    const camps={};data.gads.forEach(r=>{if(!camps[r.campaign])camps[r.campaign]=[];camps[r.campaign].push(r);});
+    Object.entries(camps).forEach(([name,rows])=>{
+      const a=aggRows(rows,['impressions','clicks','cost']);
+      const ctr=a.impressions>0?a.clicks/a.impressions*100:0;
+      const cpc=a.clicks>0?a.cost/a.clicks:0;
+      lines.push(`GOOGLE ADS [${name}]: Impresiones=${Math.round(a.impressions).toLocaleString()}, Clics=${Math.round(a.clicks).toLocaleString()}, CTR=${ctr.toFixed(2)}%, CPC=$${cpc.toFixed(3)}, Gasto=$${a.cost.toFixed(2)}`);
+    });
+  }
+
+  if(ytHasAnyData(data.yt)){
+    const t=ytTotals(data.yt);
+    lines.push(`YOUTUBE (Studio): Views=${Math.round(t.views).toLocaleString()}, Watch time=${t.watchHours.toFixed(0)}h, Subscribers=${Math.round(t.subscribers).toLocaleString()}, Avg duration=${t.avgDuration.toFixed(0)}s, Impresiones=${Math.round(t.impressions).toLocaleString()}, CTR=${t.ctr.toFixed(2)}%`);
+    if(data.yt.content?.length){
+      const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,3);
+      lines.push(`YOUTUBE Top videos: ${top.map(v=>`${v.title} (${Math.round(v.views).toLocaleString()} views, ${v.watchHours.toFixed(0)}h)`).join(' | ')}`);
+    }
+    if(data.yt.traffic?.length){
+      const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;
+      const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,3);
+      lines.push(`YOUTUBE Traffic Sources: ${top.map(r=>`${r.source} (${(r.views/totalV*100).toFixed(1)}%)`).join(', ')}`);
+    }
+    if(data.yt.geo?.length){
+      const totalV=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;
+      const top=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,5);
+      lines.push(`YOUTUBE Top países: ${top.map(r=>`${r.country} (${(r.views/totalV*100).toFixed(1)}%)`).join(', ')}`);
+    }
+    if(data.yt.age?.length){
+      const totalV=data.yt.age.reduce((s,r)=>s+r.views,0)||1;
+      lines.push(`YOUTUBE Distribución por edad: ${data.yt.age.map(r=>`${r.ageGroup} ${(r.views/totalV*100).toFixed(1)}%`).join(', ')}`);
+    }
+    if(data.gads.length){
+      const gadsCost=aggRows(data.gads,['cost']).cost;
+      const gadsClicks=aggRows(data.gads,['clicks']).clicks;
+      lines.push(`RELACIÓN Google Ads → YouTube: Google Ads invirtió $${gadsCost.toFixed(2)} en ${Math.round(gadsClicks).toLocaleString()} clics que pueden haber dirigido tráfico hacia el video de YouTube (${Math.round(t.views).toLocaleString()} views totales).`);
+    }
+  }
+
+  if(data.meta.length){
+    const a=aggRows(data.meta,['impressions','reach','views','cost','clicks']);
+    lines.push(`META ADS: Impresiones=${Math.round(a.impressions).toLocaleString()}, Alcance=${Math.round(a.reach).toLocaleString()}, Plays=${Math.round(a.views).toLocaleString()}, VTR=${(a.impressions>0?a.views/a.impressions*100:0).toFixed(1)}%, Gasto=$${a.cost.toFixed(2)}`);
+  }
+
+  if(data.spotify.length){
+    const a=aggRows(data.spotify,['streams','listeners','saves','playlists']);
+    const spl=a.listeners>0?a.streams/a.listeners:0;
+    const sr=a.listeners>0?a.saves/a.listeners*100:0;
+    lines.push(`SPOTIFY: Streams=${Math.round(a.streams).toLocaleString()}, Oyentes=${Math.round(a.listeners).toLocaleString()}, Guardados=${Math.round(a.saves).toLocaleString()}, Str/oyente=${spl.toFixed(2)}, Tasa guardado=${sr.toFixed(1)}%`);
+    const totalPaid=[...data.gads,...data.meta].reduce((s,r)=>s+(r.cost||0),0);
+    if(totalPaid>0&&a.streams>0) lines.push(`Costo estimado por stream (total paid / streams): $${(totalPaid/a.streams).toFixed(4)}`);
+  }
+
+  const orgByPlat={};
+  data.organic.forEach(r=>{if(!orgByPlat[r.platform])orgByPlat[r.platform]=[];orgByPlat[r.platform].push(r);});
+  Object.entries(orgByPlat).forEach(([p,rows])=>{
+    const a=aggRows(rows,['impressions','reach','likes','comments','shares','saves']);
+    const eng=a.impressions>0?(a.likes+a.comments+a.shares+a.saves)/a.impressions*100:0;
+    lines.push(`ORGÁNICO ${p}: Views/Imp=${Math.round(a.impressions).toLocaleString()}, Engagement=${eng.toFixed(2)}%, Compartidos=${Math.round(a.shares).toLocaleString()}, Guardados=${Math.round(a.saves).toLocaleString()}`);
+  });
+
+  return lines.join('\n');
+}
+
+// ── CALL AI (vía proxy seguro de Tempo OS: Edge Function 'claude') ──
+// La API key vive en el servidor; aquí solo usamos la sesión del usuario (compartida con la app).
+const REPORT_SUPABASE = { url:'https://fzemsxyrzyssxprewwzs.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6ZW1zeHlyenlzc3hwcmV3d3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTI3OTcsImV4cCI6MjA5NjI2ODc5N30.6rZw5gzIhUryZOzC2Mx4-kgrZSxWtjXSXS_-EL--FUg' };
+let _sbReport=null;
+async function getSbReport(){
+  if(!(window.supabase&&window.supabase.createClient)){
+    await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';sc.onload=res;sc.onerror=()=>rej(new Error('No se pudo cargar supabase-js (¿sin internet?)'));document.head.appendChild(sc);});
+  }
+  if(!_sbReport) _sbReport=window.supabase.createClient(REPORT_SUPABASE.url,REPORT_SUPABASE.key);
+  return _sbReport;
+}
+async function callAI(context,sc){
+  const depth=sc==='conservador'
+    ?'Genera 2-3 insights claros en lenguaje que un artista entienda. Una recomendación concreta para el próximo lanzamiento.'
+    :sc==='realista'
+    ?'Genera 3-4 insights estratégicos cruzando las fuentes disponibles. Sección "Próximos pasos" con 3 recomendaciones accionables.'
+    :'Diagnóstico estratégico completo. Numera hallazgos (01, 02, 03...). Cruza métricas entre plataformas. Hoja de ruta con 3-4 decisiones concretas. Tono: analista senior al equipo del label.';
+  const prompt=`Eres un analista de marketing musical experto en lanzamientos independientes. Analiza estos datos y genera análisis en español:\n\n${context}\n\nInstrucciones:\n- ${depth}\n- Sé específico con los números reales. No inventes datos que no estén en el contexto.\n- YouTube son datos orgánicos de YouTube Studio (no pauta). Si hay datos de Google Ads Y YouTube, analiza si la pauta de Google Ads puede haber dirigido tráfico al video y discute la performance orgánica resultante.\n- Si hay Top Content, Traffic Source, Geography y/o Viewers Age, comenta los hallazgos más relevantes para informar el próximo lanzamiento.\n- Si solo hay una plataforma, analiza solo esa.\n- Usa HTML simple: <strong> para énfasis.\n- Formato: <div class="ai-section"><div class="ai-section-title">[Título]</div>[Contenido]</div>\n- No uses markdown. Máximo 450 palabras.`;
+  const sb=await getSbReport();
+  const { data:sess } = await sb.auth.getSession();
+  if(!sess || !sess.session){ throw new Error('Inicia sesión en Tempo OS para usar la IA del reporte (abre el reporte desde la app).'); }
+  const teamId=(ST.ctx&&ST.ctx.teamId)||null;
+  const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-20250514', max_tokens:1200, team_id:teamId, feature:'reporte' } });
+  if(error) throw new Error(error.message||'Error de la función claude (¿desplegada?)');
+  if(data && data.error) throw new Error(data.error);
+  return (data && data.text) || '';
+}
+
+// ── GENERATE ───────────────────────────────────────────
+async function generate(){
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=true;document.getElementById('gen-label').textContent='Procesando datos…';
+  document.getElementById('err').style.display='none';
+  try{
+    const data=await collectData();
+    const hasData=Object.values(data).some(a=>Array.isArray(a)&&a.length>0)||ytHasAnyData(data.yt)||(ST.prefillMetrics&&ST.prefillMetrics.length);
+    if(!hasData)throw new Error('No se encontraron datos válidos. Sube CSVs de pauta/plataformas o abre el reporte desde un lanzamiento con métricas.');
+    const identity={
+      label:document.getElementById('inp-label').value.trim(),
+      artist:document.getElementById('inp-artist').value.trim(),
+      project:document.getElementById('inp-project').value.trim()
+    };
+    ST.identity=identity;
+    document.getElementById('gen-label').textContent='Generando análisis…';
+    const context=buildContext(data,identity,ST.sc);
+    ST.aiInsights=await callAI(context,ST.sc);
+    ST.parsedData=data;
+    renderReport(data,identity);
+    document.getElementById('setup').style.display='none';
+    document.getElementById('report').style.display='block';
+    window.scrollTo(0,0);
+  }catch(e){
+    const err=document.getElementById('err');
+    err.textContent='⚠ '+e.message;err.style.display='block';
+  }finally{
+    btn.disabled=false;document.getElementById('gen-label').textContent='Generar reporte con IA';
+    updateBtn();
+  }
+}
+
+// ── RENDER REPORT ──────────────────────────────────────
+function killCharts(){ST.charts.forEach(c=>{try{c.destroy()}catch(e){}});ST.charts=[];}
+const hexA=(h,a)=>{const n=parseInt(h.replace('#',''),16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
+
+function renderReport(data,identity){
+  killCharts();
+  const sc=ST.sc;
+  const fN=n=>Math.round(n).toLocaleString('es');
+  const fM=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1000?(n/1000).toFixed(0)+'K':String(Math.round(n));
+  const fP=n=>n.toFixed(1)+'%';
+  const fD=n=>'$'+n.toFixed(4);
+
+  document.getElementById('r-badge').className=`sc-badge b-${sc}`;
+  document.getElementById('r-badge').textContent=sc==='conservador'?'Conservador':sc==='realista'?'Realista':'Ideal';
+
+  const gAdsCamps={};data.gads.forEach(r=>{if(!gAdsCamps[r.campaign])gAdsCamps[r.campaign]=[];gAdsCamps[r.campaign].push(r);});
+  const mAgg=data.meta.length?aggRows(data.meta,['impressions','reach','views','cost','clicks']):null;
+  if(mAgg){mAgg.vtr=mAgg.impressions>0?mAgg.views/mAgg.impressions*100:0;mAgg.cpv=mAgg.views>0?mAgg.cost/mAgg.views:0;}
+  const spAgg=data.spotify.length?aggRows(data.spotify,['streams','listeners','saves','playlists']):null;
+  if(spAgg){spAgg.spl=spAgg.listeners>0?spAgg.streams/spAgg.listeners:0;spAgg.sr=spAgg.listeners>0?spAgg.saves/spAgg.listeners*100:0;}
+  const orgByPlat={};data.organic.forEach(r=>{if(!orgByPlat[r.platform])orgByPlat[r.platform]=[];orgByPlat[r.platform].push(r);});
+  const orgPlatforms=Object.keys(orgByPlat);
+  const gAdsTotal=Object.values(gAdsCamps).reduce((s,rows)=>s+aggRows(rows,['cost']).cost,0);
+  const mTotal=mAgg?.cost||0;
+  const totalPaid=gAdsTotal+mTotal;
+
+  const srcTags=[];
+  if(data.gads.length)srcTags.push(`<span class="src-tag" style="background:rgba(255,77,109,.1);color:var(--gads);border:1px solid rgba(255,77,109,.2)">● Google Ads</span>`);
+  if(ytHasAnyData(data.yt))srcTags.push(`<span class="src-tag" style="background:rgba(255,68,68,.1);color:var(--yt);border:1px solid rgba(255,68,68,.2)">● YouTube</span>`);
+  if(data.meta.length)srcTags.push(`<span class="src-tag" style="background:rgba(77,201,255,.1);color:var(--meta);border:1px solid rgba(77,201,255,.2)">● Meta Ads</span>`);
+  if(data.spotify.length)srcTags.push(`<span class="src-tag" style="background:rgba(29,185,84,.1);color:var(--spotify);border:1px solid rgba(29,185,84,.2)">● Spotify</span>`);
+  if(data.organic.length)srcTags.push(`<span class="src-tag" style="background:rgba(245,158,11,.1);color:var(--organic);border:1px solid rgba(245,158,11,.2)">● Orgánico</span>`);
+
+  let html='';
+  html+=`<div class="r-identity">${identity.label?`<span class="r-label-badge">🎵 ${identity.label}</span>`:''}${srcTags.join('')}</div>
+    <div class="r-eyebrow">Reporte de Lanzamiento · ${new Date().toLocaleDateString('es',{year:'numeric',month:'long'})}</div>
+    <div class="r-title">${identity.artist||'[Artista]'}<br><span class="hi">${identity.project||'Lanzamiento'}</span></div>
+    <p class="r-sub">${sc==='conservador'?'Resumen de campaña — los números clave.':sc==='realista'?'Análisis de rendimiento multiplataforma.':'Diagnóstico estratégico completo.'}</p>
+    <p class="r-meta">Escenario: ${sc} · ${new Date().toLocaleDateString('es')} · Fuentes: ${srcTags.length}</p>
+    <hr class="r-div">`;
+
+  // KPIs globales
+  html+=`<div class="sec-head"><div class="sec-label2">Resumen</div><div class="sec-title2">De un vistazo</div></div><div class="kpi-grid">`;
+  const gKpis=[];
+  if(data.gads.length){const a=aggRows(data.gads,['impressions','clicks','cost']);const ctr=a.impressions>0?a.clicks/a.impressions*100:0;gKpis.push({l:'CLICS',v:fN(a.clicks),h:'Google Ads',c:COLORS.gads},{l:'CTR',v:fP(ctr),h:'Tasa de clic',c:COLORS.gads});}
+  if(ytHasAnyData(data.yt)){const t=ytTotals(data.yt);gKpis.push({l:'VIEWS YT',v:fM(t.views),h:'YouTube',c:COLORS.yt},{l:'WATCH TIME',v:fM(t.watchHours)+'h',h:'YouTube',c:COLORS.yt});if(t.subscribers)gKpis.push({l:'SUBS YT',v:fN(t.subscribers),h:'YouTube',c:COLORS.yt});}
+  if(mAgg)gKpis.push({l:'PLAYS META',v:fM(mAgg.views),h:'ThruPlays',c:COLORS.meta});
+  if(spAgg){gKpis.push({l:'STREAMS',v:fN(spAgg.streams),h:'Spotify',c:COLORS.spotify},{l:'OYENTES',v:fN(spAgg.listeners),h:'Únicos',c:COLORS.spotify});}
+  if(totalPaid>0)gKpis.push({l:'GASTO TOTAL',v:'$'+totalPaid.toFixed(2),h:'Ad spend total',c:'#52526a'});
+  if(totalPaid>0&&spAgg?.streams>0)gKpis.push({l:'$/STREAM EST.',v:'$'+(totalPaid/spAgg.streams).toFixed(4),h:'Costo por resultado',c:COLORS.insight});
+  gKpis.forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">${k.h}</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+  html+=`</div>`;
+
+  // Google Ads
+  if(Object.keys(gAdsCamps).length){
+    html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Paid Media · Search & Display</div><div class="sec-title2">Google Ads</div></div>`;
+    const gadsFiles=ST.files.gads.map(f=>f.name);
+    const gadsMappings=gadsFiles.reduce((acc,fn)=>{if(ST.csvHeaders[fn]){const m=detectMappings(ST.csvHeaders[fn],'gads');Object.assign(acc,m);}return acc;},{});
+    if(Object.keys(gadsMappings).length){html+=`<div class="col-tags">`;['impressions','clicks','cost','cpc','ctr'].forEach(k=>{if(gadsMappings[k])html+=`<span class="col-tag mapped" title="Columna detectada: ${gadsMappings[k]}">✓ ${gadsMappings[k]}</span>`;});html+=`</div>`;}
+    const gadsStats=Object.entries(gAdsCamps).map(([name,rows],i)=>{const a=aggRows(rows,['impressions','clicks','cost']);return{name,col:CAMP_COLS[i%CAMP_COLS.length],...a,ctr:a.impressions>0?a.clicks/a.impressions*100:0,cpc:a.clicks>0?a.cost/a.clicks:0};});
+    html+=`<div class="kpi-grid">`;
+    const gAdsAgg=aggRows(data.gads,['impressions','clicks','cost']);
+    [{l:'IMPRESIONES',v:fM(gAdsAgg.impressions),c:COLORS.gads},{l:'CLICS',v:fN(gAdsAgg.clicks),c:COLORS.gads},{l:'CTR',v:fP(gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0),c:COLORS.organic},{l:'CPC',v:'$'+(gAdsAgg.clicks>0?gAdsAgg.cost/gAdsAgg.clicks:0).toFixed(3),c:'#52526a'},{l:'GASTO',v:'$'+gAdsAgg.cost.toFixed(2),c:'#52526a'}].forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">Google Ads</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+    html+=`</div>`;
+    if(gadsStats.length>1&&sc!=='conservador'){
+      html+=`<div class="cbox"><div class="cbox-title">Campañas</div><div class="cbox-sub">Comparativa de rendimiento</div>
+        <table class="cmp-table"><thead><tr><th>Campaña</th><th>Impr.</th><th>Clics</th><th>CTR</th><th>CPC</th><th>Gasto</th></tr></thead><tbody>
+        ${gadsStats.map(cs=>`<tr><td><span class="sw" style="background:${cs.col}"></span>${cs.name}</td><td>${fM(cs.impressions)}</td><td>${fN(cs.clicks)}</td><td>${fP(cs.ctr)}</td><td>$${cs.cpc.toFixed(3)}</td><td>$${cs.cost.toFixed(2)}</td></tr>`).join('')}
+        </tbody></table></div>`;
+    }
+  }
+
+  // YouTube
+  const ytT=ytTotals(data.yt);
+  if(ytT.hasData){
+    html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Streaming · YouTube Studio</div><div class="sec-title2">YouTube</div></div>`;
+    const ytAllFiles=[...ST.files.yt_content,...ST.files.yt_traffic,...ST.files.yt_geo,...ST.files.yt_age].map(f=>f.name);
+    if(ytAllFiles.length){html+=`<div class="col-tags">`;if(ST.files.yt_content.length)html+=`<span class="col-tag mapped">📹 Content (${ST.files.yt_content.length})</span>`;if(ST.files.yt_traffic.length)html+=`<span class="col-tag mapped">🚦 Traffic (${ST.files.yt_traffic.length})</span>`;if(ST.files.yt_geo.length)html+=`<span class="col-tag mapped">🌎 Geography (${ST.files.yt_geo.length})</span>`;if(ST.files.yt_age.length)html+=`<span class="col-tag mapped">👥 Viewers Age (${ST.files.yt_age.length})</span>`;html+=`</div>`;}
+    html+=`<div class="kpi-grid">`;
+    const ytKpis=[{l:'VIEWS',v:fN(ytT.views),c:COLORS.yt},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',c:COLORS.yt},{l:'SUBSCRIBERS',v:fN(ytT.subscribers),c:COLORS.yt},{l:'AVG DURATION',v:Math.round(ytT.avgDuration)+'s',c:COLORS.organic}];
+    if(ytT.impressions)ytKpis.push({l:'IMPRESIONES',v:fM(ytT.impressions),c:'#52526a'});
+    if(ytT.ctr)ytKpis.push({l:'CTR',v:fP(ytT.ctr),c:COLORS.organic});
+    ytKpis.forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">YouTube</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+    html+=`</div>`;
+
+    if(data.yt.content?.length&&sc!=='conservador'){
+      const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,8);
+      html+=`<div class="cbox"><div class="cbox-title">📹 Top Content</div><div class="cbox-sub">Los videos con mejor performance del periodo.</div>
+        <table class="cmp-table"><thead><tr><th>Video</th><th>Views</th><th>Watch hrs</th><th>Subs</th><th>Avg dur.</th><th>CTR</th></tr></thead><tbody>
+        ${top.map(v=>`<tr><td>${v.title.length>40?v.title.slice(0,40)+'…':v.title}</td><td>${fN(v.views)}</td><td>${v.watchHours.toFixed(0)}</td><td>${fN(v.subscribers)}</td><td>${Math.round(v.avgDuration)}s</td><td>${v.ctr?fP(v.ctr):'—'}</td></tr>`).join('')}
+        </tbody></table></div>`;
+    }
+
+    if(data.yt.traffic?.length){
+      const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;
+      const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,6);
+      html+=`<div class="g2"><div class="cbox"><div class="cbox-title">🚦 Traffic Source</div><div class="cbox-sub">De dónde llegaron las views.</div>
+          <table class="cmp-table"><thead><tr><th>Fuente</th><th>Views</th><th>%</th><th>Watch hrs</th></tr></thead><tbody>
+          ${top.map(r=>`<tr><td>${r.source}</td><td>${fN(r.views)}</td><td>${(r.views/totalV*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td></tr>`).join('')}
+          </tbody></table></div>`;
+      if(data.yt.geo?.length){
+        const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;
+        const topG=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,6);
+        html+=`<div class="cbox"><div class="cbox-title">🌎 Geography</div><div class="cbox-sub">Top países por views.</div>
+          <table class="cmp-table"><thead><tr><th>País</th><th>Views</th><th>%</th><th>Watch hrs</th></tr></thead><tbody>
+          ${topG.map(r=>`<tr><td>${r.country}</td><td>${fN(r.views)}</td><td>${(r.views/totalG*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td></tr>`).join('')}
+          </tbody></table></div>`;
+      }else{html+='<div></div>';}
+      html+=`</div>`;
+    } else if(data.yt.geo?.length){
+      const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;
+      const topG=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,8);
+      html+=`<div class="cbox"><div class="cbox-title">🌎 Geography</div><div class="cbox-sub">Top países por views.</div>
+        <table class="cmp-table"><thead><tr><th>País</th><th>Views</th><th>%</th><th>Watch hrs</th><th>Avg dur.</th></tr></thead><tbody>
+        ${topG.map(r=>`<tr><td>${r.country}</td><td>${fN(r.views)}</td><td>${(r.views/totalG*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td><td>${Math.round(r.avgDuration||0)}s</td></tr>`).join('')}
+        </tbody></table></div>`;
+    }
+
+    if(data.yt.age?.length){
+      const totalA=data.yt.age.reduce((s,r)=>s+r.views,0)||1;
+      const sortedAge=[...data.yt.age].sort((a,b)=>b.views-a.views);
+      html+=`<div class="cbox"><div class="cbox-title">👥 Viewers Age</div><div class="cbox-sub">Distribución demográfica de la audiencia.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        ${sortedAge.map((r,i)=>{const pct=(r.views/totalA*100);const colors=['#ff4444','#a78bfa','#4dc9ff','#1db954','#f59e0b','#34d399'];const col=colors[i%colors.length];return `<div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;border-left:3px solid ${col}"><div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.08em;margin-bottom:4px">${r.ageGroup}</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:${col}">${pct.toFixed(1)}%</div><div style="font-size:10px;color:var(--sub);margin-top:2px">${fN(r.views)} views</div></div>`;}).join('')}
+        </div></div>`;
+    }
+  }
+
+  // Cross-insight Google Ads → YouTube
+  if(data.gads.length&&ytHasAnyData(data.yt)){
+    const gAdsAgg2=aggRows(data.gads,['impressions','clicks','cost']);
+    const ytT2=ytTotals(data.yt);
+    const gAdsCTR2=gAdsAgg2.impressions>0?gAdsAgg2.clicks/gAdsAgg2.impressions*100:0;
+    const costPerView=ytT2.views>0?gAdsAgg2.cost/ytT2.views:0;
+    html+=`<div class="cross-callout">
+      <div class="cross-title">↔ Google Ads → YouTube — Tráfico pagado, performance orgánica</div>
+      <div class="cross-body">
+        Google Ads invirtió <strong>$${gAdsAgg2.cost.toFixed(2)}</strong> generando <strong>${fN(gAdsAgg2.clicks)} clics</strong> al CTR de <strong>${gAdsCTR2.toFixed(2)}%</strong>, mientras el video en YouTube acumuló <strong>${fN(ytT2.views)} views</strong> y <strong>${ytT2.watchHours.toFixed(0)} horas de watch time</strong> orgánico.
+        ${costPerView>0?`Asumiendo que el gasto pagado de Google Ads condujo tráfico al video, el costo combinado por view es <strong>$${costPerView.toFixed(4)}</strong>.`:''}
+        ${spAgg?` Costo combinado por stream en Spotify: <strong>$${(gAdsAgg2.cost/spAgg.streams).toFixed(4)}</strong>.`:''}
+      </div></div>`;
+  }
+
+  // Meta
+  if(mAgg&&sc!=='conservador'){
+    html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Paid Media · Social</div><div class="sec-title2">Meta Ads</div></div>`;
+    html+=`<div class="kpi-grid">`;
+    [{l:'IMPRESIONES',v:fM(mAgg.impressions),c:COLORS.meta},{l:'ALCANCE',v:fM(mAgg.reach),c:COLORS.meta},{l:'PLAYS',v:fN(mAgg.views),c:COLORS.meta},{l:'VTR',v:fP(mAgg.vtr),c:COLORS.organic},{l:'CPV',v:fD(mAgg.cpv),c:'#52526a'},{l:'GASTO',v:'$'+mAgg.cost.toFixed(2),c:'#52526a'}].forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">Meta</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+    html+=`</div>`;
+  }
+
+  // Spotify
+  if(spAgg){
+    const hasPaid=data.gads.length||data.meta.length;
+    html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Streaming · Spotify for Artists</div><div class="sec-title2">${hasPaid?'Resultados en Streaming':'Rendimiento en Spotify'}</div></div>`;
+    const spFiles=ST.files.spotify.map(f=>f.name);
+    const spMappings=spFiles.reduce((acc,fn)=>{if(ST.csvHeaders[fn]){const m=detectMappings(ST.csvHeaders[fn],'spotify');Object.assign(acc,m);}return acc;},{});
+    if(Object.keys(spMappings).length){html+=`<div class="col-tags">`;['streams','listeners','saves','playlists'].forEach(k=>{if(spMappings[k])html+=`<span class="col-tag mapped" title="Columna: ${spMappings[k]}">✓ ${spMappings[k]}</span>`;});html+=`</div>`;}
+    html+=`<div class="kpi-grid">`;
+    [{l:'STREAMS',v:fN(spAgg.streams),c:COLORS.spotify},{l:'OYENTES',v:fN(spAgg.listeners),c:COLORS.spotify},{l:'GUARDADOS',v:fN(spAgg.saves),c:COLORS.spotify},{l:'PLAYLIST ADDS',v:fN(spAgg.playlists),c:COLORS.organic},{l:'STR./OYENTE',v:spAgg.spl.toFixed(2),c:COLORS.organic},{l:'TASA GUARDADO',v:fP(spAgg.sr),c:'#52526a'}].forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">Spotify</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+    html+=`</div>`;
+  }
+
+  // Organic
+  if(orgPlatforms.length){
+    html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Orgánico</div><div class="sec-title2">Redes sociales</div></div><div class="kpi-grid">`;
+    orgPlatforms.forEach((p,pi)=>{
+      const a=aggRows(orgByPlat[p],['impressions','reach','likes','comments','shares','saves']);
+      const eng=a.impressions>0?(a.likes+a.comments+a.shares+a.saves)/a.impressions*100:0;
+      const col=CAMP_COLS[pi%CAMP_COLS.length];
+      [{l:'VIEWS/IMPR.',v:fM(a.impressions)},{l:'ALCANCE',v:fM(a.reach)},{l:'ENGAGEMENT',v:fP(eng)},{l:'COMPARTIDOS',v:fN(a.shares)},{l:'GUARDADOS',v:fN(a.saves)}].forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${col};border-radius:13px 13px 0 0"></div><div class="k-src">${p}</div><div class="k-val" style="color:${col}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
+    });
+    html+=`</div>`;
+  }
+
+  // AI Analysis
+  html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Análisis</div><div class="sec-title2">${sc==='conservador'?'Lo que dicen los datos':sc==='realista'?'Patrones y diagnóstico':'Diagnóstico estratégico'}</div></div>`;
+  html+=`<div class="ai-block"><div class="ai-label">▸ Análisis de campaña</div><div class="ai-content">${ST.aiInsights||''}</div></div>`;
+
+  // Footer
+  const footParts=[identity.label,identity.artist,identity.project].filter(Boolean);
+  html+=`<hr class="r-div"><p style="font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em">${footParts.join(' · ')} · ${new Date().toLocaleDateString('es')} · Tempo OS · Reporte</p>`;
+
+  document.getElementById('report-body').innerHTML=html;
+}
+
+// ── PPTX ───────────────────────────────────────────────
+async function dlPPTX(){
+  const btn=document.getElementById('dl-pptx-btn');
+  btn.disabled=true;btn.textContent='Generando…';
+  try{await generatePPTX();toast('✓ Presentación generada');}
+  catch(e){toast('Error: '+e.message,'error');console.error(e);}
+  finally{btn.disabled=false;btn.textContent='⬇ Presentación .pptx';}
+}
+
+async function generatePPTX(){
+  if(!window.PptxGenJS) throw new Error('Error interno: librería de presentaciones no cargada.');
+  const data=ST.parsedData;const identity=ST.identity;const sc=ST.sc;
+  const pres=new window.PptxGenJS();
+  pres.layout='LAYOUT_16x9';
+  pres.title=`${identity.artist||'Artista'} — ${identity.project||'Lanzamiento'}`;
+  const BG='060808',PANEL='1a201a',LINE='2a312a',INK='F5F0F5',MUTED='9aa39a',DIM='5a635a';
+  const C_GADS='FF6B30',C_YT='ff4444',C_META='4dc9ff',C_SPOTIFY='1db954',C_ORG='FFAA00',C_INST='a78bfa';
+  const CAMP_C=['FF6B30','4dc9ff','f59e0b','a78bfa','34d399'];
+  const fN=n=>Math.round(n).toLocaleString('es');
+  const fM=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1000?(n/1000).toFixed(0)+'K':String(Math.round(n));
+  const fP=n=>n.toFixed(1)+'%';
+  const fD=n=>'$'+n.toFixed(4);
+  function darkSlide(){const s=pres.addSlide();s.background={color:BG};return s;}
+  function kicker(s,text,x,y,color){s.addText(text,{x,y,w:9.2,h:.22,fontSize:9,color:color||C_GADS,bold:true,fontFace:'Courier New',charSpacing:4,margin:0});}
+  function sTitle(s,text,x,y,w,color){s.addText(text,{x,y,w:w||9,h:.6,fontSize:26,color:color||INK,bold:true,fontFace:'Georgia',margin:0});}
+  function bodyTxt(s,text,x,y,w,h,color,size){s.addText(text,{x,y,w:w||9,h:h||.28,fontSize:size||12,color:color||MUTED,fontFace:'Calibri',margin:0,wrap:true});}
+  function mkCard(s,x,y,w,h,accent){s.addShape(pres.shapes.RECTANGLE,{x,y,w,h,fill:{color:PANEL},line:{color:LINE,width:.5}});s.addShape(pres.shapes.RECTANGLE,{x,y,w,h:.04,fill:{color:accent||C_GADS},line:{type:'none'}});}
+  function kpiCard(s,x,y,w,h,label,val,hint,accent){mkCard(s,x,y,w,h,accent);s.addText(label,{x:x+.12,y:y+.13,w:w-.24,h:.2,fontSize:8,color:DIM,fontFace:'Courier New',bold:true,charSpacing:2,margin:0});s.addText(val,{x:x+.12,y:y+.36,w:w-.24,h:.44,fontSize:20,color:INK,bold:true,fontFace:'Courier New',margin:0,shrinkText:true});s.addText(hint,{x:x+.12,y:y+.84,w:w-.24,h:.2,fontSize:10,color:MUTED,fontFace:'Calibri',margin:0});}
+  function insightCard(s,x,y,w,h,title,text,accent){s.addShape(pres.shapes.RECTANGLE,{x,y,w,h,fill:{color:PANEL},line:{color:LINE,width:.5}});s.addShape(pres.shapes.RECTANGLE,{x,y,w:.05,h,fill:{color:accent||C_GADS},line:{type:'none'}});s.addText(title,{x:x+.18,y:y+.14,w:w-.3,h:.26,fontSize:13,color:INK,bold:true,fontFace:'Calibri',margin:0});s.addText(text,{x:x+.18,y:y+.44,w:w-.3,h:h-.58,fontSize:11,color:MUTED,fontFace:'Calibri',margin:0,wrap:true});}
+  const gAdsCamps={};data.gads.forEach(r=>{if(!gAdsCamps[r.campaign])gAdsCamps[r.campaign]=[];gAdsCamps[r.campaign].push(r);});
+  const mAgg=data.meta.length?aggRows(data.meta,['impressions','reach','views','cost','clicks']):null;
+  if(mAgg){mAgg.vtr=mAgg.impressions>0?mAgg.views/mAgg.impressions*100:0;mAgg.cpv=mAgg.views>0?mAgg.cost/mAgg.views:0;}
+  const spAgg=data.spotify.length?aggRows(data.spotify,['streams','listeners','saves','playlists']):null;
+  if(spAgg){spAgg.spl=spAgg.listeners>0?spAgg.streams/spAgg.listeners:0;spAgg.sr=spAgg.listeners>0?spAgg.saves/spAgg.listeners*100:0;}
+  const gAdsAgg=data.gads.length?aggRows(data.gads,['impressions','clicks','cost']):{impressions:0,clicks:0,cost:0};
+  const ytT=ytTotals(data.yt);
+  const totalPaid=gAdsAgg.cost+(mAgg?.cost||0);
+  // Cover
+  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:-.5,w:4,h:4,fill:{color:'FF6B30',transparency:93},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8,y:2.5,w:3,h:3,fill:{color:'a78bfa',transparency:95},line:{type:'none'}});kicker(s,'REPORTE DE LANZAMIENTO · '+sc.toUpperCase(),0.55,0.5);s.addText(identity.artist||'[Artista]',{x:.55,y:.8,w:9,h:.7,fontSize:44,color:INK,bold:true,fontFace:'Georgia',margin:0});s.addText(identity.project||'Lanzamiento',{x:.55,y:1.55,w:9,h:.65,fontSize:36,color:'FF6B30',bold:true,fontFace:'Georgia',italic:true,margin:0});s.addShape(pres.shapes.LINE,{x:.55,y:2.42,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,identity.label?`${identity.label} · `+new Date().toLocaleDateString('es',{year:'numeric',month:'long'}):new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.55,2.56,7,.28,MUTED,12);const srcs=[];if(data.gads.length)srcs.push('Google Ads');if(ytT.hasData)srcs.push('YouTube');if(data.meta.length)srcs.push('Meta Ads');if(data.spotify.length)srcs.push('Spotify');if(data.organic.length)srcs.push('Orgánico');bodyTxt(s,'Fuentes: '+srcs.join(' · '),.55,2.88,8,.24,DIM,10);}
+  // KPIs
+  {const s=darkSlide();kicker(s,'RESUMEN GLOBAL',0.5,.28);sTitle(s,'De un vistazo',.5,.52,8);const cards=[];if(data.gads.length){const ctr=gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0;cards.push({l:'CLICS',v:fN(gAdsAgg.clicks),h:'Google Ads',c:C_GADS},{l:'CTR',v:fP(ctr),h:'Tasa de clic',c:C_GADS});}if(ytT.hasData){cards.push({l:'VIEWS YT',v:fM(ytT.views),h:'YouTube',c:C_YT},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',h:'YouTube',c:C_YT});if(ytT.subscribers)cards.push({l:'SUBS',v:fN(ytT.subscribers),h:'YouTube',c:C_YT});}if(mAgg)cards.push({l:'PLAYS META',v:fM(mAgg.views),h:'ThruPlays',c:C_META});if(spAgg)cards.push({l:'STREAMS',v:fN(spAgg.streams),h:'Spotify',c:C_SPOTIFY},{l:'OYENTES',v:fN(spAgg.listeners),h:'Únicos',c:C_SPOTIFY});if(totalPaid>0)cards.push({l:'GASTO TOTAL',v:'$'+totalPaid.toFixed(2),h:'Ad spend',c:DIM});const cw=1.76,gap=.1,startX=.5;const maxCols=Math.min(cards.length,5);cards.slice(0,10).forEach((k,i)=>{const col=i%maxCols,row=Math.floor(i/maxCols);kpiCard(s,startX+col*(cw+gap),1.38+row*1.32,cw,1.2,k.l,k.v,k.h,k.c);});}
+  // Google Ads slide
+  if(data.gads.length){const s=darkSlide();kicker(s,'PAID MEDIA · SEARCH & DISPLAY',0.5,.28,C_GADS);sTitle(s,'Google Ads',.5,.52,9,INK);const ctr=gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0;const cpc=gAdsAgg.clicks>0?gAdsAgg.cost/gAdsAgg.clicks:0;[{l:'IMPRESIONES',v:fM(gAdsAgg.impressions),h:'Alcance',c:C_GADS},{l:'CLICS',v:fN(gAdsAgg.clicks),h:'Total',c:C_GADS},{l:'CTR',v:fP(ctr),h:'Tasa de clic',c:C_INST},{l:'CPC',v:'$'+cpc.toFixed(3),h:'Costo por clic',c:DIM},{l:'GASTO',v:'$'+gAdsAgg.cost.toFixed(2),h:'Ad spend',c:DIM}].forEach((k,i)=>{kpiCard(s,.5+i*1.86,1.38,1.76,1.2,k.l,k.v,k.h,k.c);});const gadsStats=Object.entries(gAdsCamps).map(([name,rows])=>{const a=aggRows(rows,['impressions','clicks','cost']);return{name,...a,ctr:a.impressions>0?a.clicks/a.impressions*100:0,cpc:a.clicks>0?a.cost/a.clicks:0};});if(gadsStats.length>0){s.addChart(pres.charts.BAR,[{name:'Clics',labels:gadsStats.map(c=>c.name),values:gadsStats.map(c=>c.clicks)}],{x:.5,y:2.75,w:5.8,h:2.55,barDir:'col',barGapWidthPct:55,chartColors:[C_GADS],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:10,dataLabelFontBold:true,showLegend:false,valAxisNumFmt:'#,##0',title:'Clics por campaña',showTitle:true,titleColor:MUTED,titleFontSize:10,});}insightCard(s,6.55,2.75,3.05,2.55,'CTR y costo por clic',`CTR: ${fP(ctr)}. CPC: $${cpc.toFixed(3)}. ${ctr>1.5?'El CTR está por encima del promedio para anuncios de música.':'Hay margen para optimizar el CTR con creativos más directos.'}`,C_GADS);}
+  // YouTube slide
+  if(ytT.hasData){const s=darkSlide();kicker(s,'STREAMING · YOUTUBE STUDIO',0.5,.28,C_YT);sTitle(s,'YouTube',.5,.52,9,INK);const kCards=[{l:'VIEWS',v:fN(ytT.views),h:'Total',c:C_YT},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',h:'Horas',c:C_YT},{l:'SUBSCRIBERS',v:fN(ytT.subscribers),h:'Ganados',c:C_YT},{l:'AVG DURATION',v:Math.round(ytT.avgDuration)+'s',h:'Por view',c:C_ORG},{l:'CTR',v:ytT.ctr?fP(ytT.ctr):'—',h:'Tasa de clic',c:C_ORG}];kCards.forEach((k,i)=>{kpiCard(s,.5+i*1.86,1.38,1.76,1.2,k.l,k.v,k.h,k.c);});if(data.yt.content?.length>0){const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,6);s.addChart(pres.charts.BAR,[{name:'Views',labels:top.map(v=>v.title.length>22?v.title.slice(0,22)+'…':v.title),values:top.map(v=>Math.round(v.views))}],{x:.5,y:2.75,w:5.8,h:2.55,barDir:'bar',barGapWidthPct:35,chartColors:[C_YT],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLabelFontSize:9,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:9,showLegend:false,valAxisNumFmt:'#,##0',title:'Top videos por views',showTitle:true,titleColor:MUTED,titleFontSize:10,});}if(data.yt.traffic?.length){const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,5);let txt='Top fuentes de tráfico:\n';top.forEach(r=>{txt+=`• ${r.source}: ${(r.views/totalV*100).toFixed(1)}% (${Math.round(r.views).toLocaleString()})\n`;});insightCard(s,6.55,2.75,3.05,1.22,'🚦 Traffic Source',txt,C_YT);}if(data.yt.geo?.length){const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,4);let txt='Top países:\n';top.forEach(r=>{txt+=`• ${r.country}: ${(r.views/totalG*100).toFixed(1)}%\n`;});const yPos=data.yt.traffic?.length?4.05:2.75;const h=data.yt.traffic?.length?1.25:2.55;insightCard(s,6.55,yPos,3.05,h,'🌎 Geography',txt,C_INST);}}
+  // Viewers Age slide
+  if(data.yt.age?.length){const s=darkSlide();kicker(s,'AUDIENCIA · YOUTUBE',0.5,.28,C_YT);sTitle(s,'Viewers Age',.5,.52,9,INK);const totalA=data.yt.age.reduce((s,r)=>s+r.views,0)||1;const sorted=[...data.yt.age].sort((a,b)=>b.views-a.views);s.addChart(pres.charts.BAR,[{name:'% de views',labels:sorted.map(r=>r.ageGroup),values:sorted.map(r=>+(r.views/totalA*100).toFixed(1))}],{x:.5,y:1.4,w:6.5,h:3.7,barDir:'col',barGapWidthPct:50,chartColors:[C_YT],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:11,dataLabelFontBold:true,dataLabelFormatCode:'0.0"%"',showLegend:false,title:'Distribución por edad (% views)',showTitle:true,titleColor:MUTED,titleFontSize:10,});const topAge=sorted[0];insightCard(s,7.3,1.4,2.3,1.7,'Grupo dominante',`${topAge.ageGroup}\n${(topAge.views/totalA*100).toFixed(1)}% de la audiencia.`,C_YT);insightCard(s,7.3,3.2,2.3,1.9,'Promedio de duración',`${Math.round(topAge.avgDuration||0)}s por view en el grupo principal.`,C_INST);}
+  // Cross slide
+  if(data.gads.length&&ytT.hasData){const s=darkSlide();kicker(s,'ANÁLISIS CRUZADO',0.5,.28,C_INST);sTitle(s,'Google Ads → YouTube',.5,.52,9,INK);const ctr=gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0;const costPerView=ytT.views>0?gAdsAgg.cost/ytT.views:0;s.addChart(pres.charts.BAR,[{name:'Métrica',labels:['Clics (Google Ads)','Views (YouTube)','Watch hrs (YouTube)'],values:[gAdsAgg.clicks,ytT.views,ytT.watchHours]}],{x:.5,y:1.35,w:5,h:3.7,barDir:'bar',barGapWidthPct:40,chartColors:[C_INST],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLabelFontSize:9,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:10,dataLabelFontBold:true,showLegend:false,valAxisNumFmt:'#,##0',title:'Embudo de tráfico',showTitle:true,titleColor:MUTED,titleFontSize:10,});insightCard(s,5.7,1.35,3.9,1.75,'Google Ads (paid)',`$${gAdsAgg.cost.toFixed(2)} invertidos. ${fN(gAdsAgg.clicks)} clics al ${fP(ctr)} CTR.`,C_GADS);insightCard(s,5.7,3.2,3.9,1.85,'YouTube (orgánico)',`${fN(ytT.views)} views · ${ytT.watchHours.toFixed(0)}h watch time. ${costPerView>0?`Costo por view: $${costPerView.toFixed(4)}.`:''}`,C_YT);}
+  // Meta slide
+  if(mAgg){const s=darkSlide();kicker(s,'PAID MEDIA · SOCIAL',0.5,.28,C_META);sTitle(s,'Meta Ads',.5,.52,9,INK);[{l:'IMPRESIONES',v:fM(mAgg.impressions),h:'Total',c:C_META},{l:'ALCANCE',v:fM(mAgg.reach),h:'Personas únicas',c:C_META},{l:'PLAYS',v:fN(mAgg.views),h:'ThruPlays',c:C_META},{l:'VTR',v:fP(mAgg.vtr),h:'Tasa visualización',c:C_ORG},{l:'CPV',v:fD(mAgg.cpv),h:'Costo por play',c:DIM},{l:'GASTO',v:'$'+mAgg.cost.toFixed(2),h:'Ad spend',c:DIM}].forEach((k,i)=>{const col=i%3,row=Math.floor(i/3);kpiCard(s,.5+col*3.1,1.38+row*1.38,2.9,1.2,k.l,k.v,k.h,k.c);});}
+  // Spotify slide
+  if(spAgg){const s=darkSlide();const hasPaid=data.gads.length||data.meta.length;kicker(s,'STREAMING · SPOTIFY FOR ARTISTS',0.5,.28,C_SPOTIFY);sTitle(s,hasPaid?'Resultados en Streaming':'Rendimiento en Spotify',.5,.52,9,INK);[{l:'STREAMS',v:fN(spAgg.streams),h:'Total',c:C_SPOTIFY},{l:'OYENTES',v:fN(spAgg.listeners),h:'Únicos',c:C_SPOTIFY},{l:'GUARDADOS',v:fN(spAgg.saves),h:'Saves',c:C_SPOTIFY},{l:'PLAYLIST ADDS',v:fN(spAgg.playlists),h:'Añadidos a playlists',c:C_ORG},{l:'STR./OYENTE',v:spAgg.spl.toFixed(2),h:'Fidelidad',c:C_ORG},{l:'TASA GUARDADO',v:fP(spAgg.sr),h:'% oyentes que guardan',c:DIM}].forEach((k,i)=>{const col=i%3,row=Math.floor(i/3);kpiCard(s,.5+col*3.1,1.38+row*1.38,2.9,1.2,k.l,k.v,k.h,k.c);});if(totalPaid>0&&spAgg.streams>0){bodyTxt(s,`Costo por stream estimado (gasto total paid / streams): $${(totalPaid/spAgg.streams).toFixed(4)}`,.5,4.15,9,.28,DIM,10);}}
+  // Analysis slide
+  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:8,y:2,w:3.5,h:3.5,fill:{color:C_INST,transparency:95},line:{type:'none'}});kicker(s,'ANÁLISIS DE CAMPAÑA',0.5,.28,DIM);sTitle(s,sc==='conservador'?'Lo que dicen los datos':sc==='realista'?'Patrones y diagnóstico':'Diagnóstico estratégico',.5,.52,8,INK);const plainInsights=(ST.aiInsights||'').replace(/<div class="ai-section-title">(.*?)<\/div>/g,'[$1] ').replace(/<div class="ai-section">/g,'\n').replace(/<\/div>/g,'\n').replace(/<strong>(.*?)<\/strong>/g,'$1').replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim();const lines=plainInsights.split('\n').filter(l=>l.trim()).slice(0,18);let y=1.32;lines.forEach(line=>{const isSectionTitle=line.startsWith('[')&&line.includes(']');if(isSectionTitle){const title=line.replace(/^\[|\]\s*$/g,'').replace(/\].*$/,'');s.addText(title,{x:.5,y,w:9,h:.28,fontSize:13,color:INK,bold:true,fontFace:'Georgia',margin:0});y+=.34;}else{s.addText(line,{x:.5,y,w:9,h:.26,fontSize:11,color:MUTED,fontFace:'Calibri',margin:0,wrap:true});y+=.3;}if(y>5.2)return;});}
+  // Close slide
+  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:3,w:4,h:4,fill:{color:C_GADS,transparency:94},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8.5,y:-.5,w:3,h:3,fill:{color:C_SPOTIFY,transparency:94},line:{type:'none'}});kicker(s,'FIN DEL REPORTE',0.5,.5);sTitle(s,(identity.artist||'Artista')+'\n'+sc.charAt(0).toUpperCase()+sc.slice(1),.5,.8,9,INK);const footParts=[identity.label,identity.artist,identity.project].filter(Boolean);bodyTxt(s,footParts.join(' · '),.5,1.8,9,.28,MUTED,13);s.addShape(pres.shapes.LINE,{x:.5,y:2.2,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.5,2.38,5,.24,DIM,10);s.addText('Tempo OS · Reporte',{x:.5,y:5.25,w:9.1,h:.2,fontSize:9,color:DIM,fontFace:'Courier New',align:'right',charSpacing:2});}
+  const artist=(identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');
+  const project=(identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');
+  await pres.writeFile({fileName:`reporte_${artist}_${project}_${Date.now()}.pptx`});
+}
+
+// ── SNAPSHOT / DOWNLOAD ────────────────────────────────
+function buildSnapshot(){return{_lrg:true,version:'2.0',createdAt:new Date().toISOString(),sc:ST.sc,identity:ST.identity,manual:captureManualFields(),data:ST.parsedData,aiInsights:ST.aiInsights,csvHeaders:ST.csvHeaders};}
+function dlJSON(){const snap=buildSnapshot();const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const fname=`lrg_${artist}_${project}_${Date.now()}.json`;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}));a.download=fname;a.click();toast('✓ Snapshot guardado — '+fname);}
+function dlHTML(){const body=document.getElementById('report').innerHTML;const full=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reporte — ${ST.identity.artist||'Artista'} · ${ST.identity.project||'Lanzamiento'}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet"><style>${document.querySelector('style').innerHTML}</style></head><body style="background:var(--bg)">${body}</body></html>`;const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([full],{type:'text/html'}));a.download=`reporte_${artist}_${project}_${Date.now()}.html`;a.click();toast('✓ Reporte HTML descargado');}
+function goBack(){document.getElementById('setup').style.display='block';document.getElementById('report').style.display='none';killCharts();}
+
+// ── PREFILL desde Tempo OS (handoff por localStorage al abrir desde un lanzamiento) ──
+(function prefillFromTempo(){
+  let ctx=null; try{ ctx=JSON.parse(localStorage.getItem('ao_report_ctx')||'null'); }catch(e){}
+  if(!ctx) return;
+  ST.ctx=ctx;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
+  set('inp-label',ctx.label); set('inp-artist',ctx.artist); set('inp-project',ctx.project);
+  if(Array.isArray(ctx.metrics)&&ctx.metrics.length) ST.prefillMetrics=ctx.metrics;
+  try{ localStorage.removeItem('ao_report_ctx'); }catch(e){} // un solo uso
+  if(typeof updateBtn==='function') updateBtn();
+  if(typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde Tempo OS');
+})();
+updateBtn();
+</script>
+</body>
+</html>
