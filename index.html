@@ -3975,8 +3975,8 @@ function artistPerformance(art) {
 }
 function updateLabelNav() {
   const el = document.getElementById('nav-label'); if (!el) return;
-  // Visible para staff cuando hay 2+ artistas. (La privacidad del artista lo ocultará en su build.)
-  el.style.display = (artists.length >= 2) ? '' : 'none';
+  // Visible para staff cuando hay 2+ artistas; oculto para el artista restringido.
+  el.style.display = (artists.length >= 2 && !_restrictedArtist) ? '' : 'none';
 }
 function renderLabel() {
   const statsHost = document.getElementById('label-stats');
@@ -5642,15 +5642,15 @@ function renderSidebarArtist() {
   document.getElementById('sb-name').textContent = a ? a.name : '—';
   const so = document.getElementById('topbar-signout'); if (so) so.style.display = authed() ? '' : 'none';
   const menu = document.getElementById('artist-menu');
-  menu.innerHTML = artists.map(ar => `
+  menu.innerHTML = (_restrictedArtist ? '' : artists.map(ar => `
     <div class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
       <div class="artist-avatar" style="width:24px;height:24px;font-size:11px">${up(ar.name).slice(0,1)}</div>
       <span>${s(ar.name)}</span>
       ${ar.id===currentArtistId?'<span style="margin-left:auto">✓</span>':''}
     </div>`).join('')
-    + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`
+    + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`)
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
-    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">⚙ Mi cuenta</div><div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>` : '')
+    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">⚙ Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>`) : '')
     + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">🛠 Backend admin</div>` : '')
     + `<div class="artist-menu-item" onclick="abrirSync()">☁ Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + (authed() ? '' : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
@@ -6013,7 +6013,7 @@ async function cloudSyncAll() {
     const sb = await getSb(); if (!sb) return;
     setSyncStatus('syncing');
     const now = new Date().toISOString();
-    const aRows = artists.map(a => ({ id: a.id, data: a, team_id: _teamId, owner: _user && _user.id, visibility: a.visibility || 'team', updated_at: now }));
+    const aRows = artists.map(a => ({ id: a.id, data: a, team_id: _teamId, owner: _user && _user.id, visibility: a.visibility || 'team', user_id: a.userId || null, updated_at: now }));
     const lRows = launches.map(l => ({ id: l.id, artist_id: l.artistId, team_id: _teamId, data: l, updated_at: now }));
     const r1 = await sb.from('artists').upsert(aRows);
     const r2 = await sb.from('launches').upsert(lRows);
@@ -6026,13 +6026,13 @@ async function cloudLoad() {
   try {
     const sb = await getSb(); if (!sb) return;
     setSyncStatus('syncing');
-    const aq = sb.from('artists').select('data');  if (_teamId) aq.eq('team_id', _teamId);
+    const aq = sb.from('artists').select('data, user_id');  if (_teamId) aq.eq('team_id', _teamId);
     const lq = sb.from('launches').select('data'); if (_teamId) lq.eq('team_id', _teamId);
     const [ar, lr] = await Promise.all([ aq, lq ]);
     if (ar.error) throw new Error(ar.error.message);
     if (lr.error) throw new Error(lr.error.message);
     // La nube es la ÚNICA fuente de verdad (aunque esté vacía). Nunca subimos residuos locales.
-    artists = (ar.data || []).map(r => normalizeArtist(r.data));
+    artists = (ar.data || []).map(r => { const a = normalizeArtist(r.data); a.userId = r.user_id || null; return a; });
     launches = (lr.data || []).map(r => normalizeLaunch(r.data));
     saveArtistsLocal(); saveLaunchesLocal();
     if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
@@ -6085,6 +6085,24 @@ let _teams = []; // todos los equipos del usuario: [{id, name, role}]
 // ── PLANES / TIERS / ASIENTOS (v0.11) ──
 let _teamPlan = 'free';   // 'free' | 'pro' | 'manager' | 'custom'
 let _teamStatus = 'active'; // 'active' | 'suspended'
+let _myArtistId = null, _restrictedArtist = false; // artista ligado a su ficha → solo ve lo suyo
+function computeArtistRestriction() {
+  _myArtistId = null; _restrictedArtist = false;
+  if (!authed() || !_user) return;
+  const mine = artists.find(a => a.userId && a.userId === _user.id);
+  if (mine) { _myArtistId = mine.id; _restrictedArtist = !isOwner(); _isArtist = true; } // el owner nunca se restringe
+}
+function applyArtistRestriction() {
+  computeArtistRestriction();
+  document.body.classList.toggle('artist-restricted', _restrictedArtist);
+  if (_restrictedArtist) {
+    if (_myArtistId && currentArtistId !== _myArtistId) { currentArtistId = _myArtistId; if (typeof saveActiveArtist === 'function') saveActiveArtist(); }
+    const ap = document.querySelector('.page.active');
+    if (ap && (ap.id === 'page-label')) showPage('perfil');
+  }
+  applyRolePerms();
+  if (typeof updateLabelNav === 'function') updateLabelNav();
+}
 let _isArtist = false;    // el miembro actual es "el artista" del equipo
 let _teamCounters = { ideas_generadas_mes: 0, ideas_reset_date: null, banco_refreshes: 0, banco_refreshes_reset_date: null };
 
@@ -6103,7 +6121,7 @@ const DEV_OPEN = false;
 function canDo(action) {
   if (DEV_OPEN || !authed()) return true; // demo/dev: todo permitido
   const role = myRole();      // 'owner' | 'editor' | 'lector'
-  const artist = _isArtist;
+  const artist = _isArtist || !!_myArtistId;
   switch (action) {
     case 'create_launch':
     case 'edit_launch':
@@ -6112,7 +6130,7 @@ function canDo(action) {
     case 'export':
     case 'banco_add':
     case 'calendar_edit':
-      return role === 'owner' || role === 'editor';
+      return role === 'owner' || role === 'editor' || artist; // el artista trabaja en lo suyo
     case 'edit_perfil_adn':
       return role === 'owner' || artist;
     case 'invite_members':
@@ -6187,11 +6205,11 @@ function ideasRestantes() {
 function authed() { return !!(_user && _teamId); }
 function activeTeam() { return _teams.find(t => t.id === _teamId) || null; }
 function myRole() { if (!authed()) return 'owner'; const t = activeTeam(); return (t && t.role) || 'editor'; }
-function canEdit() { return myRole() !== 'lector'; }
+function canEdit() { return myRole() !== 'lector' || !!_myArtistId; } // el artista vinculado edita lo suyo
 function isOwner() { return myRole() === 'owner'; }
 function applyRolePerms() {
   const r = authed() ? myRole() : null;
-  const lector = r === 'lector';
+  const lector = (r === 'lector') && !_myArtistId; // el artista vinculado no queda en solo-lectura sobre lo suyo
   document.body.classList.toggle('role-lector', lector);
   document.body.classList.toggle('role-editor', r === 'editor');
   document.body.classList.toggle('role-owner', r === 'owner');
@@ -6246,6 +6264,7 @@ async function onAuthed() {
   }
   showAuthGate(false);
   await cloudLoad();
+  applyArtistRestriction();
   renderSidebarArtist();
   setSyncStatus('ok');
 }
@@ -6304,6 +6323,7 @@ async function switchTeam(id) {
   setSyncStatus('syncing');
   await loadTeam();
   await cloudLoad();
+  applyArtistRestriction();
   renderSidebarArtist();
   if (document.getElementById('modal-team').classList.contains('open')) renderTeamModal();
   setSyncStatus('ok');
@@ -6381,15 +6401,17 @@ function renderTeamModal() {
   }).join('');
   // Panel de asignación de artistas al equipo
   const otherTeams = _teams.filter(t => t.id !== _teamId);
+  const userOpts = m => `<option value="">— sin asignar</option>` + _teamMembers.map(u => `<option value="${u.user_id}" ${m===u.user_id?'selected':''}>${s(u.email)||u.user_id}</option>`).join('');
   const assignList = canEdit() && artists.length ? artists.map(a => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
       <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(a.name||'?').slice(0,1)}</div>
-      <span style="flex:1;font-size:13px">${s(a.name)}</span>
+      <span style="flex:1;min-width:90px;font-size:13px">${s(a.name)}</span>
+      ${isOwner() ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" title="Usuario-artista (solo verá esta ficha)" onchange="setArtistUser('${a.id}',this.value)">${userOpts(a.userId)}</select>` : ''}
       ${otherTeams.length ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="if(this.value){moveArtistToTeam('${a.id}',this.value);this.value='';}">
         <option value="">Mover a…</option>
         ${otherTeams.map(t => `<option value="${t.id}">${s(t.name)}</option>`).join('')}
-      </select>` : '<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">—</span>'}
-    </div>`).join('') : `<div class="empty-hint">${artists.length ? 'Crea otro equipo para poder mover artistas.' : 'No hay artistas en este equipo.'}</div>`;
+      </select>` : ''}
+    </div>`).join('') : `<div class="empty-hint">${artists.length ? '' : 'No hay artistas en este equipo.'}</div>`;
   body.innerHTML = `
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🏷</span><span class="ph-title">Tus equipos (${_teams.length})</span></div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">${teamsList}</div>
@@ -6465,6 +6487,16 @@ function setArtistVisibility(id, vis) {
   renderArtistForms();
 }
 // Marcar/desmarcar al artista del equipo (único por equipo → limpia los demás primero)
+// Vincular un usuario-artista a SU ficha (solo verá esa ficha; el staff ve todas)
+async function setArtistUser(artistId, userId) {
+  if (!requireCan('assign_artist')) return;
+  const a = artists.find(x => x.id === artistId); if (!a) return;
+  a.userId = userId || null; saveArtistsLocal();
+  const sb = await getSb();
+  if (sb) { const r = await sb.from('artists').update({ user_id: userId || null }).eq('id', artistId); if (r && r.error) { uiAlert(r.error.message); } }
+  renderTeamModal();
+  uiToast(userId ? '✓ Artista vinculado a su ficha' : '✓ Vínculo quitado');
+}
 async function assignArtist(userId, makeArtist) {
   if (!requireCan('assign_artist')) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
