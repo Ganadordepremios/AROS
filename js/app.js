@@ -1889,6 +1889,11 @@ function normalizeLaunch(l) {
   // CRM (Sprint 0): release type + tracklist (aditivo, no rompe nada)
   l.type = l.type || 'single';                                  // single | ep | album
   l.tracklist = Array.isArray(l.tracklist) ? l.tracklist : [];  // [{trackId, order}]
+  // CRM (Sprint 1): checklist release-level (visual/distrib/mkt)
+  l.releaseChecklist = (l.releaseChecklist && typeof l.releaseChecklist === 'object') ? l.releaseChecklist : {};
+  l.releaseChecklist.visual  = l.releaseChecklist.visual  || {};
+  l.releaseChecklist.distrib = l.releaseChecklist.distrib || {};
+  l.releaseChecklist.mkt     = l.releaseChecklist.mkt     || {};
   return l;
 }
 function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId); }

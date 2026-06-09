@@ -121,15 +121,29 @@ function releaseReportesHTML(l){
 }
 function releaseTracklistHTML(l){
   const ts = tracksOfLaunch(l);
-  const rows = ts.map((t,idx)=>`<div class="panel" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+  const rows = ts.map((t,idx)=>{ const rd=trackReady(t), pct=rd.total?Math.round(rd.done/rd.total*100):0, ph=trackPhase(t);
+    return `<div class="panel" onclick="openTrack('${t.id}')" style="display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer">
       <div style="font-family:var(--font-display);font-size:22px;color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
       <div style="flex:1"><div style="font-size:15px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:12px">· ${s(t.version)}</span>`:''}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'}${t.credits&&t.credits.mainArtist?` · ${s(t.credits.mainArtist)}`:''}</div></div>
-    </div>`).join('');
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span></div></div>
+      <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-display);font-size:18px;color:${readyColor(pct)}">${pct}%</div><div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">LISTO</div></div>
+      <span style="color:var(--text-dim);font-size:18px">›</span>
+    </div>`; }).join('');
   const single = (l.type||'single')==='single';
   return `<div class="empty-hint" style="margin-bottom:12px">${single?'Este release es un <b>single</b> (1 canción).':'Tracklist del <b>'+s(l.type)+'</b>.'} La ficha de cada track (audio · legal · label copy · checklist · status) se construye en el siguiente paso de Sprint 1.</div>${rows||'<div class="empty-hint">Sin tracks.</div>'}`;
 }
 function releaseResumenHTML(l) {
+  const rr = releaseReady(l), phase = releasePhase(l);
+  const statusPanel = `
+    <div class="panel">
+      <div class="panel-head"><span class="ph-icon">🚦</span><span class="ph-title">Estado del release</span>
+        <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span></div>
+      ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
+      <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
+    </div>`;
+  return statusPanel + releaseResumenContentHTML(l);
+}
+function releaseResumenContentHTML(l) {
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
   return `
     ${(function(){ const pr = launchProgress(l);
