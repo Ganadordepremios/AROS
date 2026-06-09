@@ -26,6 +26,7 @@ function openLaunch(id) {
   const l = launches.find(x => x.id === id);
   if (!l) return;
   currentLaunchId = id;
+  _releaseTab = 'resumen';
   showPage('launch');
   renderLaunchDetail();
 }
@@ -70,6 +71,7 @@ function renderLaunchDetail() {
           </div>
         </div>
         <div class="lh-meta">
+          <span class="chip on" style="cursor:default;text-transform:uppercase;font-size:10px;letter-spacing:1px">${up(l.type || 'single')}</span>
           <span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>
           <span class="lh-date">${launchDateLabel(l)}</span>
         </div>
@@ -85,6 +87,51 @@ function renderLaunchDetail() {
       </div>
     </div>
 
+    <div class="mtabs" id="release-tabbar" style="margin-bottom:16px;flex-wrap:wrap">
+      ${RELEASE_TABS.map(rt=>`<div class="mtab ${rt[0]===_releaseTab?'active':''}" data-rtab="${rt[0]}" onclick="setReleaseTab('${rt[0]}')">${rt[1]}</div>`).join('')}
+    </div>
+    <div id="release-tab-body"></div>`;
+  renderReleaseTab(_releaseTab);
+}
+
+// ── Ficha de RELEASE con pestañas (Sprint 1) ──
+let _releaseTab = 'resumen';
+const RELEASE_TABS = [['resumen','Resumen'],['tracklist','Tracklist'],['marketing','Marketing'],['contenido','Contenido'],['data','Data'],['inversion','Inversión'],['assets','Assets'],['tareas','Tareas'],['reportes','Reportes']];
+function setReleaseTab(name){ _releaseTab = name; document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name)); renderReleaseTab(name); document.querySelector('.content').scrollTop = 0; }
+function renderReleaseTab(name){
+  const l = launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  const host = document.getElementById('release-tab-body'); if(!host) return;
+  if(name==='resumen') host.innerHTML = releaseResumenHTML(l);
+  else if(name==='tracklist') host.innerHTML = releaseTracklistHTML(l);
+  else if(name==='reportes') host.innerHTML = releaseReportesHTML(l);
+  else if(name==='marketing') host.innerHTML = releaseLinkTabHTML('Marketing','ADN de campaña, objetivos SMART y plan de medios de este lanzamiento.',[['◎ Objetivos SMART','objetivos'],['✦ ADN de campaña','adn']]);
+  else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[['◻ Banco de Referencias','banco'],['✲ Generador de Ideas','ideas'],['▦ Calendario','calendario']]);
+  else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[['◉ Métricas','metricas'],['❧ Aprendizajes','aprendizajes'],['⬡ IA Estratégica','ia']]);
+  else host.innerHTML = `<div class="empty-hint">Esta sección (<b>${s(name)}</b>) llega en un próximo sprint del CRM (Inversión → S4 · Assets/Tareas → S2-3).</div>`;
+}
+function releaseLinkTabHTML(title, desc, links){
+  return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span><span class="ph-sub">de este release</span></div>
+    <div class="empty-hint" style="margin-bottom:14px">${desc}<br><span style="color:var(--text-dim);font-size:11px">En un próximo paso de Sprint 1 esto vivirá embebido en la pestaña; por ahora abre la sección (ya está scopeada a este lanzamiento).</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${links.map(x=>`<button class="btn btn-ghost" onclick="showPage('${x[1]}')">${x[0]}</button>`).join('')}</div></div>`;
+}
+function releaseReportesHTML(l){
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">📊</span><span class="ph-title">Reporte de Lanzamiento</span></div>
+    <div class="empty-hint" style="margin-bottom:14px">Genera un reporte (PPTX/HTML con IA) cruzando pauta y orgánico. La identidad y las métricas se precargan desde este lanzamiento.</div>
+    <button class="btn btn-primary" onclick="abrirReporteLanzamiento('${l.id}')">📊 Generar reporte</button></div>`;
+}
+function releaseTracklistHTML(l){
+  const ts = tracksOfLaunch(l);
+  const rows = ts.map((t,idx)=>`<div class="panel" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+      <div style="font-family:var(--font-display);font-size:22px;color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:12px">· ${s(t.version)}</span>`:''}</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'}${t.credits&&t.credits.mainArtist?` · ${s(t.credits.mainArtist)}`:''}</div></div>
+    </div>`).join('');
+  const single = (l.type||'single')==='single';
+  return `<div class="empty-hint" style="margin-bottom:12px">${single?'Este release es un <b>single</b> (1 canción).':'Tracklist del <b>'+s(l.type)+'</b>.'} La ficha de cada track (audio · legal · label copy · checklist · status) se construye en el siguiente paso de Sprint 1.</div>${rows||'<div class="empty-hint">Sin tracks.</div>'}`;
+}
+function releaseResumenHTML(l) {
+  const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
+  return `
     ${(function(){ const pr = launchProgress(l);
       const segs = [{value:pr.byStage.pre,color:'#a78bfa'},{value:pr.byStage.prod,color:'var(--accent)'},{value:pr.byStage.post,color:'#38bdf8'}];
       return `
@@ -152,6 +199,7 @@ function renderLaunchDetail() {
 
     ${revenuePanelHTML(l)}`;
 }
+
 
 // ══════════════════════════════════════════
 // FASE 5: Revenue Streams (checklist por lanzamiento)
