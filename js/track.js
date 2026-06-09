@@ -37,14 +37,34 @@ function renderTrackTab(name) {
   else if (name === 'tareas') host.innerHTML = trackTareasHTML(t);
 }
 
-// ── Checklist ──
+// ── Checklist (editable + templates propios) ──
+const CHECKLIST_GROUP_ORDER = ['audio', 'legal', 'distrib', 'otros'];
 function trackChecklistHTML(t) {
-  const c = t.checklist || {};
-  return Object.keys(TRACK_CHECKLIST).map(g => `
-    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g]}</span></div>
+  const def = trackChecklistDef(t), c = t.checklist || {};
+  const editable = canDo('editar_crm');
+  const custom = !!t.checklistDef;
+  const tpls = getChecklistTemplates();
+  // toolbar de templates
+  const toolbar = `<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Plantilla:</span>
+    <select class="input" style="width:auto;padding:5px 8px;font-size:12px" onchange="if(this.value)applyChecklistTemplate(this.value)">
+      <option value="">${custom ? 'Personalizada' : 'Por defecto'}…</option>
+      <option value="__default">↺ Restablecer al default</option>
+      ${tpls.map(tp => `<option value="${tp.id}">${s(tp.name)}</option>`).join('')}
+    </select>
+    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate()">💾 Guardar como plantilla…</button>` : ''}
+    <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
+  </div>`;
+  const groups = CHECKLIST_GROUP_ORDER.filter(g => def[g] && def[g].length).map(g => `
+    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g] || g}</span>${editable ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:3px 9px" onclick="addChecklistItem('${g}')">+ ítem</button>` : ''}</div>
       <div style="display:flex;flex-direction:column">
-        ${TRACK_CHECKLIST[g].map(([k, label]) => { const on = !!(c[g] && c[g][k]); return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
+        ${def[g].map(([k, label]) => { const on = !!(c[g] && c[g][k]); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}')"> ${s(label)}</label>
+          ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}')">✕</button>` : ''}
+        </div>`; }).join('')}
       </div></div>`).join('');
+  const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:12px" onclick="addChecklistItem('otros')">+ Otra tarea</button>` : '';
+  return toolbar + groups + addGroup;
 }
 function toggleTrackCheck(g, k) {
   if (!requireCan('editar_crm')) return;
@@ -52,6 +72,44 @@ function toggleTrackCheck(g, k) {
   t.checklist = t.checklist || {}; t.checklist[g] = t.checklist[g] || {};
   t.checklist[g][k] = !t.checklist[g][k];
   saveTracks(); renderTrackDetail(); // recalcula fase + barra
+}
+// Materializa la definición propia del track (para editar sin tocar la default)
+function ensureTrackDef(t) { if (!t.checklistDef) t.checklistDef = cloneDef(trackChecklistDef(t)); t.checklistDef.otros = t.checklistDef.otros || []; return t.checklistDef; }
+async function addChecklistItem(group) {
+  if (!requireCan('editar_crm')) return;
+  const t = curTrack(); if (!t) return;
+  const label = (await uiPrompt('Nombre de la tarea/ítem del checklist:', { title: 'Nuevo ítem de checklist' }) || '').trim();
+  if (!label) return;
+  const def = ensureTrackDef(t); def[group] = def[group] || [];
+  def[group].push([checklistSlug(label), label]);
+  saveTracks(); renderTrackTab('checklist');
+}
+function removeChecklistItem(group, key) {
+  if (!requireCan('editar_crm')) return;
+  const t = curTrack(); if (!t) return;
+  const def = ensureTrackDef(t);
+  if (def[group]) def[group] = def[group].filter(it => it[0] !== key);
+  if (t.checklist && t.checklist[group]) delete t.checklist[group][key]; // limpiar estado
+  saveTracks(); renderTrackDetail();
+}
+function applyChecklistTemplate(id) {
+  const t = curTrack(); if (!t) return;
+  if (!requireCan('editar_crm')) return;
+  if (id === '__default') { t.checklistDef = null; saveTracks(); renderTrackDetail(); return; }
+  const tp = getChecklistTemplates().find(x => x.id === id);
+  if (tp) { t.checklistDef = cloneDef(tp.def); saveTracks(); renderTrackDetail(); uiToast('✓ Plantilla aplicada'); }
+}
+async function saveChecklistAsTemplate() {
+  if (!requireCan('editar_crm')) return;
+  const t = curTrack(); if (!t) return;
+  const name = (await uiPrompt('Nombre de la plantilla (para reusarla en otros lanzamientos):', { title: 'Guardar plantilla' }) || '').trim();
+  if (!name) return;
+  const tpls = getChecklistTemplates();
+  const existing = tpls.find(x => x.name.toLowerCase() === name.toLowerCase());
+  const def = cloneDef(trackChecklistDef(t));
+  if (existing) existing.def = def; else tpls.push({ id: 'tpl-' + Date.now(), name, def });
+  setChecklistTemplates(tpls);
+  renderTrackTab('checklist'); uiToast('✓ Plantilla guardada · disponible para tu equipo');
 }
 
 // ── Audio ──

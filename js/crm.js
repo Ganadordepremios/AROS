@@ -2,8 +2,8 @@
 // CRM — checklist, "Listo para lanzar" y macro-fase (PLAN_CRM §2.5)
 // ══════════════════════════════════════════
 
-// Checklist por TRACK (la granularidad de los ~20 estados)
-const TRACK_CHECKLIST = {
+// Checklist por TRACK — definición POR DEFECTO (editable por track; templates por equipo)
+const DEFAULT_TRACK_CHECKLIST = {
   audio:   [['refSubida','Ref subida'],['mezclaRecibida','Mezcla recibida'],['masterRecibido','Máster recibido'],['masterWAV','Máster WAV'],['calidadOK','Calidad OK'],['versionClean','Versión clean'],['versionExplicit','Versión explícita']],
   legal:   [['splitCreado','Split sheet creado'],['splitFirmado','Split firmado'],['producerCreado','Producer agreement creado'],['producerFirmado','Producer firmado'],['featureAuth','Feature autorizado'],['sampleAuth','Sample autorizado'],['labelCopyCompleto','Label Copy completo']],
   distrib: [['metadataCompleta','Metadata completa'],['isrcGenerado','ISRC generado']],
@@ -14,14 +14,25 @@ const RELEASE_CHECKLIST = {
   distrib: [['distribuidoraSeleccionada','Distribuidora seleccionada'],['upcGenerado','UPC generado'],['fechaConfirmada','Fecha confirmada'],['subidoADistribucion','Subido a distribución'],['pitchEditorial','Pitch editorial']],
   mkt:     [['adnCampanaCompleto','ADN de campaña completo'],['planContenido','Plan de contenido'],['calendarioCreado','Calendario creado'],['presupuestoDefinido','Presupuesto definido'],['planMediosDefinido','Plan de medios definido']],
 };
-const CHECKLIST_GROUP_LABEL = { audio:'Audio', legal:'Legal', distrib:'Distribución', visual:'Visual', mkt:'Marketing' };
+const CHECKLIST_GROUP_LABEL = { audio:'Audio', legal:'Legal', distrib:'Distribución', visual:'Visual', mkt:'Marketing', otros:'Otros' };
 
 function _countChecklist(obj, def) {
   let done = 0, total = 0;
-  Object.keys(def).forEach(g => def[g].forEach(([k]) => { total++; if (obj && obj[g] && obj[g][k]) done++; }));
+  Object.keys(def).forEach(g => (def[g] || []).forEach(([k]) => { total++; if (obj && obj[g] && obj[g][k]) done++; }));
   return { done, total };
 }
-function trackReady(t) { return _countChecklist((t && t.checklist) || {}, TRACK_CHECKLIST); }
+// Definición efectiva del checklist de un track (propia si la editó/aplicó template; si no, la default)
+function trackChecklistDef(t) {
+  return (t && t.checklistDef && typeof t.checklistDef === 'object') ? t.checklistDef : DEFAULT_TRACK_CHECKLIST;
+}
+function trackReady(t) { return _countChecklist((t && t.checklist) || {}, trackChecklistDef(t)); }
+
+// ── Templates de checklist (flujos propios reutilizables, por equipo) ──
+function checklistTemplatesKey() { return 'ao_checklist_templates_' + (typeof _teamId !== 'undefined' && _teamId ? _teamId : 'local'); }
+function getChecklistTemplates() { try { return JSON.parse(localStorage.getItem(checklistTemplatesKey())) || []; } catch (e) { return []; } }
+function setChecklistTemplates(arr) { try { localStorage.setItem(checklistTemplatesKey(), JSON.stringify(arr)); } catch (e) {} }
+function cloneDef(def) { const o = {}; Object.keys(def || {}).forEach(g => o[g] = (def[g] || []).map(it => [it[0], it[1]])); return o; }
+function checklistSlug(label) { return (s(label).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'item') + '_' + Math.random().toString(36).slice(2, 6); }
 // "Listo para lanzar %" del release = checklists de TODOS sus tracks + checklist del release
 function releaseReady(l) {
   let done = 0, total = 0;
