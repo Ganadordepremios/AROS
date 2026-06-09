@@ -107,7 +107,44 @@ function renderReleaseTab(name){
   else if(name==='marketing') host.innerHTML = releaseLinkTabHTML('Marketing','ADN de campaña, objetivos SMART y plan de medios de este lanzamiento.',[['◎ Objetivos SMART','objetivos'],['✦ ADN de campaña','adn']]);
   else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[['◻ Banco de Referencias','banco'],['✲ Generador de Ideas','ideas'],['▦ Calendario','calendario']]);
   else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[['◉ Métricas','metricas'],['❧ Aprendizajes','aprendizajes'],['⬡ IA Estratégica','ia']]);
-  else host.innerHTML = `<div class="empty-hint">Esta sección (<b>${s(name)}</b>) llega en un próximo sprint del CRM (Inversión → S4 · Assets/Tareas → S2-3).</div>`;
+  else if(name==='assets') host.innerHTML = releaseAssetsHTML(l);
+  else host.innerHTML = `<div class="empty-hint">Esta sección (<b>${s(name)}</b>) llega en un próximo sprint del CRM (Inversión → S4 · Tareas → S3).</div>`;
+}
+// ── Assets del release (links clasificados) ──
+const ASSET_TIPOS = [['portada','Portada'],['audio','Audio'],['video','Video'],['documento','Documento'],['otro','Otro']];
+function releaseAssetsHTML(l){
+  const editable = canDo('editar_assets');
+  const assets = l.assets || [];
+  const rows = assets.map(a=>`<div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s((ASSET_TIPOS.find(x=>x[0]===a.tipo)||['','Otro'])[1])}</span>
+      <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${s(a.label)||'(sin nombre)'}</div>
+        <a href="${s(a.url)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${s(a.url)}</a></div>
+      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">✕</button>`:''}
+    </div>`).join('');
+  const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">📎</span><span class="ph-title">Agregar asset</span></div>
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
+        <div class="field"><label>Nombre</label><input class="input" id="asset-label" placeholder="Ej. Cover final 3000px"></div>
+        <div class="field"><label>Tipo</label><select class="input" id="asset-tipo">${ASSET_TIPOS.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
+        <button class="btn btn-primary" onclick="agregarAsset()">Agregar</button>
+      </div>
+      <div class="field" style="margin-top:8px"><label>Link (Drive / Dropbox / WeTransfer / URL)</label><input class="input" id="asset-url" placeholder="https://…" onkeydown="if(event.key==='Enter')agregarAsset()"></div>
+    </div>` : '';
+  return `<div class="empty-hint" style="margin-bottom:12px">Links de archivos del release clasificados (portada, audio, video, documentos). No subimos archivos — guardamos los enlaces.</div>${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
+}
+function agregarAsset(){
+  if(!requireCan('editar_assets')) return;
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  const label=(document.getElementById('asset-label').value||'').trim();
+  const url=(document.getElementById('asset-url').value||'').trim();
+  const tipo=(document.getElementById('asset-tipo')||{}).value||'otro';
+  if(!url){ uiAlert('Pega el link del asset.'); return; }
+  l.assets=l.assets||[]; l.assets.push({ id:'as-'+Date.now(), tipo, url, label });
+  saveLaunches(); renderReleaseTab('assets'); uiToast('✓ Asset agregado');
+}
+function quitarAsset(id){
+  if(!requireCan('editar_assets')) return;
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  l.assets=(l.assets||[]).filter(a=>a.id!==id); saveLaunches(); renderReleaseTab('assets');
 }
 function releaseLinkTabHTML(title, desc, links){
   return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span><span class="ph-sub">de este release</span></div>
@@ -193,7 +230,33 @@ function releaseResumenHTML(l) {
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
     </div>`;
-  return statusPanel + releaseResumenContentHTML(l);
+  return statusPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
+}
+// Identidad del release (UPC / distribuidora / notas)
+function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }
+function releaseIdentityHTML(l){
+  const f=(label,path,val,ph)=>`<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" placeholder="${ph||''}" onchange="setReleaseField('${path}',this.value,'editar_crm')"></div>`;
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">🏷</span><span class="ph-title">Identidad del release</span></div>
+    ${f('UPC','upc',l.upc,'Código del proyecto (EP/álbum)')}
+    ${f('Distribuidora','distributor',l.distributor,'DistroKid, The Orchard, Believe…')}
+    <div class="field"><label>Notas</label><textarea class="textarea" onchange="setReleaseField('notes',this.value,'editar_crm')">${s(l.notes)}</textarea></div>
+  </div>`;
+}
+// Checklist del release (visual/distrib/mkt) — suma a "Listo para lanzar"
+function toggleReleaseCheck(group, key){
+  if(!requireCan('editar_crm')) return;
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  l.releaseChecklist=l.releaseChecklist||{}; l.releaseChecklist[group]=l.releaseChecklist[group]||{};
+  l.releaseChecklist[group][key]=!l.releaseChecklist[group][key];
+  saveLaunches(); renderReleaseTab('resumen'); // actualiza barra "Listo para lanzar"
+}
+function releaseChecklistPanelHTML(l){
+  const editable=canDo('editar_crm'); const rc=l.releaseChecklist||{};
+  const groups=Object.keys(RELEASE_CHECKLIST).map(g=>`<div style="margin-bottom:8px">
+      <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;margin-bottom:2px">${(CHECKLIST_GROUP_LABEL[g]||g).toUpperCase()}</div>
+      ${RELEASE_CHECKLIST[g].map(([k,label])=>{ const on=!!(rc[g]&&rc[g][k]); return `<label style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);cursor:${editable?'pointer':'default'};font-size:13px"><input type="checkbox" ${on?'checked':''} ${editable?'':'disabled'} onchange="toggleReleaseCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
+    </div>`).join('');
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">📋</span><span class="ph-title">Checklist del release</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
 }
 function releaseResumenContentHTML(l) {
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};

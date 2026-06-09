@@ -1894,6 +1894,12 @@ function normalizeLaunch(l) {
   l.releaseChecklist.visual  = l.releaseChecklist.visual  || {};
   l.releaseChecklist.distrib = l.releaseChecklist.distrib || {};
   l.releaseChecklist.mkt     = l.releaseChecklist.mkt     || {};
+  // CRM (Sprint 2): identidad release-level + assets + tareas (aditivo)
+  l.upc = l.upc || '';
+  l.distributor = l.distributor || '';
+  l.notes = l.notes || '';
+  l.assets = Array.isArray(l.assets) ? l.assets : [];   // [{id, tipo, url, label}]
+  l.tasks  = Array.isArray(l.tasks)  ? l.tasks  : [];   // [{id, titulo, capability, estado, dueDate}]
   return l;
 }
 function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId); }
