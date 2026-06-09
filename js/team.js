@@ -156,28 +156,53 @@ const BILLING_ENFORCED = false;
 const DEV_OPEN = false;
 
 // Permisos por rol/asiento (no dependen de pago)
+// ── MATRIZ DE CAPACIDADES (PLAN_CRM §3) ──
+// Capacidades atómicas (verbo × recurso). Los roles de negocio son PRESETS de capacidades.
+const CAPS = ['ver_crm','editar_crm','ver_audio','editar_audio','ver_legal','editar_legal',
+  'ver_labelcopy','editar_labelcopy','ver_marketing','editar_marketing','ver_assets','editar_assets',
+  'ver_data','editar_data','ver_finanzas','editar_finanzas','ver_reportes','generar_reportes',
+  'gestionar_tareas','aprobar_tareas','gestionar_artista','gestionar_equipo','admin_sello'];
+const ROLE_PRESETS = {
+  owner:         CAPS.slice(),                                  // todo, incl. gestionar_equipo + admin_sello
+  label_manager: CAPS.filter(c => c !== 'admin_sello'),         // todo salvo super-admin
+  manager:       ['ver_crm','editar_crm','ver_audio','ver_labelcopy','ver_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_finanzas','ver_reportes','generar_reportes','gestionar_tareas','aprobar_tareas','gestionar_artista'],
+  artista:       ['ver_crm','editar_crm','ver_audio','editar_audio','ver_labelcopy','ver_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_reportes','generar_reportes','gestionar_tareas','gestionar_artista'],
+  productor:     ['ver_crm','ver_audio','editar_audio','ver_assets','editar_assets','gestionar_tareas'],
+  ingeniero:     ['ver_crm','ver_audio','editar_audio','gestionar_tareas'],
+  abogado:       ['ver_crm','ver_legal','editar_legal','ver_labelcopy','editar_labelcopy','gestionar_tareas'],
+  marketing:     ['ver_crm','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_reportes','generar_reportes','ver_finanzas','gestionar_tareas'],
+  disenador:     ['ver_crm','ver_assets','editar_assets','gestionar_tareas'],
+  // Roles legacy del modelo actual (owner/editor/lector):
+  editor:        ['ver_crm','editar_crm','ver_audio','editar_audio','ver_labelcopy','editar_labelcopy','ver_legal','editar_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_finanzas','ver_reportes','generar_reportes','gestionar_tareas','aprobar_tareas'],
+  lector:        ['ver_crm','ver_audio','ver_labelcopy','ver_legal','ver_marketing','ver_assets','ver_data','ver_reportes'],
+};
+let _myPreset = null; // hook para roles de negocio (futuro); por ahora se deriva del rol+artista
+function currentPreset() {
+  if (!authed()) return 'owner';
+  if (_myPreset && ROLE_PRESETS[_myPreset]) return _myPreset;
+  if (isOwner()) return 'owner';
+  if (_myArtistId || _isArtist) return 'artista';     // artista vinculado → trabaja en lo suyo
+  return myRole() === 'lector' ? 'lector' : 'editor';
+}
+function hasCap(cap) {
+  if (DEV_OPEN || !authed()) return true;
+  const preset = ROLE_PRESETS[currentPreset()] || [];
+  return preset.indexOf(cap) >= 0;
+}
+// Acciones (compat con el código existente) → capacidad. Las no mapeadas = 'ver' libre.
+const ACTION_CAP = {
+  create_launch: 'editar_crm', edit_launch: 'editar_crm',
+  use_ia_estrategica: 'editar_marketing', use_generador_ia: 'editar_marketing',
+  banco_add: 'editar_marketing', calendar_edit: 'editar_marketing',
+  export: 'generar_reportes', generar_reportes: 'generar_reportes',
+  edit_perfil_adn: 'gestionar_artista',
+  invite_members: 'gestionar_equipo', manage_roles: 'gestionar_equipo', assign_artist: 'gestionar_equipo',
+};
 function canDo(action) {
   if (DEV_OPEN || !authed()) return true; // demo/dev: todo permitido
-  const role = myRole();      // 'owner' | 'editor' | 'lector'
-  const artist = _isArtist || !!_myArtistId;
-  switch (action) {
-    case 'create_launch':
-    case 'edit_launch':
-    case 'use_ia_estrategica':
-    case 'use_generador_ia':
-    case 'export':
-    case 'banco_add':
-    case 'calendar_edit':
-      return role === 'owner' || role === 'editor' || artist; // el artista trabaja en lo suyo
-    case 'edit_perfil_adn':
-      return role === 'owner' || artist;
-    case 'invite_members':
-    case 'manage_roles':
-    case 'assign_artist':
-      return role === 'owner';
-    default:
-      return true; // ver = libre para todos
-  }
+  if (CAPS.indexOf(action) >= 0) return hasCap(action); // capacidad directa
+  const cap = ACTION_CAP[action];                        // acción legacy → capacidad
+  return cap ? hasCap(cap) : true;                        // ver = libre por defecto
 }
 // Guard para handlers: si no puede, avisa y devuelve false.
 function requireCan(action, msg) {
