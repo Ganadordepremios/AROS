@@ -57,6 +57,11 @@ async function cloudSyncAll() {
     const r2 = await sb.from('launches').upsert(lRows);
     if (r1.error) throw new Error(r1.error.message);
     if (r2.error) throw new Error(r2.error.message);
+    // tracks: best-effort (no rompe la sync si la tabla aún no existe)
+    try {
+      const tRows = tracks.map(t => ({ id: t.id, artist_id: t.artistId, team_id: _teamId, data: t, updated_at: now }));
+      if (tRows.length) await sb.from('tracks').upsert(tRows);
+    } catch (e) { /* tabla tracks aún no creada → ignorar */ }
     setSyncStatus('ok');
   } catch (e) { setSyncStatus('error', e.message); }
 }
@@ -72,7 +77,15 @@ async function cloudLoad() {
     // La nube es la ÚNICA fuente de verdad (aunque esté vacía). Nunca subimos residuos locales.
     artists = (ar.data || []).map(r => { const a = normalizeArtist(r.data); a.userId = r.user_id || null; return a; });
     launches = (lr.data || []).map(r => normalizeLaunch(r.data));
+    // tracks: best-effort (si la tabla no existe, conserva los locales)
+    try {
+      const tq = sb.from('tracks').select('data'); if (_teamId) tq.eq('team_id', _teamId);
+      const tr = await tq;
+      if (!tr.error) { tracks = (tr.data || []).map(r => normalizeTrack(r.data)); }
+    } catch (e) {}
     saveArtistsLocal(); saveLaunchesLocal();
+    // Migrar launches de la nube que aún no tengan track, y persistir si cambió
+    if (migrateLaunchesToTracks()) scheduleCloudSync();
     if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
     renderSidebarArtist(); renderAllLaunches();
     const p = (document.querySelector('.page.active') || {}).id;

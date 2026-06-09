@@ -1886,6 +1886,9 @@ function normalizeLaunch(l) {
   l.screenshots = Array.isArray(l.screenshots) ? l.screenshots : [];
   l.revenue = (l.revenue && typeof l.revenue === 'object') ? l.revenue : {};
   l.artistId = l.artistId || (artists[0] && artists[0].id);
+  // CRM (Sprint 0): release type + tracklist (aditivo, no rompe nada)
+  l.type = l.type || 'single';                                  // single | ep | album
+  l.tracklist = Array.isArray(l.tracklist) ? l.tracklist : [];  // [{trackId, order}]
   return l;
 }
 function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId); }
@@ -1897,6 +1900,63 @@ else { launches = launches.map(normalizeLaunch); }
 
 function saveLaunchesLocal() { localStorage.setItem('ao_launches', JSON.stringify(launches)); }
 function saveLaunches() { saveLaunchesLocal(); scheduleCloudSync(); }
+
+// ══════════════════════════════════════════
+// MODELO DE DATOS — TRACKS (canción durable, CRM Sprint 0)
+// ══════════════════════════════════════════
+function normalizeTrack(t) {
+  t = t || {};
+  t.id = t.id || ('TRK-' + Date.now() + '-' + Math.floor(Math.random() * 9999));
+  t.artistId = t.artistId || (artists[0] && artists[0].id);
+  t.title = t.title || '';
+  t.version = t.version || '';
+  t.isrc = t.isrc || '';
+  t.credits = t.credits || {};
+  t.credits.featured  = Array.isArray(t.credits.featured)  ? t.credits.featured  : [];
+  t.credits.producers = Array.isArray(t.credits.producers) ? t.credits.producers : [];
+  t.credits.composers = Array.isArray(t.credits.composers) ? t.credits.composers : [];
+  t.credits.writers   = Array.isArray(t.credits.writers)   ? t.credits.writers   : [];
+  t.links = t.links || {}; t.meta = t.meta || {}; t.master = t.master || {}; t.publishing = t.publishing || {};
+  t.labelCopy = t.labelCopy || {}; t.labelCopy.contacts = Array.isArray(t.labelCopy.contacts) ? t.labelCopy.contacts : [];
+  t.legal = Array.isArray(t.legal) ? t.legal : [];
+  t.checklist = t.checklist || {};
+  t.checklist.audio   = t.checklist.audio   || {};
+  t.checklist.legal   = t.checklist.legal   || {};
+  t.checklist.distrib = t.checklist.distrib || {};
+  t.status = (t.status && typeof t.status === 'object') ? t.status : {}; // {phase, override}
+  t.metrics = (t.metrics && typeof t.metrics === 'object') ? t.metrics : {};
+  t.metricEntries = Array.isArray(t.metricEntries) ? t.metricEntries : [];
+  t.tasks = Array.isArray(t.tasks) ? t.tasks : [];
+  t.createdAt = t.createdAt || new Date().toISOString();
+  return t;
+}
+let tracks = [];
+try { tracks = JSON.parse(localStorage.getItem('ao_tracks')); } catch (e) {}
+if (!Array.isArray(tracks)) tracks = [];
+tracks = tracks.map(normalizeTrack);
+function saveTracksLocal() { localStorage.setItem('ao_tracks', JSON.stringify(tracks)); }
+function saveTracks() { saveTracksLocal(); scheduleCloudSync(); }
+function tracksOfLaunch(l) { return ((l && l.tracklist) || []).map(ref => tracks.find(t => t.id === ref.trackId)).filter(Boolean); }
+
+// Migración (idempotente): cada launch sin tracklist → release type=single con 1 track extraído.
+function migrateLaunchesToTracks() {
+  let changed = false;
+  (launches || []).forEach(l => {
+    if (!l.type) { l.type = 'single'; changed = true; }
+    if (!Array.isArray(l.tracklist)) l.tracklist = [];
+    if (!l.tracklist.length) {
+      const tid = 'TRK-' + l.id;
+      if (!tracks.find(t => t.id === tid)) {
+        tracks.push(normalizeTrack({ id: tid, artistId: l.artistId, title: l.name, createdAt: l.createdAt || new Date().toISOString() }));
+      }
+      l.tracklist = [{ trackId: tid, order: 0 }];
+      changed = true;
+    }
+  });
+  if (changed) { saveLaunchesLocal(); saveTracksLocal(); }
+  return changed;
+}
+migrateLaunchesToTracks(); // sobre la data local al arrancar
 
 // ── Contexto de lanzamiento activo ──
 function activeLaunch() {
