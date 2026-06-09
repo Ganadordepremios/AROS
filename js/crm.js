@@ -104,3 +104,29 @@ function tareasPanelHTML(kind){
 async function addTask(kind){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(!arr) return; const tit=(await uiPrompt('Tarea:',{title:'Nueva tarea'})||'').trim(); if(!tit) return; arr.push({id:'tk-'+Date.now(),titulo:tit,responsable:'',estado:'pendiente',dueDate:''}); _taskSave(kind); _taskRerender(kind); }
 function setTaskField(kind,i,f,val){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(arr&&arr[i]){ arr[i][f]=val; _taskSave(kind); if(f==='estado'||f==='dueDate') _taskRerender(kind); } }
 function removeTask(kind,i){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(arr&&arr[i]){ arr.splice(i,1); _taskSave(kind); _taskRerender(kind); } }
+
+// ══════════════════════════════════════════
+// ALERTAS del release (Sprint 3) — señales accionables
+// ══════════════════════════════════════════
+function releaseAlerts(l){
+  const out=[]; if(!l) return out;
+  const dleft = l.date ? (typeof diasRestantes==='function'?diasRestantes(l.date):null) : null; // días al drop
+  const near = dleft!=null && dleft>=0 && dleft<=14;
+  const released = (l.status==='complete') || (dleft!=null && dleft<0);
+  const ts = (typeof tracksOfLaunch==='function')?tracksOfLaunch(l):[];
+  const rc = l.releaseChecklist||{};
+  if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:'')});
+  ts.forEach(t=>{ const lg=(t.checklist&&t.checklist.legal)||{}; const a=(t.checklist&&t.checklist.audio)||{};
+    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`});
+    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`});
+  });
+  const overdue = (l.tasks||[]).filter(tk=>tk.dueDate && tk.estado!=='hecho' && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
+  if(overdue) out.push({level:'red', text:`${overdue} tarea(s) vencida(s)`});
+  if(released) out.push({level:'yellow', text:'Ya salió este lanzamiento — genera el reporte', action:{label:'📊 Reporte', fn:`abrirReporteLanzamiento('${l.id}')`}});
+  return out;
+}
+function alertsHTML(l){
+  const a = releaseAlerts(l);
+  if(!a.length) return '';
+  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'};border-left:3px solid ${x.level==='red'?'var(--accent2)':'var(--beat)'}"><span>${x.level==='red'?'🔴':'🟡'}</span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
+}

@@ -203,15 +203,33 @@ function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; c
 function removeTrackListItem(path, i) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; arr.splice(i, 1); saveTracks(); renderTrackTab('labelcopy'); }
 
 // ── Legal (por canción) ──
+const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'#38bdf8', aprobado:'#4ade80' };
 function trackLegalHTML(t) {
   const legal = t.legal || [];
-  const rows = legal.map((d, i) => `<div class="panel" style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
-    <div style="flex:1"><div style="font-size:13px;font-weight:600">${s(d.type) || 'documento'}</div><div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${s(d.state) || 'pendiente'}${d.responsable ? ' · ' + s(d.responsable) : ''}</div></div>
-    <select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="setLegalState(${i},this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-    <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">✕</button></div>`).join('');
-  return `<div class="empty-hint" style="margin-bottom:12px">Documentos legales de esta canción (split sheets, producer agreements, autorizaciones de feature/sample).</div>
+  const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value)"`;
+  const rows = legal.map((d, i) => `<div class="panel" style="margin-bottom:10px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
+      <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="input" style="flex:1;min-width:120px;padding:5px 8px;font-size:12px" value="${s(d.responsable)}" placeholder="Responsable" ${setF(i,'responsable')}>
+      <input class="input" style="flex:2;min-width:160px;padding:5px 8px;font-size:12px" value="${s(d.fileLink)}" placeholder="Link del documento (Drive/PDF)" ${setF(i,'fileLink')}>
+    </div>
+    <input class="input" style="margin-top:8px;padding:5px 8px;font-size:12px" value="${s(d.note)}" placeholder="Nota" ${setF(i,'note')}>
+    ${d.fileLink ? `<a href="${s(d.fileLink)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);display:inline-block;margin-top:6px">↗ abrir documento</a>` : ''}
+    <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:4px">act. ${d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('es-MX') : '—'}</div>
+  </div>`).join('');
+  return `<div class="empty-hint" style="margin-bottom:12px">Documentos legales de esta canción (split sheets, producer agreements, autorizaciones de feature/sample) — con estado, responsable, link y nota.</div>
     ${rows || '<div class="empty-hint">Sin documentos.</div>'}
     <button class="btn btn-ghost" style="margin-top:10px" onclick="agregarLegal()">+ Documento legal</button>`;
+}
+function setLegalField(i, f, val) {
+  if (!requireCan('editar_legal')) return;
+  const t = curTrack(); if (!t || !t.legal[i]) return;
+  t.legal[i][f] = val; t.legal[i].updatedAt = new Date().toISOString();
+  saveTracks(); if (f === 'state' || f === 'fileLink') renderTrackTab('legal');
 }
 async function agregarLegal() {
   if (!requireCan('editar_legal')) return;

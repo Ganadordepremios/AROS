@@ -230,6 +230,7 @@ function releaseResumenHTML(l) {
         <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span></div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
+      ${alertsHTML(l)}
     </div>`;
   return statusPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
 }
