@@ -108,7 +108,8 @@ function renderReleaseTab(name){
   else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[['◻ Banco de Referencias','banco'],['✲ Generador de Ideas','ideas'],['▦ Calendario','calendario']]);
   else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[['◉ Métricas','metricas'],['❧ Aprendizajes','aprendizajes'],['⬡ IA Estratégica','ia']]);
   else if(name==='assets') host.innerHTML = releaseAssetsHTML(l);
-  else host.innerHTML = `<div class="empty-hint">Esta sección (<b>${s(name)}</b>) llega en un próximo sprint del CRM (Inversión → S4 · Tareas → S3).</div>`;
+  else if(name==='tareas') host.innerHTML = tareasPanelHTML('release');
+  else host.innerHTML = `<div class="empty-hint">Esta sección (<b>${s(name)}</b>) llega en un próximo sprint del CRM (Inversión → S4).</div>`;
 }
 // ── Assets del release (links clasificados) ──
 const ASSET_TIPOS = [['portada','Portada'],['audio','Audio'],['video','Video'],['documento','Documento'],['otro','Otro']];

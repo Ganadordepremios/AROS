@@ -225,14 +225,4 @@ function setLegalState(i, state) { if (!requireCan('editar_legal')) return; cons
 function quitarLegal(i) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal.splice(i, 1); saveTracks(); renderTrackTab('legal'); } }
 
 // ── Tareas (del track) ──
-function trackTareasHTML(t) {
-  const tasks = t.tasks || [];
-  const rows = tasks.map((tk, i) => `<div class="panel" style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
-    <input type="checkbox" ${tk.estado === 'hecho' ? 'checked' : ''} onchange="toggleTrackTask(${i})">
-    <div style="flex:1"><div style="font-size:13px;${tk.estado === 'hecho' ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">${s(tk.titulo)}</div>${tk.dueDate ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${s(tk.dueDate)}</div>` : ''}</div>
-    <button class="goal-btn reject" title="Quitar" onclick="quitarTrackTask(${i})">✕</button></div>`).join('');
-  return `${rows || '<div class="empty-hint">Sin tareas técnicas para este track.</div>'}<button class="btn btn-ghost" style="margin-top:10px" onclick="agregarTrackTask()">+ Tarea</button>`;
-}
-async function agregarTrackTask() { if (!requireCan('gestionar_tareas')) return; const t = curTrack(); if (!t) return; const tit = await uiPrompt('Tarea técnica:', { title: 'Nueva tarea' }); if (!tit) return; t.tasks = t.tasks || []; t.tasks.push({ id: 'tk-' + Date.now(), titulo: tit.trim(), capability: '', estado: 'pendiente', dueDate: '' }); saveTracks(); renderTrackTab('tareas'); }
-function toggleTrackTask(i) { if (!requireCan('gestionar_tareas')) return; const t = curTrack(); if (t && t.tasks[i]) { t.tasks[i].estado = t.tasks[i].estado === 'hecho' ? 'pendiente' : 'hecho'; saveTracks(); renderTrackTab('tareas'); } }
-function quitarTrackTask(i) { if (!requireCan('gestionar_tareas')) return; const t = curTrack(); if (t && t.tasks[i]) { t.tasks.splice(i, 1); saveTracks(); renderTrackTab('tareas'); } }
+function trackTareasHTML(t) { return tareasPanelHTML('track'); } // motor compartido (crm.js)
