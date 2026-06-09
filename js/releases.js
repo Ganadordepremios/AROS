@@ -121,16 +121,68 @@ function releaseReportesHTML(l){
 }
 function releaseTracklistHTML(l){
   const ts = tracksOfLaunch(l);
+  const single = (l.type||'single')==='single';
+  const editable = canDo('editar_crm');
   const rows = ts.map((t,idx)=>{ const rd=trackReady(t), pct=rd.total?Math.round(rd.done/rd.total*100):0, ph=trackPhase(t);
+    const otros = (typeof releasesOfTrack==='function') ? releasesOfTrack(t.id).filter(r=>r.id!==l.id) : [];
+    const shared = otros.length ? `<span style="color:var(--beat)" title="También en: ${otros.map(r=>s(r.name)).join(', ')}">· también en ${otros.length} release(s)</span>` : '';
     return `<div class="panel" onclick="openTrack('${t.id}')" style="display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer">
       <div style="font-family:var(--font-display);font-size:22px;color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
       <div style="flex:1"><div style="font-size:15px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:12px">· ${s(t.version)}</span>`:''}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span></div></div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span> ${shared}</div></div>
       <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-display);font-size:18px;color:${readyColor(pct)}">${pct}%</div><div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">LISTO</div></div>
-      <span style="color:var(--text-dim);font-size:18px">›</span>
+      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">✕</button>` : `<span style="color:var(--text-dim);font-size:18px">›</span>`}
     </div>`; }).join('');
-  const single = (l.type||'single')==='single';
-  return `<div class="empty-hint" style="margin-bottom:12px">${single?'Este release es un <b>single</b> (1 canción).':'Tracklist del <b>'+s(l.type)+'</b>.'} La ficha de cada track (audio · legal · label copy · checklist · status) se construye en el siguiente paso de Sprint 1.</div>${rows||'<div class="empty-hint">Sin tracks.</div>'}`;
+  const addBtns = (!single && editable) ? `<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="abrirTrackPicker()">+ Agregar single existente</button>
+      <button class="btn btn-ghost" onclick="nuevaCancionEnRelease()">+ Nueva canción</button></div>` : '';
+  const intro = single ? 'Este release es un <b>single</b> (1 canción).'
+    : 'Tracklist del <b>' + s(l.type) + '</b>. Agrega canciones nuevas o <b>reusa singles ya lanzados</b> (se referencian por su ISRC; no se duplican, su historia queda en su release original).';
+  return `<div class="empty-hint" style="margin-bottom:12px">${intro}</div>${rows||'<div class="empty-hint">Sin tracks.</div>'}${addBtns}`;
+}
+// Releases que referencian un track (para mostrar "también en…" y para el picker)
+function releasesOfTrack(trackId){ return launches.filter(l => (l.tracklist||[]).some(r => r.trackId === trackId)); }
+// Agregar/quitar tracks del tracklist de un release (por referencia, sin duplicar)
+function addTrackToRelease(trackId){
+  if(!requireCan('editar_crm')) return;
+  const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
+  l.tracklist = l.tracklist || [];
+  if(l.tracklist.some(r => r.trackId === trackId)) return;
+  l.tracklist.push({ trackId, order: l.tracklist.length });
+  saveLaunches();
+  if(document.getElementById('modal-track-picker').classList.contains('open')) renderTrackPicker((document.getElementById('tp-search')||{}).value||'');
+  if(_releaseTab === 'tracklist') renderReleaseTab('tracklist');
+  uiToast('✓ Canción agregada al tracklist');
+}
+function removeTrackFromRelease(trackId){
+  if(!requireCan('editar_crm')) return;
+  const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
+  l.tracklist = (l.tracklist||[]).filter(r => r.trackId !== trackId).map((r,i)=>({ trackId:r.trackId, order:i }));
+  saveLaunches(); renderReleaseTab('tracklist'); uiToast('✓ Quitada del tracklist');
+}
+async function nuevaCancionEnRelease(){
+  if(!requireCan('editar_crm')) return;
+  const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
+  const title = (await uiPrompt('Título de la canción:', { title:'Nueva canción' }) || '').trim(); if(!title) return;
+  const tk = normalizeTrack({ id:'TRK-'+l.id+'-'+Date.now(), artistId:l.artistId, title });
+  tracks.push(tk); l.tracklist = l.tracklist || []; l.tracklist.push({ trackId:tk.id, order:l.tracklist.length });
+  saveTracks(); saveLaunches(); renderReleaseTab('tracklist'); uiToast('✓ Canción creada');
+}
+// ── Picker: reusar una canción existente del artista (single previo) ──
+function abrirTrackPicker(){ renderTrackPicker(''); document.getElementById('modal-track-picker').classList.add('open'); setTimeout(()=>{ const i=document.getElementById('tp-search'); if(i){ i.value=''; i.focus(); } },60); }
+function cerrarTrackPicker(e){ if(!e || e.target===document.getElementById('modal-track-picker')) document.getElementById('modal-track-picker').classList.remove('open'); }
+function renderTrackPicker(filter){
+  const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
+  const inThis = (l.tracklist||[]).reduce((m,r)=>(m[r.trackId]=1,m),{});
+  const f = (filter||'').toLowerCase();
+  const cands = tracks.filter(t => t.artistId === l.artistId && !inThis[t.id] && (!f || s(t.title).toLowerCase().includes(f) || s(t.isrc).toLowerCase().includes(f)));
+  const rows = cands.map(t => { const rels = releasesOfTrack(t.id).map(r=>s(r.name));
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` · ${s(t.version)}`:''}</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'—'}${rels.length?` · en: ${rels.join(', ')}`:''}</div></div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="addTrackToRelease('${t.id}')">Agregar</button>
+    </div>`; }).join('');
+  document.getElementById('tp-body').innerHTML = rows || `<div class="empty-hint">No hay otras canciones de este artista para agregar${f?' con ese filtro':''}.</div>`;
 }
 function releaseResumenHTML(l) {
   const rr = releaseReady(l), phase = releasePhase(l);
