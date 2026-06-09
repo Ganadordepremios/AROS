@@ -1900,6 +1900,9 @@ function normalizeLaunch(l) {
   l.notes = l.notes || '';
   l.assets = Array.isArray(l.assets) ? l.assets : [];   // [{id, tipo, url, label}]
   l.tasks  = Array.isArray(l.tasks)  ? l.tasks  : [];   // [{id, titulo, capability, estado, dueDate}]
+  // CRM (Sprint 4): finanzas
+  l.expenses = Array.isArray(l.expenses) ? l.expenses : []; // [{id, monto, categoria, proveedor, fecha, metodo, reciboLink, note}]
+  l.recoup = (l.recoup && typeof l.recoup === 'object') ? l.recoup : {}; // {ingresos, inversionTotal?}
   return l;
 }
 function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId); }
