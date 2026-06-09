@@ -1790,8 +1790,22 @@
       <div class="sub">Planea el timeline de tu campaña — del anuncio al siguiente lanzamiento.</div>
 
       <div class="wiz-field">
-        <label>Nombre del lanzamiento</label>
+        <label>Tipo de release</label>
+        <select class="input" id="wiz-type" onchange="wizTypeChange()">
+          <option value="single">Single (1 canción)</option>
+          <option value="ep">EP</option>
+          <option value="album">Álbum</option>
+        </select>
+      </div>
+
+      <div class="wiz-field">
+        <label id="wiz-name-label">Nombre del lanzamiento</label>
         <input class="input" id="wiz-name" placeholder="Ej. Kintsugi 2026" oninput="wizValidateStep1()">
+      </div>
+
+      <div class="wiz-field" id="wiz-tracks-field" style="display:none">
+        <label>Canciones del tracklist <span style="color:var(--text-dim);font-weight:400;font-size:11px">· una por línea</span></label>
+        <textarea class="textarea" id="wiz-tracks" placeholder="Canción 1&#10;Canción 2&#10;Canción 3"></textarea>
       </div>
 
       <div class="wiz-field">

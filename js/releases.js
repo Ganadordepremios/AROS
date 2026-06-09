@@ -651,8 +651,14 @@ function wizGetMix() {
   return [...document.querySelectorAll('#wiz-mix .chip.on')].map(c => c.textContent.trim().toLowerCase());
 }
 
+function wizTypeChange() {
+  const t = getVal('wiz-type') || 'single';
+  const f = document.getElementById('wiz-tracks-field'); if (f) f.style.display = (t === 'single') ? 'none' : '';
+  const lbl = document.getElementById('wiz-name-label'); if (lbl) lbl.textContent = (t === 'single') ? 'Nombre del lanzamiento / canción' : ('Nombre del proyecto (' + (t === 'ep' ? 'EP' : 'álbum') + ')');
+}
 function wizReset() {
   setVal('wiz-name',''); setVal('wiz-date','');
+  setVal('wiz-type','single'); setVal('wiz-tracks',''); wizTypeChange();
   wizSetDays(21,21);
   wizSetCover('c1');
   ['wiz-about','wiz-emotion','wiz-problem','wiz-conversation','wiz-message','wiz-keywords'].forEach(id => setVal(id,''));
@@ -664,6 +670,9 @@ function wizReset() {
 function wizPrefill(l) {
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
   setVal('wiz-name', l.name); setVal('wiz-date', l.date);
+  setVal('wiz-type', l.type || 'single');
+  setVal('wiz-tracks', (typeof tracksOfLaunch === 'function' ? tracksOfLaunch(l) : []).map(t => t.title).join('\n'));
+  wizTypeChange();
   wizSetDays(l.preDays ?? 21, l.postDays ?? 21);
   wizSetCover(l.cover);
   setVal('wiz-about', d.about); setVal('wiz-emotion', d.emotion); setVal('wiz-problem', d.problem);
@@ -681,6 +690,9 @@ function wizCollect() {
     id: editingId || ('L-' + Date.now()),
     artistId: existing ? existing.artistId : currentArtistId,
     name: getVal('wiz-name').trim() || 'Nuevo Lanzamiento',
+    type: getVal('wiz-type') || 'single',
+    tracklist: existing ? (existing.tracklist || []) : [],
+    releaseChecklist: existing ? existing.releaseChecklist : undefined,
     date: getVal('wiz-date'),
     cover: wizGetCover(),
     status: existing ? existing.status : 'planning',
@@ -724,8 +736,32 @@ function wizRender() {
 function wizNext() { if (wizStepN < 4) { wizStepN++; wizRender(); } else { wizFinish(); } }
 function wizPrev() { if (wizStepN > 1) { wizStepN--; wizRender(); } }
 
+// Crea/actualiza los tracks del release a partir del wizard (single = 1; EP/álbum = textarea)
+function syncTracklistFromWizard(l) {
+  const type = l.type || 'single';
+  if (type === 'single') {
+    const tid = (l.tracklist && l.tracklist[0] && l.tracklist[0].trackId) || ('TRK-' + l.id);
+    let tk = tracks.find(t => t.id === tid);
+    if (!tk) { tk = normalizeTrack({ id: tid, artistId: l.artistId, title: l.name }); tracks.push(tk); }
+    else if (!tk.title) { tk.title = l.name; }
+    l.tracklist = [{ trackId: tid, order: 0 }];
+  } else {
+    const titles = (getVal('wiz-tracks') || '').split('\n').map(x => x.trim()).filter(Boolean);
+    const existing = (l.tracklist || []).map(ref => tracks.find(t => t.id === ref.trackId)).filter(Boolean);
+    const list = [];
+    titles.forEach((title, i) => {
+      let tk = existing.find(t => (t.title || '').toLowerCase() === title.toLowerCase());
+      if (!tk) { tk = normalizeTrack({ id: 'TRK-' + l.id + '-' + Date.now() + '-' + i, artistId: l.artistId, title }); tracks.push(tk); }
+      else { tk.title = title; }
+      list.push({ trackId: tk.id, order: i });
+    });
+    if (!list.length) { const tid = 'TRK-' + l.id; if (!tracks.find(t => t.id === tid)) tracks.push(normalizeTrack({ id: tid, artistId: l.artistId, title: l.name })); list.push({ trackId: tid, order: 0 }); }
+    l.tracklist = list;
+  }
+}
 async function wizFinish() {
   const data = wizCollect();
+  syncTracklistFromWizard(data); // arma tracklist + tracks según tipo
   const wasEditing = editingId;
   if (wasEditing) {
     const i = launches.findIndex(x => x.id === wasEditing);
@@ -745,7 +781,7 @@ async function wizFinish() {
     }
     launches.push(data);
   }
-  saveLaunches();
+  saveLaunches(); saveTracks();
   renderAllLaunches();
   cerrarWizard();
   // si editaba el lanzamiento abierto, vuelve a su detalle actualizado
