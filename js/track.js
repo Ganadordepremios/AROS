@@ -53,6 +53,7 @@ function trackChecklistHTML(t) {
       ${tpls.map(tp => `<option value="${tp.id}">${s(tp.name)}</option>`).join('')}
     </select>
     ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate()">💾 Guardar como plantilla…</button>` : ''}
+    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel()">📋 Gestionar</button>
     <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
   </div>`;
   const groups = CHECKLIST_GROUP_ORDER.filter(g => def[g] && def[g].length).map(g => `
@@ -110,6 +111,42 @@ async function saveChecklistAsTemplate() {
   if (existing) existing.def = def; else tpls.push({ id: 'tpl-' + Date.now(), name, def });
   setChecklistTemplates(tpls);
   renderTrackTab('checklist'); uiToast('✓ Plantilla guardada · disponible para tu equipo');
+}
+// ── Panel de gestión de plantillas (aplicar · duplicar · renombrar · eliminar) ──
+function abrirTemplatesPanel() { renderTemplatesPanel(); document.getElementById('modal-templates').classList.add('open'); }
+function cerrarTemplates(e) { if (!e || e.target === document.getElementById('modal-templates')) document.getElementById('modal-templates').classList.remove('open'); }
+function _tplItemCount(def) { return Object.keys(def || {}).reduce((a, g) => a + ((def[g] || []).length), 0); }
+function renderTemplatesPanel() {
+  const tpls = getChecklistTemplates();
+  const hasTrack = !!curTrack();
+  const rows = tpls.map(tp => `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <div style="flex:1;min-width:140px"><div style="font-size:13px;font-weight:600">${s(tp.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${_tplItemCount(tp.def)} ítems</div></div>
+      ${hasTrack ? `<button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="aplicarTemplateDesdePanel('${tp.id}')">Aplicar</button>` : ''}
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="dupTemplate('${tp.id}')">Duplicar</button>
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="renameTemplate('${tp.id}')">Renombrar</button>
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px;color:var(--accent2);border-color:rgba(255,77,77,.3)" onclick="deleteTemplate('${tp.id}')">Eliminar</button>
+    </div>`).join('');
+  document.getElementById('templates-body').innerHTML = `
+    <div class="empty-hint" style="margin-bottom:14px">Flujos de checklist reutilizables de tu equipo. Crea uno nuevo desde el checklist de un track con <b style="color:var(--text-muted)">"Guardar como plantilla"</b>.</div>
+    ${rows || '<div class="empty-hint">Aún no hay plantillas guardadas.</div>'}`;
+}
+function aplicarTemplateDesdePanel(id) { applyChecklistTemplate(id); cerrarTemplates(); }
+async function dupTemplate(id) {
+  if (!requireCan('editar_crm')) return;
+  const tpls = getChecklistTemplates(); const tp = tpls.find(x => x.id === id); if (!tp) return;
+  const name = (await uiPrompt('Nombre de la copia:', { title: 'Duplicar plantilla', def: tp.name + ' (copia)' }) || '').trim(); if (!name) return;
+  tpls.push({ id: 'tpl-' + Date.now(), name, def: cloneDef(tp.def) }); setChecklistTemplates(tpls); renderTemplatesPanel(); uiToast('✓ Plantilla duplicada');
+}
+async function renameTemplate(id) {
+  if (!requireCan('editar_crm')) return;
+  const tpls = getChecklistTemplates(); const tp = tpls.find(x => x.id === id); if (!tp) return;
+  const name = (await uiPrompt('Nuevo nombre:', { title: 'Renombrar plantilla', def: tp.name }) || '').trim(); if (!name) return;
+  tp.name = name; setChecklistTemplates(tpls); renderTemplatesPanel();
+}
+async function deleteTemplate(id) {
+  if (!requireCan('editar_crm')) return;
+  if (!await uiConfirm('¿Eliminar esta plantilla? No afecta los checklists ya aplicados.', { danger: true, okText: 'Eliminar' })) return;
+  setChecklistTemplates(getChecklistTemplates().filter(x => x.id !== id)); renderTemplatesPanel(); uiToast('✓ Plantilla eliminada');
 }
 
 // ── Audio ──
