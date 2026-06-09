@@ -1168,18 +1168,33 @@ function renderLabel() {
   perf.sort((x, y) => (x.p.rank - y.p.rank) || ((x.p.avg == null ? 999 : x.p.avg) - (y.p.avg == null ? 999 : y.p.avg)));
   const need = perf.filter(x => x.p.rank === 0).length;
   const onTrack = perf.filter(x => x.p.rank === 3).length;
-  const card = (label, val, sub) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
-  statsHost.innerHTML = card('Artistas', artists.length, '') + card('Necesitan atención', need, need ? '🔴 priorízalos' : 'todo en orden') + card('Cumpliendo metas', onTrack, '🟢');
+  const proximos = upcomingReleases(30).length;
+  const legalPend = artists.reduce((a, ar) => a + artistLegalPending(ar.id), 0);
+  const fin = artists.reduce((acc, ar) => { const f = artistFinance(ar.id); acc.inv += f.inv; acc.ing += f.ing; return acc; }, { inv: 0, ing: 0 });
+  const card = (label, val, sub, col) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="${col ? `color:${col}` : ''}">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
+  statsHost.innerHTML =
+    card('Artistas', artists.length, '') +
+    card('Necesitan atención', need, need ? 'priorízalos' : 'todo en orden', need ? 'var(--accent2)' : '') +
+    card('Próximos a salir', proximos, '≤ 30 días') +
+    card('Legal pendiente', legalPend, legalPend ? 'requiere acción' : 'al día', legalPend ? 'var(--beat)' : '') +
+    card('Recoupment', fin.inv ? Math.min(100, Math.round(fin.ing / fin.inv * 100)) + '%' : '—', `inv ${money(fin.inv)} · ing ${money(fin.ing)}`);
   listHost.innerHTML = perf.map(({ art, p }) => {
-    const col = p.rank === 0 ? 'var(--accent2)' : p.rank === 1 ? 'var(--beat)' : p.rank === 3 ? '#4ade80' : 'var(--text-dim)';
+    const col = rankColor(p.rank);
     const launchInfo = p.latest ? `${s(p.latest.name)} · ${(STATUS_MAP[p.latest.status] || {}).tag || p.latest.status}` : 'sin lanzamientos';
     const cierre = p.end ? `${p.end}${p.dleft != null ? ` (${p.dleft >= 0 ? 'en ' + p.dleft + 'd' : Math.abs(p.dleft) + 'd atrás'})` : ''}` : '—';
     const bar = p.avg != null ? `<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:180px;margin-top:6px"><div style="height:100%;width:${Math.min(100, p.avg)}%;background:${col}"></div></div>` : '';
-    return `<div onclick="setActiveArtist('${art.id}');showPage('objetivos')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    const alerts = artistAlertCount(art.id), legal = artistLegalPending(art.id), next = nextRelease(art.id);
+    const chips = [
+      alerts ? `<span class="chip" style="cursor:default;color:var(--accent2)">${alerts} alerta${alerts > 1 ? 's' : ''}</span>` : '',
+      legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
+      next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
+    ].filter(Boolean).join(' ');
+    return `<div onclick="setActiveArtist('${art.id}');showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
-      <div style="flex:1;min-width:160px">
-        <div style="font-size:15px;font-weight:600">${p.sig} ${s(art.name)}</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 9)} ${s(art.name)}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
+        ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>` : ''}
         ${bar}
       </div>
       <div style="text-align:right">
@@ -2125,7 +2140,14 @@ function renderDashboard() {
       <div class="stat-value">${next7.length}</div>
       <div class="stat-trend" style="color:#a78bfa">esta semana · ${upcoming.length} próximos en total</div>
       <div class="stat-sub">${ideasCount} ideas seleccionadas · ${allCal.length} piezas en calendario</div>
-    </div>`;
+    </div>
+    ${(function(){ if(!art) return ''; const f=artistFinance(art.id), legal=artistLegalPending(art.id), alerts=artistAlertCount(art.id), rec=f.inv?Math.min(100,Math.round(f.ing/f.inv*100)):null;
+      return `<div class="stat-card">
+      <div class="stat-label">CRM del artista</div>
+      <div class="stat-value">${rec!=null?rec+'%':'—'}<span style="font-size:13px;color:var(--text-muted)"> recoup</span></div>
+      <div class="stat-trend" style="color:${f.roi!=null&&f.roi>=0?'#4ade80':'var(--accent2)'}">${f.roi!=null?'ROI '+f.roi+'%':'sin inversión'} · inv ${money(f.inv)}</div>
+      <div class="stat-sub">${alerts?alerts+' alerta'+(alerts>1?'s':'')+' · ':''}${legal?legal+' legal pend.':'legal al día'}</div>
+    </div>`; })()}`;
 
   // próximo contenido (lista)
   const dueSoon = upcoming.filter(ci => diasRestantes(ci.fecha) <= 2 && (ci.production && ci.production.estado) !== 'publicado');
