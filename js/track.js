@@ -178,8 +178,29 @@ function trackLabelCopyHTML(t) {
     ${f('Editorial (publisher)', 'publishing.publisher', (t.publishing || {}).publisher)}
     ${f('Sociedad de gestión (PRO)', 'publishing.pro', (t.publishing || {}).pro)}
     <div class="field"><label>Notas</label><textarea class="textarea" onchange="setTrackField('labelCopy.notes',this.value,'editar_labelcopy')">${s(lc.notes)}</textarea></div>
+  </div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">🎤</span><span class="ph-title">Créditos</span></div>
+    ${trackListField(t, 'credits.featured',  [['name','Artista feat.'],['role','Rol']],     'Artistas invitados (feat.)', 'feat')}
+    ${trackListField(t, 'credits.producers', [['name','Productor'],['contact','Contacto']],  'Productores',                'productor')}
+    ${trackListField(t, 'credits.composers', [['name','Compositor'],['split','% comp.']],    'Compositores (split %)',     'compositor')}
+    ${trackListField(t, 'credits.writers',   [['name','Letrista'],['split','% letra']],      'Letristas (split %)',        'letrista')}
+  </div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">📇</span><span class="ph-title">Contactos</span></div>
+    ${trackListField(t, 'labelCopy.contacts', [['name','Nombre'],['role','Rol'],['email','Email']], 'Contactos del release', 'contacto')}
   </div>`;
 }
+// Editor genérico de listas de objetos en el track (créditos/contactos)
+function trackListField(t, path, fields, label, addLabel) {
+  const arr = getPath(t, path) || [];
+  const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      ${fields.map(([fk, fl]) => `<input class="input" style="flex:1;min-width:0;padding:5px 8px;font-size:12px" placeholder="${fl}" value="${s(item[fk])}" onchange="setTrackListItem('${path}',${i},'${fk}',this.value)">`).join('')}
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">✕</button>
+    </div>`).join('');
+  return `<div class="field" style="margin-bottom:16px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
+}
+function setTrackListItem(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); } }
+function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); let arr = getPath(t, path); if (!Array.isArray(arr)) { setPath(t, path, []); arr = getPath(t, path); } arr.push({}); saveTracks(); renderTrackTab('labelcopy'); }
+function removeTrackListItem(path, i) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; arr.splice(i, 1); saveTracks(); renderTrackTab('labelcopy'); }
 
 // ── Legal (por canción) ──
 function trackLegalHTML(t) {
