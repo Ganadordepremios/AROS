@@ -489,15 +489,15 @@ function renderTeamModal() {
       </select>` : ''}
     </div>`).join('') : `<div class="empty-hint">${artists.length ? '' : 'No hay artistas en este equipo.'}</div>`;
   body.innerHTML = `
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🏷</span><span class="ph-title">Tus equipos (${_teams.length})</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Tus equipos (${_teams.length})</span></div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">${teamsList}</div>
     <button class="btn btn-ghost" style="margin-bottom:18px;font-size:12px" onclick="createTeam()">+ Crear equipo nuevo</button>
     <div class="field" style="margin-bottom:16px"><label>Nombre del equipo activo</label>
       <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}" ${canEditName?'':'disabled'}>${canEditName?'<button class="btn btn-ghost" onclick="renameTeam()">Guardar</button>':''}</div>
     </div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🎤</span><span class="ph-title">Artistas de ${s(_teamName)} (${artists.length})</span><span class="ph-sub">asigna a otro equipo</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">Artistas de ${s(_teamName)} (${artists.length})</span><span class="ph-sub">asigna a otro equipo</span></div>
     <div style="margin-bottom:18px">${assignList}</div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">👥</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
     <div style="margin-bottom:18px">${_teamMembers.map(m => {
       const mine = m.user_id === (_user && _user.id);
       const roleCtl = (isOwner() && !mine)
@@ -509,8 +509,8 @@ function renderTeamModal() {
         : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(m.role)}</span>`;
       const artistCtl = isOwner()
         ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
-             <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">🎤</label>`
-        : (m.is_artist ? '<span style="font-size:10px;color:var(--accent)" title="Artista del equipo">🎤</span>' : '');
+             <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">${icon('mic',13)}</label>`
+        : (m.is_artist ? `<span style="font-size:10px;color:var(--accent)" title="Artista del equipo">${icon('mic',13)}</span>` : '');
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(m.email||'?').slice(0,1)}</div>
         <span style="flex:1;font-size:13px">${s(m.email)||m.user_id}${mine?' <span style="color:var(--text-dim)">(tú)</span>':''}</span>
@@ -518,8 +518,8 @@ function renderTeamModal() {
         ${roleCtl}
       </div>`;
     }).join('')}</div>
-    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve · 🎤 = el artista (puede editar Perfil/ADN).</div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">✉</span><span class="ph-title">Invitar al equipo</span></div>
+    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve · ${icon('mic',12)} = el artista (puede editar Perfil/ADN).</div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('invite',18)}</span><span class="ph-title">Invitar al equipo</span></div>
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace y compártelo por correo o WhatsApp. Quien lo abra e inicie sesión se unirá a tu equipo.</div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
     <div id="team-invite" style="margin-top:12px"></div>
@@ -542,7 +542,7 @@ async function createInvite() {
   const sb = await getSb(); if (!sb || !_teamId) return;
   const tok = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('inv-' + Date.now() + Math.random().toString(36).slice(2));
   const r = await sb.from('invites').insert({ token: tok, team_id: _teamId });
-  if (r.error) { document.getElementById('team-invite').innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(r.error.message)}</div>`; return; }
+  if (r.error) { document.getElementById('team-invite').innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(r.error.message)}</div>`; return; }
   const link = `${location.origin}${location.pathname}?invite=${tok}`;
   document.getElementById('team-invite').innerHTML = `
     <div style="display:flex;gap:8px">
@@ -609,13 +609,13 @@ function renderCuenta() {
   const body = document.getElementById('account-body');
   body.innerHTML = `
     <div class="field" style="margin-bottom:18px"><label>Correo</label><input class="input" value="${s(_user ? _user.email : '')}" readonly></div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🔑</span><span class="ph-title">Cambiar contraseña</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('key',18)}</span><span class="ph-title">Cambiar contraseña</span></div>
     <div class="field" style="margin-bottom:10px"><input class="input" id="acc-pass" type="password" placeholder="Nueva contraseña (mín. 6)"></div>
     <button class="btn btn-primary" onclick="cambiarPassword()">Actualizar contraseña</button>
     <div id="acc-status" style="font-family:var(--font-mono);font-size:11px;margin-top:10px;min-height:14px;color:var(--text-muted)"></div>
 
     <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px"></div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">💾</span><span class="ph-title">Respaldo de datos</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('save',18)}</span><span class="ph-title">Respaldo de datos</span></div>
     <div class="empty-hint" style="margin-bottom:12px">Exporta una copia (.json) de tus artistas y lanzamientos, o restaura desde un archivo. La API key no se incluye por seguridad.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="exportarDatos()">⤓ Exportar backup (.json)</button>
@@ -709,7 +709,7 @@ async function adminTab(name, el) {
     else if (name === 'descuentos') await renderAdminDescuentos();
     else if (name === 'admins') await renderAdminSupers();
   } catch (e) {
-    body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)}<br><span style="font-size:10px">¿Corriste <b>admin_backend.sql</b> en Supabase?</span></div>`;
+    body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)}<br><span style="font-size:10px">¿Corriste <b>admin_backend.sql</b> en Supabase?</span></div>`;
   }
 }
 
@@ -761,18 +761,18 @@ async function adminResetCounters(tid) { if (await uiConfirm('¿Resetear contado
 async function adminEditMembers(tid, name) {
   const body = document.getElementById('admin-body'); body.innerHTML = '<div class="empty-hint">Cargando miembros…</div>';
   const sb = await getSb(); const r = await sb.rpc('admin_team_members', { tid });
-  if (r.error) { body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(r.error.message)}</div>`; return; }
+  if (r.error) { body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(r.error.message)}</div>`; return; }
   const rows = (r.data || []).map(m => {
     const roleSel = ['owner', 'editor', 'lector'].map(x => `<option value="${x}" ${m.role === x ? 'selected' : ''}>${x}</option>`).join('');
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="flex:1;font-size:13px">${s(m.email) || m.user_id}</span>
       <label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist ? 'var(--accent)' : 'var(--text-dim)'};cursor:pointer">
-        <input type="checkbox" ${m.is_artist ? 'checked' : ''} onchange="adminSetArtist('${tid}','${m.user_id}',this.checked,'${s(name)}')">🎤</label>
+        <input type="checkbox" ${m.is_artist ? 'checked' : ''} onchange="adminSetArtist('${tid}','${m.user_id}',this.checked,'${s(name)}')">${icon('mic',13)}</label>
       <select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="adminSetMemberRole('${tid}','${m.user_id}',this.value,'${s(name)}')">${roleSel}</select>
     </div>`;
   }).join('');
   body.innerHTML = `<button class="btn btn-ghost" style="margin-bottom:12px;font-size:12px" onclick="adminTab('cuentas')">← Volver a cuentas</button>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">👥</span><span class="ph-title">Miembros de ${s(name)}</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Miembros de ${s(name)}</span></div>
     <div>${rows || '<div class="empty-hint">Sin miembros.</div>'}</div>`;
 }
 async function adminSetMemberRole(tid, uid, role, name) { if (await adminRpc('admin_set_member_role', { tid, uid, new_role: role })) adminEditMembers(tid, name); }
@@ -794,13 +794,13 @@ async function renderAdminUso() {
     <span style="font-family:var(--font-mono);color:var(--accent)">${_money(u.cost, 4)}</span></div>`).join('');
   const totCost = (d.by_model || []).reduce((a, m) => a + (+m.cost || 0), 0);
   document.getElementById('admin-body').innerHTML = `
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">⚡</span><span class="ph-title">Consumo de IA (últimos 30 días)</span><span class="ph-sub">total ${_money(totCost, 4)}</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('zap',18)}</span><span class="ph-title">Consumo de IA (últimos 30 días)</span><span class="ph-sub">total ${_money(totCost, 4)}</span></div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:18px">
       <thead><tr style="text-align:left;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
         <th style="padding:6px 8px">Modelo</th><th style="padding:6px 8px;text-align:right">Llamadas</th><th style="padding:6px 8px;text-align:right">Tokens in/out</th><th style="padding:6px 8px;text-align:right">Costo</th></tr></thead>
       <tbody>${byModel || '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin uso registrado todavía.</td></tr>'}</tbody>
     </table>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">🕑</span><span class="ph-title">Últimas llamadas</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('clock',18)}</span><span class="ph-title">Últimas llamadas</span></div>
     <div>${recent || '<div class="empty-hint">Sin llamadas registradas.</div>'}</div>`;
 }
 
@@ -815,8 +815,8 @@ function renderAdminKeys() {
   document.getElementById('admin-body').innerHTML = `
     <div class="empty-hint" style="margin-bottom:14px">Inventario de APIs/keys del app. Solo tú (super-admin) ves esto. La key de Anthropic es un <b style="color:var(--text-muted)">secreto del servidor</b> y nunca se expone en el navegador.</div>
     ${row('Supabase · Project URL', s(c.url), 'pública')}
-    ${row('Supabase · anon key', '<span style="color:#4ade80">configurada ✓</span> ' + (c.key ? '<span style="color:var(--text-dim)">…' + s(c.key.slice(-6)) + '</span>' : '<span style="color:var(--accent2)">falta</span>'), 'pública por diseño (la protege RLS + Auth)')}
-    ${row('Anthropic · API key', '<span style="color:#4ade80">secreto en servidor ✓</span> <span style="color:var(--text-dim)">•••• (Edge Function)</span>', 'No accesible desde el cliente. Editar: Supabase → Edge Functions → Secrets → ANTHROPIC_API_KEY')}
+    ${row('Supabase · anon key', '<span style="color:#4ade80">configurada '+icon('check',11)+'</span> ' + (c.key ? '<span style="color:var(--text-dim)">…' + s(c.key.slice(-6)) + '</span>' : '<span style="color:var(--accent2)">falta</span>'), 'pública por diseño (la protege RLS + Auth)')}
+    ${row('Anthropic · API key', '<span style="color:#4ade80">secreto en servidor '+icon('check',11)+'</span> <span style="color:var(--text-dim)">•••• (Edge Function)</span>', 'No accesible desde el cliente. Editar: Supabase → Edge Functions → Secrets → ANTHROPIC_API_KEY')}
     ${row('Edge Function · claude', '<span style="color:#4ade80">desplegada</span>', 'Proxy seguro a Anthropic (verify_jwt on). Inserta uso en ai_usage.')}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" style="font-size:12px" onclick="adminTab('uso',document.querySelector('[data-atab=uso]'))">Ver uso de IA →</button>
@@ -838,12 +838,12 @@ async function renderAdminDescuentos() {
         <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${dc.plan ? 'plan ' + s(dc.plan) : 'cualquier plan'} · usos ${uses} · ${exp}${dc.note ? ' · ' + s(dc.note) : ''}</div>
       </div>
       <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="adminToggleDiscount('${s(dc.code)}',${!dc.active})">${dc.active ? 'Desactivar' : 'Activar'}</button>
-      <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminDeleteDiscount('${s(dc.code)}')">✕</button>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminDeleteDiscount('${s(dc.code)}')">${icon('close',12)}</button>
     </div>`;
   }).join('');
   document.getElementById('admin-body').innerHTML = `
     <div class="panel" style="margin-bottom:16px">
-      <div class="panel-head" style="margin-bottom:10px"><span class="ph-icon">🏷</span><span class="ph-title">Nuevo código</span></div>
+      <div class="panel-head" style="margin-bottom:10px"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Nuevo código</span></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">
         <div class="field"><label>Código</label><input class="input" id="dc-code" placeholder="LANZA20" style="text-transform:uppercase"></div>
         <div class="field"><label>Tipo</label><select class="input" id="dc-kind"><option value="percent">% descuento</option><option value="fixed">monto fijo</option></select></div>
@@ -855,7 +855,7 @@ async function renderAdminDescuentos() {
       </div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="adminCreateDiscount()">Crear código</button>
     </div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">📋</span><span class="ph-title">Códigos (${(r.data || []).length})</span></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Códigos (${(r.data || []).length})</span></div>
     <div style="display:flex;flex-direction:column;gap:8px">${list || '<div class="empty-hint">Aún no hay códigos.</div>'}</div>`;
 }
 async function adminCreateDiscount() {
@@ -893,7 +893,7 @@ async function renderAdminSupers() {
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="flex:1;font-size:13px">${s(a.email)}${mine ? ' <span style="color:var(--text-dim)">(tú)</span>' : ''}</span>
       <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${_fdate(a.added_at)}</span>
-      ${mine ? '' : `<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminRemoveSuper('${s(a.email)}')">✕</button>`}
+      ${mine ? '' : `<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminRemoveSuper('${s(a.email)}')">${icon('close',12)}</button>`}
     </div>`;
   }).join('');
   document.getElementById('admin-body').innerHTML = `
@@ -923,7 +923,7 @@ function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem('ao_theme', t);
   const b = document.getElementById('theme-toggle');
-  if (b) b.textContent = t === 'light' ? '☀️' : '🌙';
+  if (b) b.innerHTML = icon(t === 'light' ? 'sun' : 'moon', 15);
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';

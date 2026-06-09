@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+hydrateIcons();   // íconos SVG declarados en el HTML estático (nav, modales, paneles)
 applyTheme(localStorage.getItem('ao_theme') || 'dark');
 renderSidebarArtist();
 renderAllLaunches();

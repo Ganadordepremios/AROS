@@ -113,7 +113,17 @@
   }
   .nav-item:hover { color: var(--text); background: var(--surface2); }
   .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(255,107,48,0.04); }
-  .nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
+  .nav-item .icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; }
+  /* — Sistema de íconos SVG inline — */
+  .ico { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
+  [data-icon] { display: inline-flex; align-items: center; }
+  .panel-head .ph-icon .ico, .boxdrop-title .ico { vertical-align: -0.22em; }
+  /* puntos de estado (rojo / amarillo / verde) */
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; vertical-align: 0; }
+  .dot--green { background: #4ade80; }
+  .dot--yellow { background: #fbbf24; }
+  .dot--red { background: #ff4d4d; }
+  .dot--gray { background: var(--text-dim); }
   .nav-item .badge {
     margin-left: auto;
     background: var(--accent2);
@@ -270,7 +280,7 @@
     gap: 10px;
     margin-bottom: 16px;
   }
-  .panel-head .ph-icon { font-size: 16px; }
+  .panel-head .ph-icon { font-size: 16px; display: inline-flex; align-items: center; color: var(--accent); }
   .panel-head .ph-title {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -1353,57 +1363,57 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
-  <div class="logo"><svg class="logo-mark" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><path d="M22 86 L37 22 L63 22 L78 86 Z" style="stroke:var(--accent)" stroke-width="5" stroke-linejoin="round"></path><g transform="rotate(8 50 80)"><line x1="50" y1="80" x2="50" y2="8" style="stroke:var(--accent)" stroke-width="5" stroke-linecap="round"></line><rect x="42" y="43.6" width="16" height="6.8" rx="1.4" style="fill:var(--accent)"></rect><circle cx="50" cy="8" r="4.6" style="fill:var(--accent)"></circle></g></svg><svg class="logo-word" aria-label="Tempo OS" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 302 74" fill="none"><path transform="translate(2,72)" fill="currentColor" d="M12.70 0L12.70-60L1.20-60L1.20-70L35.20-70L35.20-60L23.70-60L23.70 0L12.70 0ZM40.50 0L40.50-70L70.50-70L70.50-60L51.50-60L51.50-41.50L66.60-41.50L66.60-31.50L51.50-31.50L51.50-10L70.50-10L70.50 0L40.50 0ZM76.80 0L76.80-70L92.50-70L99.50-19.90L99.70-19.90L106.70-70L122.40-70L122.40 0L112 0L112-53L111.80-53L103.80 0L94.60 0L86.60-53L86.40-53L86.40 0L76.80 0ZM130.60 0L130.60-70L146.80-70Q155-70 159.10-65.60Q163.20-61.20 163.20-52.70L163.20-52.70L163.20-45.80Q163.20-37.30 159.10-32.90Q155-28.50 146.80-28.50L146.80-28.50L141.60-28.50L141.60 0L130.60 0ZM141.60-38.50L146.80-38.50Q149.50-38.50 150.85-40Q152.20-41.50 152.20-45.10L152.20-45.10L152.20-53.40Q152.20-57 150.85-58.50Q149.50-60 146.80-60L146.80-60L141.60-60L141.60-38.50ZM185.10 1Q177 1 172.70-3.60Q168.40-8.20 168.40-16.60L168.40-16.60L168.40-53.40Q168.40-61.80 172.70-66.40Q177-71 185.10-71L185.10-71Q193.20-71 197.50-66.40Q201.80-61.80 201.80-53.40L201.80-53.40L201.80-16.60Q201.80-8.20 197.50-3.60Q193.20 1 185.10 1L185.10 1ZM185.10-9Q190.80-9 190.80-15.90L190.80-15.90L190.80-54.10Q190.80-61 185.10-61L185.10-61Q179.40-61 179.40-54.10L179.40-54.10L179.40-15.90Q179.40-9 185.10-9L185.10-9Z"></path><path transform="translate(223.1,72)" style="fill:var(--accent)" d="M20 1Q11.90 1 7.60-3.60Q3.30-8.20 3.30-16.60L3.30-16.60L3.30-53.40Q3.30-61.80 7.60-66.40Q11.90-71 20-71L20-71Q28.10-71 32.40-66.40Q36.70-61.80 36.70-53.40L36.70-53.40L36.70-16.60Q36.70-8.20 32.40-3.60Q28.10 1 20 1L20 1ZM20-9Q25.70-9 25.70-15.90L25.70-15.90L25.70-54.10Q25.70-61 20-61L20-61Q14.30-61 14.30-54.10L14.30-54.10L14.30-15.90Q14.30-9 20-9L20-9ZM58.40 1Q50.40 1 46.30-3.55Q42.20-8.10 42.20-16.60L42.20-16.60L42.20-20.60L52.60-20.60L52.60-15.80Q52.60-9 58.30-9L58.30-9Q61.10-9 62.55-10.65Q64-12.30 64-16L64-16Q64-20.40 62-23.75Q60-27.10 54.60-31.80L54.60-31.80Q47.80-37.80 45.10-42.65Q42.40-47.50 42.40-53.60L42.40-53.60Q42.40-61.90 46.60-66.45Q50.80-71 58.80-71L58.80-71Q66.70-71 70.75-66.45Q74.80-61.90 74.80-53.40L74.80-53.40L74.80-50.50L64.40-50.50L64.40-54.10Q64.40-57.70 63-59.35Q61.60-61 58.90-61L58.90-61Q53.40-61 53.40-54.30L53.40-54.30Q53.40-50.50 55.45-47.20Q57.50-43.90 62.90-39.20L62.90-39.20Q69.80-33.20 72.40-28.30Q75-23.40 75-16.80L75-16.80Q75-8.20 70.75-3.60Q66.50 1 58.40 1L58.40 1Z"></path></svg><span>Sistema operativo musical · v0.21.0&#8209;alpha</span></div>
+  <div class="logo"><svg class="logo-mark" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><path d="M22 86 L37 22 L63 22 L78 86 Z" style="stroke:var(--accent)" stroke-width="5" stroke-linejoin="round"></path><g transform="rotate(8 50 80)"><line x1="50" y1="80" x2="50" y2="8" style="stroke:var(--accent)" stroke-width="5" stroke-linecap="round"></line><rect x="42" y="43.6" width="16" height="6.8" rx="1.4" style="fill:var(--accent)"></rect><circle cx="50" cy="8" r="4.6" style="fill:var(--accent)"></circle></g></svg><svg class="logo-word" aria-label="Tempo OS" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 302 74" fill="none"><path transform="translate(2,72)" fill="currentColor" d="M12.70 0L12.70-60L1.20-60L1.20-70L35.20-70L35.20-60L23.70-60L23.70 0L12.70 0ZM40.50 0L40.50-70L70.50-70L70.50-60L51.50-60L51.50-41.50L66.60-41.50L66.60-31.50L51.50-31.50L51.50-10L70.50-10L70.50 0L40.50 0ZM76.80 0L76.80-70L92.50-70L99.50-19.90L99.70-19.90L106.70-70L122.40-70L122.40 0L112 0L112-53L111.80-53L103.80 0L94.60 0L86.60-53L86.40-53L86.40 0L76.80 0ZM130.60 0L130.60-70L146.80-70Q155-70 159.10-65.60Q163.20-61.20 163.20-52.70L163.20-52.70L163.20-45.80Q163.20-37.30 159.10-32.90Q155-28.50 146.80-28.50L146.80-28.50L141.60-28.50L141.60 0L130.60 0ZM141.60-38.50L146.80-38.50Q149.50-38.50 150.85-40Q152.20-41.50 152.20-45.10L152.20-45.10L152.20-53.40Q152.20-57 150.85-58.50Q149.50-60 146.80-60L146.80-60L141.60-60L141.60-38.50ZM185.10 1Q177 1 172.70-3.60Q168.40-8.20 168.40-16.60L168.40-16.60L168.40-53.40Q168.40-61.80 172.70-66.40Q177-71 185.10-71L185.10-71Q193.20-71 197.50-66.40Q201.80-61.80 201.80-53.40L201.80-53.40L201.80-16.60Q201.80-8.20 197.50-3.60Q193.20 1 185.10 1L185.10 1ZM185.10-9Q190.80-9 190.80-15.90L190.80-15.90L190.80-54.10Q190.80-61 185.10-61L185.10-61Q179.40-61 179.40-54.10L179.40-54.10L179.40-15.90Q179.40-9 185.10-9L185.10-9Z"></path><path transform="translate(223.1,72)" style="fill:var(--accent)" d="M20 1Q11.90 1 7.60-3.60Q3.30-8.20 3.30-16.60L3.30-16.60L3.30-53.40Q3.30-61.80 7.60-66.40Q11.90-71 20-71L20-71Q28.10-71 32.40-66.40Q36.70-61.80 36.70-53.40L36.70-53.40L36.70-16.60Q36.70-8.20 32.40-3.60Q28.10 1 20 1L20 1ZM20-9Q25.70-9 25.70-15.90L25.70-15.90L25.70-54.10Q25.70-61 20-61L20-61Q14.30-61 14.30-54.10L14.30-54.10L14.30-15.90Q14.30-9 20-9L20-9ZM58.40 1Q50.40 1 46.30-3.55Q42.20-8.10 42.20-16.60L42.20-16.60L42.20-20.60L52.60-20.60L52.60-15.80Q52.60-9 58.30-9L58.30-9Q61.10-9 62.55-10.65Q64-12.30 64-16L64-16Q64-20.40 62-23.75Q60-27.10 54.60-31.80L54.60-31.80Q47.80-37.80 45.10-42.65Q42.40-47.50 42.40-53.60L42.40-53.60Q42.40-61.90 46.60-66.45Q50.80-71 58.80-71L58.80-71Q66.70-71 70.75-66.45Q74.80-61.90 74.80-53.40L74.80-53.40L74.80-50.50L64.40-50.50L64.40-54.10Q64.40-57.70 63-59.35Q61.60-61 58.90-61L58.90-61Q53.40-61 53.40-54.30L53.40-54.30Q53.40-50.50 55.45-47.20Q57.50-43.90 62.90-39.20L62.90-39.20Q69.80-33.20 72.40-28.30Q75-23.40 75-16.80L75-16.80Q75-8.20 70.75-3.60Q66.50 1 58.40 1L58.40 1Z"></path></svg><span>Sistema operativo musical · v0.22.0&#8209;alpha</span></div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
     <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
-      <span class="icon">◈</span> Dashboard
+      <span class="icon" data-icon="dashboard" data-isize="17"></span> Dashboard
     </div>
     <div class="nav-item" data-page="lanzamientos" onclick="showPage('lanzamientos')">
-      <span class="icon">◎</span> Lanzamientos
+      <span class="icon" data-icon="releases" data-isize="17"></span> Lanzamientos
     </div>
     <div class="nav-item" data-page="label" id="nav-label" onclick="showPage('label')" style="display:none">
-      <span class="icon">⊞</span> Label
+      <span class="icon" data-icon="label" data-isize="17"></span> Label
     </div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Identidad</div>
     <div class="nav-item" data-page="perfil" onclick="showPage('perfil')">
-      <span class="icon">◐</span> Perfil del Artista
+      <span class="icon" data-icon="artist" data-isize="17"></span> Perfil del Artista
     </div>
     <div class="nav-item" data-page="adn" onclick="showPage('adn')">
-      <span class="icon">✦</span> ADN Artístico
+      <span class="icon" data-icon="dna" data-isize="17"></span> ADN Artístico
     </div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Contenido</div>
     <div class="nav-item" data-page="banco" onclick="showPage('banco')">
-      <span class="icon">◻</span> Banco de Referencias
+      <span class="icon" data-icon="references" data-isize="17"></span> Banco de Referencias
     </div>
     <div class="nav-item" data-page="ideas" onclick="showPage('ideas')">
-      <span class="icon">✲</span> Generador de Ideas
+      <span class="icon" data-icon="ideas" data-isize="17"></span> Generador de Ideas
     </div>
     <div class="nav-item" data-page="calendario" onclick="showPage('calendario')">
-      <span class="icon">▦</span> Calendario
+      <span class="icon" data-icon="calendar" data-isize="17"></span> Calendario
     </div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Análisis</div>
     <div class="nav-item" data-page="objetivos" onclick="showPage('objetivos')">
-      <span class="icon">◎</span> Objetivos SMART
+      <span class="icon" data-icon="goals" data-isize="17"></span> Objetivos SMART
     </div>
     <div class="nav-item" data-page="metricas" onclick="showPage('metricas')">
-      <span class="icon">◉</span> Métricas
+      <span class="icon" data-icon="metrics" data-isize="17"></span> Métricas
     </div>
     <div class="nav-item" data-page="aprendizajes" onclick="showPage('aprendizajes')">
-      <span class="icon">❧</span> Aprendizajes
+      <span class="icon" data-icon="learnings" data-isize="17"></span> Aprendizajes
     </div>
     <div class="nav-item" data-page="ia" onclick="showPage('ia')">
-      <span class="icon">⬡</span> IA Estratégica
+      <span class="icon" data-icon="ai" data-isize="17"></span> IA Estratégica
     </div>
   </div>
 
@@ -1423,13 +1433,13 @@
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">☰</button>
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú"><span data-icon="menu" data-isize="20"></span></button>
     <div class="topbar-title" id="page-title">DASHBOARD</div>
-    <span class="role-pill">👁 Modo lectura</span>
+    <span class="role-pill"><span data-icon="eye" data-isize="13"></span> Modo lectura</span>
     <div class="topbar-actions">
-      <button class="btn btn-ghost" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" style="padding:7px 11px">🌙</button>
-      <button class="btn btn-ghost hide-sm" id="topbar-signout" onclick="signOutTempo()" title="Cerrar sesión" style="display:none">⎋ Salir</button>
-      <button class="btn btn-ghost" id="btn-sheet-config" onclick="abrirImportCSV()" style="display:none">↑ Importar CSV</button>
+      <button class="btn btn-ghost" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" style="padding:7px 11px"><span data-icon="moon" data-isize="15"></span></button>
+      <button class="btn btn-ghost hide-sm" id="topbar-signout" onclick="signOutTempo()" title="Cerrar sesión" style="display:none"><span data-icon="logout" data-isize="14"></span> Salir</button>
+      <button class="btn btn-ghost" id="btn-sheet-config" onclick="abrirImportCSV()" style="display:none"><span data-icon="upload" data-isize="14"></span> Importar CSV</button>
       <button class="btn btn-primary" onclick="abrirWizard()">+ Nuevo Lanzamiento</button>
     </div>
   </div>
@@ -1439,7 +1449,7 @@
     <!-- ── DASHBOARD ── -->
     <div class="page active" id="page-dashboard">
       <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-        <button class="btn btn-primary" onclick="openPOW()">📋 Plan de la Semana (POW)</button>
+        <button class="btn btn-primary" onclick="openPOW()"><span data-icon="checklist" data-isize="15"></span> Plan de la Semana (POW)</button>
       </div>
       <div class="dashboard-grid fade-in" id="dash-stats"></div>
 
@@ -1495,7 +1505,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><span class="ph-icon">📇</span><span class="ph-title">Información General</span></div>
+        <div class="panel-head"><span class="ph-icon" data-icon="contacts" data-isize="18"></span><span class="ph-title">Información General</span></div>
         <div class="field-grid">
           <div class="field"><label>Nombre artístico</label><input class="input" data-bind="name" placeholder="Nombre artístico"></div>
           <div class="field"><label>Nombre legal</label><input class="input" data-bind="legalName" placeholder="Nombre legal completo"></div>
@@ -1505,7 +1515,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><span class="ph-icon">📝</span><span class="ph-title">Bio & Keywords</span><span class="ph-sub">generada con el wizard de ADN</span></div>
+        <div class="panel-head"><span class="ph-icon" data-icon="pencil" data-isize="18"></span><span class="ph-title">Bio & Keywords</span><span class="ph-sub">generada con el wizard de ADN</span></div>
         <div class="field" style="margin-bottom:14px"><label>Bio · 1 línea</label><input class="input" data-bind="bio.oneLine" placeholder="Una frase que te define"></div>
         <div class="field" style="margin-bottom:14px"><label>Bio · corta (~100 palabras)</label><textarea class="textarea" data-bind="bio.short" placeholder="Versión media para press kit / redes"></textarea></div>
         <div class="field" style="margin-bottom:14px"><label>Bio · larga (~300 palabras)</label><textarea class="textarea" data-bind="bio.long" placeholder="Versión completa para prensa"></textarea></div>
@@ -1513,13 +1523,13 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><span class="ph-icon">👥</span><span class="ph-title">Equipo de Trabajo</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="agregarMiembro()">+ Miembro</button></div>
+        <div class="panel-head"><span class="ph-icon" data-icon="team" data-isize="18"></span><span class="ph-title">Equipo de Trabajo</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="agregarMiembro()">+ Miembro</button></div>
         <div id="team-list"></div>
       </div>
 
       <div class="field-grid" style="align-items:start">
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🔗</span><span class="ph-title">Redes Sociales</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="link" data-isize="18"></span><span class="ph-title">Redes Sociales</span></div>
           <div class="field-grid">
             <div class="field"><label>Instagram</label><input class="input" data-bind="socials.ig" placeholder="@usuario"></div>
             <div class="field"><label>TikTok</label><input class="input" data-bind="socials.tiktok" placeholder="@usuario"></div>
@@ -1528,7 +1538,7 @@
           </div>
         </div>
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🎧</span><span class="ph-title">DSPs</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="headphones" data-isize="18"></span><span class="ph-title">DSPs</span></div>
           <div class="field-grid">
             <div class="field"><label>Spotify</label><input class="input" data-bind="dsps.spotify" placeholder="Artist URI / link"></div>
             <div class="field"><label>Apple Music</label><input class="input" data-bind="dsps.apple" placeholder="link"></div>
@@ -1551,7 +1561,7 @@
 
       <div class="field-grid" style="align-items:start">
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🪞</span><span class="ph-title">Identidad</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="identity" data-isize="18"></span><span class="ph-title">Identidad</span></div>
           <div class="field full" style="margin-bottom:14px"><label>Historia</label><textarea class="textarea" data-bind="adn.identity.history" placeholder="¿De dónde viene el artista? El origen…"></textarea></div>
           <div class="field-grid">
             <div class="field"><label>Misión</label><textarea class="textarea" data-bind="adn.identity.mission" placeholder="Para qué existe"></textarea></div>
@@ -1561,7 +1571,7 @@
         </div>
 
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🎭</span><span class="ph-title">Personalidad</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="smile" data-isize="18"></span><span class="ph-title">Personalidad</span></div>
           <div class="field" style="margin-bottom:14px">
             <label>Arquetipos</label>
             <div class="chips" data-bind-array="adn.personality.archetypes">
@@ -1578,14 +1588,14 @@
         </div>
 
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🌌</span><span class="ph-title">Universo Narrativo</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="galaxy" data-isize="18"></span><span class="ph-title">Universo Narrativo</span></div>
           <div class="field" style="margin-bottom:14px"><label>Temas recurrentes</label><input class="input" data-bind="adn.universe.themes" placeholder="Sanación, ruptura, identidad…"></div>
           <div class="field" style="margin-bottom:14px"><label>Conflictos</label><textarea class="textarea" data-bind="adn.universe.conflicts" placeholder="Las tensiones que mueven la obra"></textarea></div>
           <div class="field"><label>Mensajes principales</label><textarea class="textarea" data-bind="adn.universe.messages" placeholder="Lo que el artista quiere que el mundo sienta"></textarea></div>
         </div>
 
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🎨</span><span class="ph-title">Estética</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="palette" data-isize="18"></span><span class="ph-title">Estética</span></div>
           <div class="empty-hint" style="margin-bottom:14px">Moodboards y referencias visuales — módulo de subida de imágenes a desarrollar.</div>
           <div class="field-grid">
             <div class="field"><label>Colores</label><input class="input" data-bind="adn.aesthetics.colors" placeholder="#FF6B30, dorado, negro…"></div>
@@ -1594,14 +1604,14 @@
         </div>
 
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🔊</span><span class="ph-title">Sonido</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="sound" data-isize="18"></span><span class="ph-title">Sonido</span></div>
           <div class="field" style="margin-bottom:14px"><label>Géneros</label><input class="input" data-bind="adn.sound.genres" placeholder="Géneros y subgéneros"></div>
           <div class="field" style="margin-bottom:14px"><label>Influencias</label><input class="input" data-bind="adn.sound.influences" placeholder="Artistas que inspiran el sonido"></div>
           <div class="field"><label>Referencias musicales</label><input class="input" data-bind="adn.sound.references" placeholder="Tracks de referencia"></div>
         </div>
 
         <div class="panel" style="margin:0">
-          <div class="panel-head"><span class="ph-icon">🎯</span><span class="ph-title">Audiencia</span></div>
+          <div class="panel-head"><span class="ph-icon" data-icon="goals" data-isize="18"></span><span class="ph-title">Audiencia</span></div>
           <div class="field" style="margin-bottom:14px"><label>Fan actual</label><textarea class="textarea" data-bind="adn.audience.current" placeholder="Quién escucha hoy"></textarea></div>
           <div class="field" style="margin-bottom:14px"><label>Fan ideal</label><textarea class="textarea" data-bind="adn.audience.ideal" placeholder="A quién quieres llegar"></textarea></div>
           <div class="field"><label>Buyer persona</label><input class="input" data-bind="adn.audience.buyer" placeholder="Edad, hábitos, plataformas…"></div>
@@ -1697,7 +1707,7 @@
       <div class="section-header">
         <div class="section-title" id="objetivos-title">METAS PROPUESTAS</div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" onclick="sugerirObjetivosIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa">✨ Sugerir con IA</button>
+          <button class="btn btn-ghost" onclick="sugerirObjetivosIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa"><span data-icon="ai" data-isize="13"></span> Sugerir con IA</button>
           <button class="btn btn-ghost" onclick="agregarMetaManual()">+ Meta manual</button>
         </div>
       </div>
@@ -1731,7 +1741,7 @@
       <div class="section-header">
         <div class="section-title" id="aprend-title">BIBLIOTECA DE APRENDIZAJES</div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" onclick="generarAprendizajesIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa">✨ Analizar con IA</button>
+          <button class="btn btn-ghost" onclick="generarAprendizajesIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa"><span data-icon="ai" data-isize="13"></span> Analizar con IA</button>
           <button class="btn btn-ghost" onclick="agregarAprendizaje()">+ Registrar</button>
         </div>
       </div>
@@ -1760,7 +1770,7 @@
 <div class="wizard-overlay" id="wizard">
   <div class="wiz-top">
     <div class="wiz-logo">Tempo OS<small>Campaign Planner</small></div>
-    <button class="btn btn-ghost wiz-close" onclick="cerrarWizard()">✕ Cancelar</button>
+    <button class="btn btn-ghost wiz-close" onclick="cerrarWizard()"><span data-icon="close" data-isize="13"></span> Cancelar</button>
   </div>
 
   <!-- stepper -->
@@ -1979,7 +1989,7 @@
 <div class="wizard-overlay" id="artist-wizard">
   <div class="wiz-top">
     <div class="wiz-logo">Tempo OS<small>Nuevo Artista · ADN guiado</small></div>
-    <button class="btn btn-ghost wiz-close" onclick="closeArtistWizard()">✕ Cancelar</button>
+    <button class="btn btn-ghost wiz-close" onclick="closeArtistWizard()"><span data-icon="close" data-isize="13"></span> Cancelar</button>
   </div>
   <div class="wiz-steps" id="aw-steps"></div>
   <div class="wiz-body">
@@ -2004,7 +2014,7 @@
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div id="bd-actions" style="display:flex;gap:6px"></div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)" id="bd-date">JUN 2, 2026</div>
-        <div class="boxdrop-close" onclick="closeBoxdropDirect()">✕</div>
+        <div class="boxdrop-close" onclick="closeBoxdropDirect()"><span data-icon="close" data-isize="15"></span></div>
       </div>
     </div>
     <div class="boxdrop-tabs">
@@ -2050,17 +2060,17 @@
   <div class="boxdrop" style="width:540px;max-width:95vw">
     <div class="boxdrop-header">
       <div class="boxdrop-title">IMPORTAR BANCO DE REFERENCIAS</div>
-      <div class="boxdrop-close" onclick="cerrarImportCSV()">✕</div>
+      <div class="boxdrop-close" onclick="cerrarImportCSV()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-body" style="padding:28px">
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:20px">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:10px">FLUJO</div>
         <div style="display:flex;align-items:center;gap:0;font-size:11px;color:var(--text-muted);justify-content:space-around">
-          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px">📋</div>Editar en<br>Google Sheets</div>
+          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px;color:var(--accent)"><span data-icon="checklist" data-isize="18"></span></div>Editar en<br>Google Sheets</div>
           <div style="color:var(--text-dim);font-size:16px">→</div>
-          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px">⬇️</div>Archivo →<br>Descargar CSV</div>
+          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px;color:var(--accent)"><span data-icon="download" data-isize="18"></span></div>Archivo →<br>Descargar CSV</div>
           <div style="color:var(--text-dim);font-size:16px">→</div>
-          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px">↑</div>Subir<br>aquí</div>
+          <div style="text-align:center"><div style="font-size:18px;margin-bottom:4px;color:var(--accent)"><span data-icon="upload" data-isize="18"></span></div>Subir<br>aquí</div>
         </div>
       </div>
       <div style="margin-bottom:16px">
@@ -2075,7 +2085,7 @@
         ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
         ondragleave="this.style.borderColor='var(--border)'"
         ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleCSVFile({target:{files:event.dataTransfer.files}})">
-        <span style="font-size:32px">📄</span>
+        <span style="color:var(--text-muted)"><span data-icon="file" data-isize="30"></span></span>
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);text-align:center;letter-spacing:1px">
           ARRASTRA TU CSV AQUÍ<br><span style="font-size:10px;color:var(--text-dim)">o haz clic para buscar</span>
         </div>
@@ -2092,7 +2102,7 @@
   <div class="boxdrop" style="width:400px;max-width:95vw">
     <div class="boxdrop-header">
       <div class="boxdrop-title">AGREGAR AL CALENDARIO</div>
-      <div class="boxdrop-close" onclick="cerrarModalCal()">✕</div>
+      <div class="boxdrop-close" onclick="cerrarModalCal()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-body" style="padding:24px">
       <div style="font-size:13px;font-weight:500;margin-bottom:16px" id="mc-title"></div>
@@ -2111,7 +2121,7 @@
   <div class="boxdrop" style="width:440px;max-width:95vw">
     <div class="boxdrop-header">
       <div class="boxdrop-title">NUEVO ARTISTA</div>
-      <div class="boxdrop-close" onclick="cerrarNuevoArtista()">✕</div>
+      <div class="boxdrop-close" onclick="cerrarNuevoArtista()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-body" style="padding:24px">
       <div class="field" style="margin-bottom:14px"><label>Nombre artístico *</label><input class="input" id="na-name" placeholder="Ej. Luna Sol"></div>
@@ -2133,7 +2143,7 @@
   <div class="boxdrop" style="width:520px;max-width:95vw">
     <div class="boxdrop-header">
       <div class="boxdrop-title">CONFIGURACIÓN DE IA</div>
-      <div class="boxdrop-close" onclick="cerrarAISettings()">✕</div>
+      <div class="boxdrop-close" onclick="cerrarAISettings()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-body" style="padding:24px">
       <div class="field" style="margin-bottom:14px">
@@ -2167,7 +2177,7 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-primary" onclick="signIn()">Entrar</button>
       <button class="btn btn-ghost" onclick="signUp()">Crear cuenta</button>
-      <button class="btn btn-ghost" onclick="signInMagic()" style="margin-left:auto">✉ Enlace mágico</button>
+      <button class="btn btn-ghost" onclick="signInMagic()" style="margin-left:auto"><span data-icon="invite" data-isize="14"></span> Enlace mágico</button>
     </div>
     <div style="margin-top:14px"><span onclick="forgotPassword()" style="font-size:11px;color:var(--accent);cursor:pointer;font-family:var(--font-mono)">¿Olvidaste tu contraseña?</span></div>
     <div id="ag-status" style="font-family:var(--font-mono);font-size:11px;margin-top:12px;min-height:16px;color:var(--text-muted)"></div>
@@ -2177,7 +2187,7 @@
 <!-- ── MODAL MI CUENTA ── -->
 <div class="boxdrop-overlay" id="modal-account" onclick="cerrarCuenta(event)">
   <div class="boxdrop" style="width:480px;max-width:96vw">
-    <div class="boxdrop-header"><div class="boxdrop-title">⚙ MI CUENTA</div><div class="boxdrop-close" onclick="cerrarCuenta()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="settings" data-isize="16"></span>MI CUENTA</div><div class="boxdrop-close" onclick="cerrarCuenta()"><span data-icon="close" data-isize="15"></span></div></div>
     <div class="boxdrop-body" id="account-body" style="padding:24px"></div>
   </div>
 </div>
@@ -2185,7 +2195,7 @@
 <!-- ── MODAL MI EQUIPO ── -->
 <div class="boxdrop-overlay" id="modal-team" onclick="cerrarTeam(event)">
   <div class="boxdrop" style="width:560px;max-width:96vw">
-    <div class="boxdrop-header"><div class="boxdrop-title">👥 MI EQUIPO</div><div class="boxdrop-close" onclick="cerrarTeam()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="team" data-isize="16"></span>MI EQUIPO</div><div class="boxdrop-close" onclick="cerrarTeam()"><span data-icon="close" data-isize="15"></span></div></div>
     <div class="boxdrop-body" id="team-body" style="padding:24px"></div>
   </div>
 </div>
@@ -2194,8 +2204,8 @@
 <div class="boxdrop-overlay" id="modal-sync" onclick="cerrarSync(event)">
   <div class="boxdrop" style="width:540px;max-width:96vw">
     <div class="boxdrop-header">
-      <div class="boxdrop-title">☁ SINCRONIZACIÓN</div>
-      <div class="boxdrop-close" onclick="cerrarSync()">✕</div>
+      <div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="cloud" data-isize="16"></span>SINCRONIZACIÓN</div>
+      <div class="boxdrop-close" onclick="cerrarSync()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-body" style="padding:24px">
       <!-- Estado de sincronización (visible para todos) -->
@@ -2207,7 +2217,7 @@
 
       <!-- Backend (solo super-admin): credenciales del proyecto -->
       <div id="sync-admin" style="display:none">
-        <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px;font-size:10px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px">⚙ BACKEND · SOLO ADMIN</div>
+        <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px;font-size:10px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px"><span data-icon="settings" data-isize="12"></span> BACKEND · SOLO ADMIN</div>
         <div class="empty-hint" style="margin-bottom:14px">Credenciales del proyecto de <strong style="color:var(--text-muted)">Supabase</strong>. Vienen horneadas en la app; edítalas solo si cambias de proyecto.</div>
         <div class="field" style="margin-bottom:14px"><label>Project URL</label><input class="input" id="sync-url" placeholder="https://xxxx.supabase.co"></div>
         <div class="field" style="margin-bottom:14px"><label>anon public key</label><input class="input" id="sync-key" type="password" placeholder="eyJhbGciOi..."></div>
@@ -2224,7 +2234,7 @@
 <!-- ── MODAL BACKEND SUPER-ADMIN ── -->
 <div class="boxdrop-overlay" id="modal-admin" onclick="cerrarAdmin(event)">
   <div class="boxdrop" style="width:880px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column">
-    <div class="boxdrop-header"><div class="boxdrop-title">🛠 BACKEND · SUPER-ADMIN</div><div class="boxdrop-close" onclick="cerrarAdmin()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="wrench" data-isize="16"></span>BACKEND · SUPER-ADMIN</div><div class="boxdrop-close" onclick="cerrarAdmin()"><span data-icon="close" data-isize="15"></span></div></div>
     <div id="admin-tabs" style="display:flex;gap:4px;padding:10px 20px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
       <div class="mtab active" data-atab="cuentas"    onclick="adminTab('cuentas',this)">Cuentas</div>
       <div class="mtab"        data-atab="uso"        onclick="adminTab('uso',this)">Uso IA</div>
@@ -2253,7 +2263,7 @@
 <!-- ── MODAL META MANUAL (guiada) ── -->
 <div class="boxdrop-overlay" id="modal-goal" style="z-index:2900" onclick="cerrarMetaModal(event)">
   <div class="boxdrop" style="width:440px;max-width:94vw">
-    <div class="boxdrop-header"><div class="boxdrop-title">🎯 NUEVA META</div><div class="boxdrop-close" onclick="cerrarMetaModal()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="goals" data-isize="16"></span>NUEVA META</div><div class="boxdrop-close" onclick="cerrarMetaModal()"><span data-icon="close" data-isize="15"></span></div></div>
     <div class="boxdrop-body" id="goal-body" style="padding:22px"></div>
   </div>
 </div>
@@ -2261,7 +2271,7 @@
 <!-- ── MODAL AGREGAR CANCIÓN AL TRACKLIST (reusar single existente) ── -->
 <div class="boxdrop-overlay" id="modal-track-picker" style="z-index:2900" onclick="cerrarTrackPicker(event)">
   <div class="boxdrop" style="width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column">
-    <div class="boxdrop-header"><div class="boxdrop-title">🎵 AGREGAR CANCIÓN AL TRACKLIST</div><div class="boxdrop-close" onclick="cerrarTrackPicker()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="music" data-isize="16"></span>AGREGAR CANCIÓN AL TRACKLIST</div><div class="boxdrop-close" onclick="cerrarTrackPicker()"><span data-icon="close" data-isize="15"></span></div></div>
     <div style="padding:16px 22px 0"><input class="input" id="tp-search" placeholder="Buscar por título o ISRC…" oninput="renderTrackPicker(this.value)"></div>
     <div class="boxdrop-body" id="tp-body" style="padding:12px 22px 22px;overflow:auto"></div>
   </div>
@@ -2270,7 +2280,7 @@
 <!-- ── MODAL PLANTILLAS DE CHECKLIST ── -->
 <div class="boxdrop-overlay" id="modal-templates" style="z-index:2900" onclick="cerrarTemplates(event)">
   <div class="boxdrop" style="width:540px;max-width:95vw">
-    <div class="boxdrop-header"><div class="boxdrop-title">📋 PLANTILLAS DE CHECKLIST</div><div class="boxdrop-close" onclick="cerrarTemplates()">✕</div></div>
+    <div class="boxdrop-header"><div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="checklist" data-isize="16"></span>PLANTILLAS DE CHECKLIST</div><div class="boxdrop-close" onclick="cerrarTemplates()"><span data-icon="close" data-isize="15"></span></div></div>
     <div class="boxdrop-body" id="templates-body" style="padding:22px"></div>
   </div>
 </div>
@@ -2292,14 +2302,14 @@
         <option value="programado">Programado</option>
         <option value="publicado">Publicado</option>
       </select>
-      <div class="boxdrop-close" onclick="closeProdDirect()">✕</div>
+      <div class="boxdrop-close" onclick="closeProdDirect()"><span data-icon="close" data-isize="15"></span></div>
     </div>
     <div class="boxdrop-tabs">
       <div class="boxdrop-tab active" data-ptab="brief" onclick="prodTab('brief',this)">Brief</div>
       <div class="boxdrop-tab" data-ptab="guion" onclick="prodTab('guion',this)">Guión</div>
       <div class="boxdrop-tab" data-ptab="shots" onclick="prodTab('shots',this)">Shot List</div>
       <div class="boxdrop-tab" data-ptab="assets" onclick="prodTab('assets',this)">Assets</div>
-      <div class="boxdrop-tab" data-ptab="content" onclick="prodTab('content',this)" style="color:#a78bfa">✨ Contenido IA</div>
+      <div class="boxdrop-tab" data-ptab="content" onclick="prodTab('content',this)" style="color:#a78bfa"><span data-icon="ai" data-isize="13"></span> Contenido IA</div>
     </div>
     <div class="boxdrop-body" id="prod-body"></div>
   </div>
@@ -2309,11 +2319,11 @@
 <div class="boxdrop-overlay" id="pow-modal" onclick="closePOW(event)">
   <div class="boxdrop" style="width:640px;max-width:96vw">
     <div class="boxdrop-header">
-      <div class="boxdrop-title">📋 PLAN DE LA SEMANA</div>
+      <div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="checklist" data-isize="16"></span>PLAN DE LA SEMANA</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="copyPOW(this)">⧉ Copiar (WhatsApp)</button>
         <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="powPDF()">⤓ PDF</button>
-        <div class="boxdrop-close" onclick="closePOWDirect()">✕</div>
+        <div class="boxdrop-close" onclick="closePOWDirect()"><span data-icon="close" data-isize="15"></span></div>
       </div>
     </div>
     <div class="boxdrop-body" id="pow-body"></div>

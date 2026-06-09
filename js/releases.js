@@ -65,8 +65,8 @@ function renderLaunchDetail() {
         <div style="display:flex;align-items:flex-start;gap:14px">
           <div class="lh-name">${s(l.name)}</div>
           <div class="lh-actions">
-            <button class="btn btn-ghost" onclick="abrirReporteLanzamiento('${l.id}')" title="Generar reporte de lanzamiento (PPTX/HTML con IA)">📊 Generar reporte</button>
-            <button class="btn btn-ghost" onclick="abrirWizard('${l.id}')">✎ Editar</button>
+            <button class="btn btn-ghost" onclick="abrirReporteLanzamiento('${l.id}')" title="Generar reporte de lanzamiento (PPTX/HTML con IA)">${icon('report',14)} Generar reporte</button>
+            <button class="btn btn-ghost" onclick="abrirWizard('${l.id}')">${icon('pencil',13)} Editar</button>
             <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,71,87,0.3)" onclick="borrarLanzamiento('${l.id}')">Eliminar</button>
           </div>
         </div>
@@ -104,9 +104,9 @@ function renderReleaseTab(name){
   if(name==='resumen') host.innerHTML = releaseResumenHTML(l);
   else if(name==='tracklist') host.innerHTML = releaseTracklistHTML(l);
   else if(name==='reportes') host.innerHTML = releaseReportesHTML(l);
-  else if(name==='marketing') host.innerHTML = releaseLinkTabHTML('Marketing','ADN de campaña, objetivos SMART y plan de medios de este lanzamiento.',[['◎ Objetivos SMART','objetivos'],['✦ ADN de campaña','adn']]);
-  else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[['◻ Banco de Referencias','banco'],['✲ Generador de Ideas','ideas'],['▦ Calendario','calendario']]);
-  else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[['◉ Métricas','metricas'],['❧ Aprendizajes','aprendizajes'],['⬡ IA Estratégica','ia']]);
+  else if(name==='marketing') host.innerHTML = releaseLinkTabHTML('Marketing','ADN de campaña, objetivos SMART y plan de medios de este lanzamiento.',[[`${icon('goals',13)} Objetivos SMART`,'objetivos'],[`${icon('dna',13)} ADN de campaña`,'adn']]);
+  else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[[`${icon('references',13)} Banco de Referencias`,'banco'],[`${icon('ideas',13)} Generador de Ideas`,'ideas'],[`${icon('calendar',13)} Calendario`,'calendario']]);
+  else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[[`${icon('metrics',13)} Métricas`,'metricas'],[`${icon('learnings',13)} Aprendizajes`,'aprendizajes'],[`${icon('ai',13)} IA Estratégica`,'ia']]);
   else if(name==='assets') host.innerHTML = releaseAssetsHTML(l);
   else if(name==='tareas') host.innerHTML = tareasPanelHTML('release');
   else if(name==='inversion') host.innerHTML = releaseInversionHTML(l);
@@ -121,9 +121,9 @@ function releaseAssetsHTML(l){
       <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s((ASSET_TIPOS.find(x=>x[0]===a.tipo)||['','Otro'])[1])}</span>
       <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${s(a.label)||'(sin nombre)'}</div>
         <a href="${s(a.url)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${s(a.url)}</a></div>
-      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">✕</button>`:''}
+      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">${icon('close',12)}</button>`:''}
     </div>`).join('');
-  const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">📎</span><span class="ph-title">Agregar asset</span></div>
+  const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('link',18)}</span><span class="ph-title">Agregar asset</span></div>
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
         <div class="field"><label>Nombre</label><input class="input" id="asset-label" placeholder="Ej. Cover final 3000px"></div>
         <div class="field"><label>Tipo</label><select class="input" id="asset-tipo">${ASSET_TIPOS.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
@@ -154,9 +154,9 @@ function releaseLinkTabHTML(title, desc, links){
     <div style="display:flex;gap:10px;flex-wrap:wrap">${links.map(x=>`<button class="btn btn-ghost" onclick="showPage('${x[1]}')">${x[0]}</button>`).join('')}</div></div>`;
 }
 function releaseReportesHTML(l){
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">📊</span><span class="ph-title">Reporte de Lanzamiento</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('report',18)}</span><span class="ph-title">Reporte de Lanzamiento</span></div>
     <div class="empty-hint" style="margin-bottom:14px">Genera un reporte (PPTX/HTML con IA) cruzando pauta y orgánico. La identidad y las métricas se precargan desde este lanzamiento.</div>
-    <button class="btn btn-primary" onclick="abrirReporteLanzamiento('${l.id}')">📊 Generar reporte</button></div>`;
+    <button class="btn btn-primary" onclick="abrirReporteLanzamiento('${l.id}')">${icon('report',14)} Generar reporte</button></div>`;
 }
 function releaseTracklistHTML(l){
   const ts = tracksOfLaunch(l);
@@ -170,7 +170,7 @@ function releaseTracklistHTML(l){
       <div style="flex:1"><div style="font-size:15px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:12px">· ${s(t.version)}</span>`:''}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span> ${shared}</div></div>
       <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-display);font-size:18px;color:${readyColor(pct)}">${pct}%</div><div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">LISTO</div></div>
-      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">✕</button>` : `<span style="color:var(--text-dim);font-size:18px">›</span>`}
+      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">${icon('close',12)}</button>` : `<span style="color:var(--text-dim);font-size:18px">›</span>`}
     </div>`; }).join('');
   const addBtns = (!single && editable) ? `<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="abrirTrackPicker()">+ Agregar single existente</button>
@@ -227,7 +227,7 @@ function releaseResumenHTML(l) {
   const rr = releaseReady(l), phase = releasePhase(l);
   const statusPanel = `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">🚦</span><span class="ph-title">Estado del release</span>
+      <div class="panel-head"><span class="ph-icon">${icon('flag',18)}</span><span class="ph-title">Estado del release</span>
         <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span></div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
@@ -239,7 +239,7 @@ function releaseResumenHTML(l) {
 function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }
 function releaseIdentityHTML(l){
   const f=(label,path,val,ph)=>`<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" placeholder="${ph||''}" onchange="setReleaseField('${path}',this.value,'editar_crm')"></div>`;
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">🏷</span><span class="ph-title">Identidad del release</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Identidad del release</span></div>
     ${f('UPC','upc',l.upc,'Código del proyecto (EP/álbum)')}
     ${f('Distribuidora','distributor',l.distributor,'DistroKid, The Orchard, Believe…')}
     <div class="field"><label>Notas</label><textarea class="textarea" onchange="setReleaseField('notes',this.value,'editar_crm')">${s(l.notes)}</textarea></div>
@@ -259,7 +259,7 @@ function releaseChecklistPanelHTML(l){
       <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;margin-bottom:2px">${(CHECKLIST_GROUP_LABEL[g]||g).toUpperCase()}</div>
       ${RELEASE_CHECKLIST[g].map(([k,label])=>{ const on=!!(rc[g]&&rc[g][k]); return `<label style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);cursor:${editable?'pointer':'default'};font-size:13px"><input type="checkbox" ${on?'checked':''} ${editable?'':'disabled'} onchange="toggleReleaseCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
     </div>`).join('');
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">📋</span><span class="ph-title">Checklist del release</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Checklist del release</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
 }
 function releaseResumenContentHTML(l) {
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
@@ -268,7 +268,7 @@ function releaseResumenContentHTML(l) {
       const segs = [{value:pr.byStage.pre,color:'#a78bfa'},{value:pr.byStage.prod,color:'var(--accent)'},{value:pr.byStage.post,color:'#38bdf8'}];
       return `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">📈</span><span class="ph-title">Progreso de Producción</span>
+      <div class="panel-head"><span class="ph-icon">${icon('trend',18)}</span><span class="ph-title">Progreso de Producción</span>
         <span class="ph-sub">${pr.published}/${pr.total} publicadas</span></div>
       <div class="donut-wrap">
         <div>${donutSVG(segs, 132, 16, pr.pct + '%', 'completo')}</div>
@@ -283,7 +283,7 @@ function releaseResumenContentHTML(l) {
     </div>`; })()}
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">✦</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">Estrategia narrativa</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">Estrategia narrativa</span></div>
       <div class="dna-grid">
         <div class="dna-field"><div class="brief-label">¿De qué trata?</div>${dnaVal(d.about)}</div>
         <div class="dna-field"><div class="brief-label">Emoción</div>${dnaVal(d.emotion)}</div>
@@ -307,7 +307,7 @@ function releaseResumenContentHTML(l) {
       </div>
 
       <div class="panel" style="margin:0">
-        <div class="panel-head"><span class="ph-icon">💸</span><span class="ph-title">Plan de Medios</span></div>
+        <div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Plan de Medios</span></div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
           <div class="brief-label">Presupuesto total</div>
           <div style="font-family:var(--font-display);font-size:28px;letter-spacing:1px">${money(b.total)}</div>
@@ -322,11 +322,11 @@ function releaseResumenContentHTML(l) {
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">★</span><span class="ph-title">Ideas Seleccionadas</span><span class="ph-sub">${(l.ideas||[]).length} referencias</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas Seleccionadas</span><span class="ph-sub">${(l.ideas||[]).length} referencias</span></div>
       ${(l.ideas||[]).length
-        ? `<div class="chips">${l.ideas.slice(0,8).map(it => `<span class="chip on" style="cursor:default">${s(it.emoji)||'★'} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:default">+${l.ideas.length-8} más</span>`:''}</div>`
-        : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ★ en el Banco de Referencias.</div>`}
-      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('ideas')">✲ Abrir Generador de Ideas</button>
+        ? `<div class="chips">${l.ideas.slice(0,8).map(it => `<span class="chip on" style="cursor:default;display:inline-flex;align-items:center;gap:5px">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:default">+${l.ideas.length-8} más</span>`:''}</div>`
+        : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ${icon('star',12)} en el Banco de Referencias.</div>`}
+      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
     </div>
 
     ${revenuePanelHTML(l)}`;
@@ -353,12 +353,12 @@ function revenuePanelHTML(l) {
   const done = REVENUE_ITEMS.filter(it => rev[it.key] && rev[it.key].done).length;
   const pct = Math.round(done / REVENUE_ITEMS.length * 100);
   return `<div class="panel">
-    <div class="panel-head"><span class="ph-icon">💰</span><span class="ph-title">Revenue Streams</span><span class="ph-sub">${done}/${REVENUE_ITEMS.length} activados · ${pct}%</span></div>
+    <div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Revenue Streams</span><span class="ph-sub">${done}/${REVENUE_ITEMS.length} activados · ${pct}%</span></div>
     <div class="progress-track" style="margin-bottom:16px"><div class="progress-fill" style="width:${pct}%"></div></div>
     ${REVENUE_ITEMS.map(it => {
       const st = rev[it.key] || {};
       return `<div class="rev-item ${st.done ? 'done' : ''}">
-        <div class="rev-check" onclick="revenueToggle('${l.id}','${it.key}')" title="Marcar">${st.done ? '✓' : ''}</div>
+        <div class="rev-check" onclick="revenueToggle('${l.id}','${it.key}')" title="Marcar">${st.done ? icon('check',12) : ''}</div>
         <div style="flex:1;min-width:0">
           <div class="rev-label">${it.label}</div>
           <div class="rev-money">${it.money}</div>
@@ -406,44 +406,44 @@ function renderIdeas() {
     ? ideas.map((it, i) => {
         const col = catColor((it.cat||[])[0]);
         return `<div class="idea-card" style="cursor:default">
-          <button class="del-btn" style="position:static;float:right;opacity:1;background:var(--surface2)" onclick="quitarIdea(${i})" title="Quitar">✕</button>
+          <button class="del-btn" style="position:static;float:right;opacity:1;background:var(--surface2)" onclick="quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
           <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${s(it.link)}" target="_blank" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
         </div>`;
       }).join('')
-    : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <span style="color:var(--accent);cursor:pointer" onclick="showPage('banco')">Banco de Referencias</span> y marca ideas con la estrella ★ para este lanzamiento.</div>`;
+    : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <span style="color:var(--accent);cursor:pointer" onclick="showPage('banco')">Banco de Referencias</span> y marca ideas con la estrella ${icon('star',12)} para este lanzamiento.</div>`;
 
   host.innerHTML = `
     <div class="field-grid" style="align-items:start;margin-bottom:18px">
       <div class="panel" style="margin:0">
-        <div class="panel-head"><span class="ph-icon">✦</span><span class="ph-title">ADN del Artista</span><span class="ph-sub">${s(art ? art.name : '')}</span></div>
+        <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">ADN del Artista</span><span class="ph-sub">${s(art ? art.name : '')}</span></div>
         ${adnBits.map(([k,v]) => `<div style="margin-bottom:10px"><div class="brief-label">${k}</div>${chip(v)}</div>`).join('')}
         <button class="btn btn-ghost" style="margin-top:6px" onclick="showPage('adn')">Editar ADN →</button>
       </div>
       <div class="panel" style="margin:0">
-        <div class="panel-head"><span class="ph-icon">🎯</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">${s(a.name)}</span></div>
+        <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">${s(a.name)}</span></div>
         ${dnaBits.map(([k,v]) => `<div style="margin-bottom:10px"><div class="brief-label">${k}</div>${chip(v)}</div>`).join('')}
         <button class="btn btn-ghost" style="margin-top:6px" onclick="abrirWizard('${a.id}')">Editar Campaign DNA →</button>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">★</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span></div>
       <div class="ideas-grid">${ideasHTML}</div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">⚡</span><span class="ph-title">Generar Ideas</span>
+      <div class="panel-head"><span class="ph-icon">${icon('zap',18)}</span><span class="ph-title">Generar Ideas</span>
         ${ideasRestantes() !== null ? `<span class="ph-sub" style="margin-left:auto;color:${ideasRestantes()>0?'var(--text-muted)':'var(--accent2)'}">${ideasRestantes()} de 12 ideas restantes este mes</span>` : ''}
-        ${(isAdmin() || !authed()) ? `<button class="btn btn-ghost" style="${ideasRestantes()!==null?'':'margin-left:auto;'}padding:4px 10px;font-size:11px" onclick="abrirAISettings()">⚙ API</button>` : ''}
+        ${(isAdmin() || !authed()) ? `<button class="btn btn-ghost" style="${ideasRestantes()!==null?'':'margin-left:auto;'}padding:4px 10px;font-size:11px" onclick="abrirAISettings()">${icon('settings',13)} API</button>` : ''}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cantidad</span>
         <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()"><option>6</option><option selected>8</option><option>10</option><option>12</option></select>
-        <button class="btn btn-primary" onclick="generarIdeasPlantilla()">⚡ Generar (plantillas)</button>
-        <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa">✨ Generar con IA</button>
+        <button class="btn btn-primary" onclick="generarIdeasPlantilla()">${icon('zap',13)} Generar (plantillas)</button>
+        <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:rgba(167,139,250,0.4);color:#a78bfa">${icon('ai',13)} Generar con IA</button>
       </div>
       <div id="gen-cost" style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);line-height:1.6"></div>
     </div>
@@ -519,8 +519,8 @@ function renderResults() {
   const g = a.generated || [];
   if (!g.length) { host.innerHTML = ''; return; }
   const usage = a.lastUsage
-    ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">✨ IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
-    : `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">⚡ Generado con plantillas · sin costo</div>`;
+    ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
+    : `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('zap',12)} Generado con plantillas · sin costo</div>`;
   host.innerHTML = `
     <div class="section-header" style="margin-top:8px"><div class="section-title">IDEAS GENERADAS · ${g.length}</div></div>
     ${usage}
@@ -608,11 +608,11 @@ function aiCostHint(prompt, expectedOut) {
 function aiHintHTML(prompt, expectedOut) {
   const e = aiCostHint(prompt, expectedOut);
   const perDollar = e.cost > 0 ? Math.max(1, Math.floor(1 / e.cost)) : '∞';
-  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80">key ✓</span>' : '<span style="color:var(--accent2)">sin key — ⚙ API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
+  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
 }
 function usageBadge(u, ai) {
   if (!u) return '';
-  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">✨ IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
+  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
 }
 function buildIdeaPrompt(a, count) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
@@ -655,7 +655,7 @@ function updateCostLine() {
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const est = estimateCost(a, count);
   const perDollar = est.cost > 0 ? Math.max(1, Math.floor(1 / est.cost)) : '∞';
-  el.innerHTML = `IA: ${est.ai.key ? '<span style="color:#4ade80">key configurada ✓</span>' : '<span style="color:var(--accent2)">sin key — configúrala en ⚙ API</span>'} · modelo <strong>${s(est.ai.model)}</strong><br>Estimado por generación: ≈ ${est.inTok} tok entrada + ${est.outTok} tok salida ≈ <strong style="color:var(--accent)">$${est.cost.toFixed(4)}</strong> (~${perDollar} generaciones por US$1)`;
+  el.innerHTML = `IA: ${est.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key configurada '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — configúrala en '+icon('settings',12)+' API</span>'} · modelo <strong>${s(est.ai.model)}</strong><br>Estimado por generación: ≈ ${est.inTok} tok entrada + ${est.outTok} tok salida ≈ <strong style="color:var(--accent)">$${est.cost.toFixed(4)}</strong> (~${perDollar} generaciones por US$1)`;
 }
 function parseIdeasJSON(text) {
   try { const m = s(text).match(/\[[\s\S]*\]/); return m ? JSON.parse(m[0]) : []; } catch (e) { return []; }
@@ -670,7 +670,7 @@ async function generarIdeasIA() {
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const prompt = buildIdeaPrompt(a, count);
   const res = document.getElementById('ideas-results');
-  res.innerHTML = `<div class="empty-hint">✨ Generando con IA (${s(ai.model)})… esto puede tardar unos segundos.</div>`;
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando con IA (${s(ai.model)})… esto puede tardar unos segundos.</div>`;
   try {
     const { text, usage } = await callClaude(prompt);
     const ideas = parseIdeasJSON(text);
@@ -684,7 +684,7 @@ async function generarIdeasIA() {
     saveLaunches(); renderResults();
     if (typeof updateCostLine === 'function') updateCostLine();
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">⚠ Error con la IA: ${s(e.message)}.<br>Revisa tu API key / modelo en ⚙ API. (También puede ser límite de CORS o de créditos.)</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">${icon('warning',13)} Error con la IA: ${s(e.message)}.<br>Revisa tu API key / modelo en ${icon('settings',12)} API. (También puede ser límite de CORS o de créditos.)</div>`;
   }
 }
 function abrirAISettings() {
@@ -956,13 +956,13 @@ function renderSidebarArtist() {
     <div class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
       <div class="artist-avatar" style="width:24px;height:24px;font-size:11px">${up(ar.name).slice(0,1)}</div>
       <span>${s(ar.name)}</span>
-      ${ar.id===currentArtistId?'<span style="margin-left:auto">✓</span>':''}
+      ${ar.id===currentArtistId?'<span style="margin-left:auto">'+icon('check',12)+'</span>':''}
     </div>`).join('')
     + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`)
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
-    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">⚙ Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">👥 Mi equipo · ${s(_teamName)}</div>`) : '')
-    + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">🛠 Backend admin</div>` : '')
-    + `<div class="artist-menu-item" onclick="abrirSync()">☁ Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
+    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</div>`) : '')
+    + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
+    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + (authed() ? '' : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
 }
 function toggleArtistMenu(force) {
@@ -1023,7 +1023,7 @@ function closeArtistWizard() { document.getElementById('artist-wizard').classLis
 function awRender() {
   document.getElementById('aw-steps').innerHTML = AW_STEPS.map((lbl,i) => {
     const n = i+1; const cls = n===awStep ? 'active' : (n<awStep ? 'done' : '');
-    return `<div class="wiz-step ${cls}"><span class="num">${n<awStep?'✓':n}</span><span class="lbl">${lbl}</span></div>${n<AW_STEPS.length?'<span class="wiz-arrow">›</span>':''}`;
+    return `<div class="wiz-step ${cls}"><span class="num">${n<awStep?icon('check',12):n}</span><span class="lbl">${lbl}</span></div>${n<AW_STEPS.length?'<span class="wiz-arrow">›</span>':''}`;
   }).join('');
   document.getElementById('aw-panel').innerHTML = awPanelHTML(awStep);
   document.getElementById('aw-back').style.display = awStep>1 ? '' : 'none';
@@ -1065,7 +1065,7 @@ function awPanelHTML(step) {
     <div class="wiz-field"><textarea class="textarea" style="min-height:150px" oninput="awData.fan=this.value" placeholder="Edad, qué siente, qué escucha, dónde vive, qué le mueve…">${s(awData.fan)}</textarea></div>`;
   // step 6
   return `<h2>REVISIÓN IA</h2><div class="sub">La IA toma tus respuestas y genera tu bio, tono, narrativa y keywords. Esto se vuelve el "system prompt base" de todos los generadores.</div>
-    <div style="margin-bottom:6px"><button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="awGenerar()">✨ ${awData.generated?'Regenerar':'Generar'} ADN con IA</button></div>
+    <div style="margin-bottom:6px"><button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="awGenerar()">${icon('ai',13)} ${awData.generated?'Regenerar':'Generar'} ADN con IA</button></div>
     ${aiHintHTML(buildADNPrompt(), 800)}
     <div id="aw-result" style="margin-top:14px">${awData.generated ? awResultHTML(awData.generated) : '<div class="empty-hint">Genera el ADN para revisarlo. (También puedes crear el artista sin IA y completar el ADN luego en su perfil.)</div>'}</div>`;
 }
@@ -1103,14 +1103,14 @@ Devuelve SOLO un objeto JSON válido, en español, con esta forma:
 async function awGenerar() {
   if (!aiReady()) { abrirAISettings(); return; }
   const res = document.getElementById('aw-result');
-  res.innerHTML = '<div class="empty-hint">✨ Generando ADN…</div>';
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando ADN…</div>`;
   try {
     const { text } = await callClaude(buildADNPrompt(), 1500);
     const obj = parseJSONObj(text);
     if (!obj) throw new Error('La IA no devolvió un ADN válido.');
     awData.generated = obj;
     awRender();
-  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`; }
+  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
 }
 function awFinish() {
   const name = (awData.name || '').trim() || 'Nuevo Artista';
@@ -1237,7 +1237,7 @@ function renderTeam() {
     <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div class="artist-avatar" style="width:30px;height:30px;font-size:12px">${up(m.name||'?').slice(0,1)}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:500">${s(m.name)}</div><div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${s(m.role)||'—'}</div></div>
-      <button class="goal-btn reject" onclick="quitarMiembro(${i})" title="Quitar">✕</button>
+      <button class="goal-btn reject" onclick="quitarMiembro(${i})" title="Quitar">${icon('close',12)}</button>
     </div>`).join('');
 }
 async function agregarMiembro() {

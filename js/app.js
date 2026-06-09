@@ -1,4 +1,112 @@
 // ══════════════════════════════════════════
+// SISTEMA DE ÍCONOS (SVG inline propio · "platform-like")
+// Estilo uniforme: viewBox 24, stroke currentColor, weight 1.75, linecaps round.
+// Uso: icon('nombre', 16) → string SVG. En HTML estático: <span data-icon="nombre"></span> + hydrateIcons().
+// ══════════════════════════════════════════
+const ICONS = {
+  // — Navegación —
+  dashboard:  '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>',
+  releases:   '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M12 3a9 9 0 0 1 9 9"/>',
+  label:      '<path d="M3 21h18"/><path d="M5 21V8l7-4 7 4v13"/><line x1="9" y1="21" x2="9" y2="13"/><line x1="15" y1="21" x2="15" y2="13"/><line x1="12" y1="9" x2="12" y2="9.01"/>',
+  artist:     '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/>',
+  dna:        '<path d="M9 3c4 3 4 6 0 9s-4 6 0 9"/><path d="M15 3c-4 3-4 6 0 9s4 6 0 9"/><line x1="9.5" y1="6" x2="14.5" y2="6"/><line x1="8.2" y1="12" x2="15.8" y2="12"/><line x1="9.5" y1="18" x2="14.5" y2="18"/>',
+  references: '<path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v15H7.5A2.5 2.5 0 0 0 5 19.5z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20v5H7.5A2.5 2.5 0 0 1 5 19.5z"/>',
+  ideas:      '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5.9 1.1 1 1.8h6c.1-.7.4-1.3 1-1.8A7 7 0 0 0 12 2z"/>',
+  calendar:   '<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/>',
+  goals:      '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/>',
+  metrics:    '<path d="M4 20h16"/><line x1="7" y1="20" x2="7" y2="13"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="17" y1="20" x2="17" y2="4"/>',
+  learnings:  '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
+  ai:         '<path d="M12 3.5l1.7 4.8L18.5 10l-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7z"/>',
+  // — Paneles / acciones —
+  team:       '<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><path d="M16 5.2a3.4 3.4 0 0 1 0 5.6"/><path d="M18 14.8c2.1.7 3.5 2.4 3.5 4.8"/>',
+  person:     '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/>',
+  mic:        '<rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8.5" y1="21" x2="15.5" y2="21"/>',
+  headphones: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4" height="6.5" rx="1.6"/><rect x="17" y="13.5" width="4" height="6.5" rx="1.6"/>',
+  sound:      '<path d="M11 5L6.5 9H3v6h3.5L11 19z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18.5 6a8 8 0 0 1 0 12"/>',
+  identity:   '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11.5" r="2.4"/><path d="M5.5 16.5c.4-1.8 1.9-2.7 3.5-2.7s3.1.9 3.5 2.7"/><line x1="15" y1="10" x2="18" y2="10"/><line x1="15" y1="14" x2="18" y2="14"/>',
+  chart:      '<path d="M4 20h16"/><line x1="7" y1="20" x2="7" y2="13"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="17" y1="20" x2="17" y2="4"/>',
+  report:     '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><line x1="8.5" y1="17" x2="8.5" y2="14"/><line x1="12" y1="17" x2="12" y2="12.5"/><line x1="15.5" y1="17" x2="15.5" y2="15"/>',
+  checklist:  '<path d="M9.5 6h10"/><path d="M9.5 12h10"/><path d="M9.5 18h10"/><path d="M4 6l1.3 1.3L7.8 4.8"/><path d="M4 12l1.3 1.3L7.8 10.8"/><path d="M4 18l1.3 1.3L7.8 16.8"/>',
+  file:       '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  contacts:   '<rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="10.5" cy="10.5" r="2.3"/><path d="M6.8 16.5c.4-1.7 1.8-2.6 3.7-2.6s3.3.9 3.7 2.6"/><line x1="4" y1="8.5" x2="2.5" y2="8.5"/><line x1="4" y1="12" x2="2.5" y2="12"/><line x1="4" y1="15.5" x2="2.5" y2="15.5"/>',
+  finance:    '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18"/><circle cx="16.5" cy="14.5" r="1.4"/>',
+  receipt:    '<path d="M5 3v18l2-1.4 2 1.4 2-1.4 2 1.4 2-1.4 2 1.4V3l-2 1.4L17 3l-2 1.4L13 3l-2 1.4L9 3 7 4.4z"/><line x1="8.5" y1="9" x2="15.5" y2="9"/><line x1="8.5" y1="13" x2="13.5" y2="13"/>',
+  tag:        '<path d="M3.5 12.5L11 5a2 2 0 0 1 1.4-.6h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.6 1.4l-7.5 7.5a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8z"/><circle cx="16" cy="8" r="1.4" fill="currentColor"/>',
+  invite:     '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>',
+  key:        '<circle cx="8" cy="14" r="4"/><path d="M10.8 11.2L20 2"/><path d="M16 6l2.2 2.2"/><path d="M18.5 3.5l2.2 2.2"/>',
+  save:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h7"/>',
+  clock:      '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 2"/>',
+  zap:        '<path d="M13 2L4.5 13.5H11l-1 8.5L19.5 10.5H13z"/>',
+  settings:   '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  wrench:     '<path d="M14.5 5.6a3.6 3.6 0 0 0-4.7 4.7L3 17.1 6.9 21l6.8-6.8a3.6 3.6 0 0 0 4.7-4.7l-2.4 2.4-2.2-.6-.6-2.2z"/>',
+  music:      '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  warning:    '<path d="M12 3L2 20.5h20z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17.3" r="0.7" fill="currentColor" stroke="none"/>',
+  refresh:    '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-7.6-4.1"/><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 7.6 4.1"/><path d="M21 3.5V8h-4.5"/><path d="M3 20.5V16h4.5"/>',
+  close:      '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  check:      '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  star:       '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 18.1 6.6 20l1-6.1L3.2 9.5l6.1-.9z"/>',
+  starFill:   '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 18.1 6.6 20l1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/>',
+  plus:       '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  eye:        '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  lock:       '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
+  moon:       '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun:        '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8"/>',
+  link:       '<path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1L11 4.9"/><path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 0 0 7.1 7.1L13 19.1"/>',
+  disc:       '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  video:      '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+  camera:     '<rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.4"/><path d="M8 7l1.4-2h5.2L16 7"/>',
+  phone:      '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/>',
+  image:      '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M3 17l5-5 4 4 3-3 6 6"/>',
+  play:       '<path d="M7 4.5v15l13-7.5z"/>',
+  apple:      '<path d="M16 13c0-2.2 1.7-3.2 1.8-3.3-1-1.5-2.6-1.7-3.1-1.7-1.3-.1-2.6.8-3.2.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.5 2.2 2.6 2.1 1-.04 1.4-.7 2.7-.7 1.2 0 1.6.7 2.7.6 1.1-.02 1.8-1 2.5-2.1.5-.8.8-1.5 1-1.8-1.6-.6-2.6-2.4-2.6-3.8z"/><path d="M14 6c.6-.7.9-1.7.8-2.7-.8.04-1.8.5-2.4 1.2-.5.6-1 1.6-.8 2.5.9.1 1.8-.4 2.4-1z"/>',
+  video2:     '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+  graduation: '<path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v4.5c0 1.2 2.2 2.2 5 2.2s5-1 5-2.2V11"/><line x1="21" y1="9" x2="21" y2="14"/>',
+  trend:      '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  chat:       '<path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-6.5A8 8 0 1 1 21 12z"/>',
+  trophy:     '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><line x1="12" y1="13" x2="12" y2="17"/><path d="M9 20h6"/><path d="M10 17h4v3h-4z"/>',
+  flame:      '<path d="M12 3c2.2 3 1 5 3 7s1.8 5.2-3 9.5C7.2 15.2 7 12.2 9 10c0 0-.8-3.8 3-7z"/>',
+  heart:      '<path d="M12 20.5C5.5 16 3 12.5 3 9a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1c0 3.5-2.5 7-9 11.5z"/>',
+  smile:      '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="10" r="0.6" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="0.6" fill="currentColor" stroke="none"/>',
+  pin:        '<path d="M12 21s7-5.6 7-11a7 7 0 0 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  book:       '<path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v15H7.5A2.5 2.5 0 0 0 5 19.5z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20v5H7.5A2.5 2.5 0 0 1 5 19.5z"/>',
+  rocket:     '<path d="M5 15c-1.5 1-2 4-2 4s3-.5 4-2c.6-.9.5-2 .5-2L7 13s-1.1-.1-2 .5z"/><path d="M9 15l-3-3c1-4 4-8 9-9 0 5-4 8-9 9z"/><circle cx="14" cy="10" r="1.3"/>',
+  scissors:   '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><line x1="8.2" y1="7.5" x2="20" y2="18"/><line x1="8.2" y1="16.5" x2="20" y2="6"/>',
+  thumb:      '<path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7 11l4-7a2 2 0 0 1 2 2v3h5.5a2 2 0 0 1 2 2.4l-1.5 7A2 2 0 0 1 17 20H7"/>',
+  menu:       '<line x1="3.5" y1="6.5" x2="20.5" y2="6.5"/><line x1="3.5" y1="12" x2="20.5" y2="12"/><line x1="3.5" y1="17.5" x2="20.5" y2="17.5"/>',
+  logout:     '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M9 16l-4-4 4-4"/><line x1="5" y1="12" x2="15" y2="12"/>',
+  upload:     '<path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/>',
+  download:   '<path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/>',
+  info:       '<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.7" fill="currentColor" stroke="none"/>',
+  bell:       '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  pencil:     '<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/><line x1="14.5" y1="5.5" x2="18.5" y2="9.5"/>',
+  copy:       '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash:      '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+  cloud:      '<path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 17 18z"/>',
+  palette:    '<path d="M12 3a9 9 0 0 0 0 18c1 0 1.5-.8 1.5-1.5 0-.5-.3-.9-.6-1.2-.3-.4-.5-.7-.5-1.1 0-.7.6-1.2 1.3-1.2H15a5 5 0 0 0 5-5c0-4.2-3.6-7-8-7z"/><circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="8.5" r="1" fill="currentColor" stroke="none"/>',
+  galaxy:     '<circle cx="12" cy="12" r="2"/><path d="M12 4c5 0 8 3 8 6s-5 2-8 2-8 1-8-2 3-6 8-6z" transform="rotate(25 12 12)"/>',
+  edit2:      '<path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+  signature:  '<path d="M3 17c2.5 0 3-9 5-9s1.5 7 3 7 2-4 4-4 2 3 4 3"/><line x1="3" y1="20.5" x2="21" y2="20.5"/>',
+  flag:       '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+  megaphone:  '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M14 8a4 4 0 0 1 0 8"/>',
+  placeholder:'<rect x="4" y="4" width="16" height="16" rx="2"/>',
+};
+function icon(name, size = 16) {
+  const body = ICONS[name] || ICONS.placeholder;
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+// Hidrata íconos declarados en HTML estático: <span data-icon="team" data-isize="20"></span>
+function hydrateIcons(root) {
+  (root || document).querySelectorAll('[data-icon]').forEach(el => {
+    const n = el.getAttribute('data-icon'); if (!n) return;
+    const sz = parseInt(el.getAttribute('data-isize') || '16', 10);
+    el.innerHTML = icon(n, sz);
+    el.removeAttribute('data-icon');
+  });
+}
+// Quita un emoji/pictograma inicial de una etiqueta de datos (CSV) sin tocar el dato crudo.
+function stripEmoji(str) { return s(str).replace(/^[\s\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+/u, '').trim(); }
+
+// ══════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════
 const s  = v => (v == null ? '' : String(v));
@@ -28,12 +136,24 @@ function catColor(c) {
   return catColorMap[key];
 }
 
-const CAT_EMOJI = { bts:'🎧', awareness:'🪞', engagement:'🎤', storytelling:'🎬', trend:'🔀', humor:'😂', educativo:'📖', pov:'👁️', conversión:'💡', behind:'🎙️', viral:'🔥', reel:'📱', short:'⚡' };
-function catEmoji(cats) {
-  const first = s(cats[0]);
-  const m = first.match(/^\s*([\p{Extended_Pictographic}])/u);
-  if (m) return m[1];
-  return CAT_EMOJI[first.toLowerCase()] || '📌';
+// Categoría de contenido → nombre de ícono (cubre cats del banco CSV + del DEMO).
+const CAT_ICON = {
+  // DEMO / internas
+  bts:'headphones', awareness:'identity', engagement:'mic', storytelling:'book',
+  trend:'trend', humor:'smile', educativo:'graduation', pov:'eye', 'conversión':'ideas',
+  behind:'video', viral:'flame', reel:'phone', short:'zap',
+  // CSV (normalizadas sin emoji por stripEmoji)
+  'behind the scenes':'video', 'funny videos for inspiration':'smile',
+  'show your skills / challenge':'trophy', 'song promotion':'music',
+  'talking to camera':'mic', 'trending sounds':'trend',
+  'tutorials/recommendations':'graduation', 'vibes':'ai', 'educational':'graduation',
+  'relatable':'person', 'about me':'person', 'transition hook':'trend',
+  'performance':'sound', 'comedy/sketch':'smile', 'reaction':'eye',
+  'motivational / emotional':'heart',
+};
+function catIcon(cats) {
+  const first = stripEmoji(cats[0]).toLowerCase();
+  return CAT_ICON[first] || 'pin';
 }
 
 // ══════════════════════════════════════════
@@ -70,8 +190,8 @@ function parsearCSV(csv) {
   return rows.slice(1).map((vals, idx) => {
     const obj = {};
     headers.forEach((h, i) => { obj[h] = trim(vals[i] || ''); });
-    const forTags = toTags(obj['for'] || obj['para'] || '');
-    const catTags = toTags(obj['cat'] || obj['categoria'] || '');
+    const forTags = toTags(obj['for'] || obj['para'] || '').map(stripEmoji).filter(Boolean);
+    const catTags = toTags(obj['cat'] || obj['categoria'] || '').map(stripEmoji).filter(Boolean);
     return {
       _idx: idx,
       id: obj.id || '',
@@ -81,20 +201,20 @@ function parsearCSV(csv) {
       cat: catTags,
       link: obj.link || obj.url || '',
       comentarios: obj.comentarios || obj.notas || '',
-      emoji: catEmoji(catTags),
+      icon: catIcon(catTags),
     };
   }).filter(r => r.title.trim().length > 0);
 }
 
 const DEMO = [
-  {_idx:0,id:1,title:"BTS en estudio — Natanael Cano",hook:"Lo que nadie vio...",for:["lanzamiento","single"],cat:["bts","storytelling"],link:"",comentarios:"Muy auténtico",emoji:"🎧"},
-  {_idx:1,id:2,title:"Hook emocional en espejo",hook:"¿Tú también lo sentiste?",for:["lanzamiento","álbum"],cat:["awareness","pov"],link:"",comentarios:"Primera semana",emoji:"🪞"},
-  {_idx:2,id:3,title:"Trend: antes/después del quiebre",hook:"Antes vs después",for:["single","ep"],cat:["trend","engagement"],link:"",comentarios:"Alta viralidad",emoji:"🔀"},
-  {_idx:3,id:4,title:"Mini documental 60 seg",hook:"Un año en 60 segundos",for:["álbum","lanzamiento"],cat:["storytelling"],link:"",comentarios:"Ancla YouTube",emoji:"🎬"},
-  {_idx:4,id:5,title:"Texto en pantalla con mensajes",hook:"Esto es lo que aprendí...",for:["single","lanzamiento"],cat:["engagement","educativo"],link:"",comentarios:"Alta compartición IG",emoji:"✍️"},
-  {_idx:5,id:6,title:"Reacción del productor",hook:"La cara cuando escuchó el take...",for:["lanzamiento"],cat:["bts","humor"],link:"",comentarios:"Humaniza el proceso",emoji:"🎧"},
-  {_idx:6,id:7,title:"Duet con fans",hook:"Cántalo conmigo",for:["single","ep","álbum"],cat:["engagement"],link:"",comentarios:"Genera UGC",emoji:"🎤"},
-  {_idx:7,id:8,title:"POV: eres el artista en estudio",hook:"POV: son las 3am",for:["single","lanzamiento"],cat:["pov","humor"],link:"",comentarios:"Trending TikTok",emoji:"👁️"},
+  {_idx:0,id:1,title:"BTS en estudio — Natanael Cano",hook:"Lo que nadie vio...",for:["lanzamiento","single"],cat:["bts","storytelling"],link:"",comentarios:"Muy auténtico",icon:"headphones"},
+  {_idx:1,id:2,title:"Hook emocional en espejo",hook:"¿Tú también lo sentiste?",for:["lanzamiento","álbum"],cat:["awareness","pov"],link:"",comentarios:"Primera semana",icon:"identity"},
+  {_idx:2,id:3,title:"Trend: antes/después del quiebre",hook:"Antes vs después",for:["single","ep"],cat:["trend","engagement"],link:"",comentarios:"Alta viralidad",icon:"trend"},
+  {_idx:3,id:4,title:"Mini documental 60 seg",hook:"Un año en 60 segundos",for:["álbum","lanzamiento"],cat:["storytelling"],link:"",comentarios:"Ancla YouTube",icon:"video"},
+  {_idx:4,id:5,title:"Texto en pantalla con mensajes",hook:"Esto es lo que aprendí...",for:["single","lanzamiento"],cat:["engagement","educativo"],link:"",comentarios:"Alta compartición IG",icon:"file"},
+  {_idx:5,id:6,title:"Reacción del productor",hook:"La cara cuando escuchó el take...",for:["lanzamiento"],cat:["bts","humor"],link:"",comentarios:"Humaniza el proceso",icon:"headphones"},
+  {_idx:6,id:7,title:"Duet con fans",hook:"Cántalo conmigo",for:["single","ep","álbum"],cat:["engagement"],link:"",comentarios:"Genera UGC",icon:"mic"},
+  {_idx:7,id:8,title:"POV: eres el artista en estudio",hook:"POV: son las 3am",for:["single","lanzamiento"],cat:["pov","humor"],link:"",comentarios:"Trending TikTok",icon:"eye"},
 ];
 function setReferencias(arr) { referencias = arr || []; referencias.forEach((r, i) => { r._idx = i; }); }
 setReferencias(DEMO);
@@ -191,7 +311,7 @@ function renderBancoContext() {
   const a = activeLaunch();
   const n = a ? a.ideas.length : 0;
   host.innerHTML = launchContextHTML()
-    + `<div style="margin:-10px 0 18px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.5px">★ <strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella ★ agrega o quita</div>`;
+    + `<div style="margin:-10px 0 18px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.5px;display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
 }
 function renderBanco() {
   renderBancoContext();
@@ -214,9 +334,9 @@ function renderBanco() {
     return `
     <div class="ref-page-card fade-in" onclick="openRefBoxdrop(${r._idx})">
       <div class="ref-page-thumb" style="background:linear-gradient(135deg,#111,#1a1a1a);position:relative;min-height:90px;display:flex;align-items:center;justify-content:center">
-        <span style="font-size:28px">${s(r.emoji)||'📌'}</span>
+        <span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',30)}</span>
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
-          style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;font-size:14px;opacity:${sel?1:0.3};transition:opacity 0.2s">${sel?'★':'☆'}</button>
+          style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'var(--text-dim)'};opacity:${sel?1:0.5};transition:all 0.2s">${icon(sel?'starFill':'star',15)}</button>
         ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2)">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
@@ -258,11 +378,11 @@ function toggleIdea(idx, btn) {
   let selected;
   if (i >= 0) { a.ideas.splice(i, 1); selected = false; }
   else {
-    a.ideas.push({ key, title:r.title, hook:r.hook, cat:r.cat, for:r.for, link:r.link, comentarios:r.comentarios, emoji:r.emoji });
+    a.ideas.push({ key, title:r.title, hook:r.hook, cat:r.cat, for:r.for, link:r.link, comentarios:r.comentarios, icon:r.icon });
     selected = true;
   }
   saveLaunches();
-  if (btn) { btn.textContent = selected ? '★' : '☆'; btn.style.opacity = selected ? '1' : '0.3'; }
+  if (btn) { btn.innerHTML = icon(selected ? 'starFill' : 'star', 15); btn.style.color = selected ? 'var(--accent)' : 'var(--text-dim)'; btn.style.opacity = selected ? '1' : '0.5'; }
   renderBancoContext();
   return selected;
 }
@@ -316,28 +436,28 @@ function openRefBoxdrop(idx) {
 
   // Miniatura (lado derecho del brief)
   const thumb = refThumb(r.link);
-  const emoji = s(r.emoji) || '📌';
+  const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
   if (thumb) {
     card.innerHTML = `
       <img class="brief-thumb-img" src="${thumb}" alt="${s(r.title)}" loading="lazy"
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="brief-thumb-fallback" style="display:none">${emoji}</div>
+      <div class="brief-thumb-fallback" style="display:none">${briefIco}</div>
       <div style="padding:10px;border-top:1px solid var(--border)">
-        <a href="${s(r.link)}" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">↗ Abrir original</a>
+        <a href="${s(r.link)}" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">${icon('link',12)} Abrir original</a>
       </div>`;
   } else {
     card.innerHTML = `
-      <div class="brief-thumb-fallback" style="display:flex">${emoji}</div>
+      <div class="brief-thumb-fallback" style="display:flex">${briefIco}</div>
       <div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`;
   }
 
   const selLabel = a ? `Seleccionar para ${s(a.name)}` : 'Seleccionar idea';
   document.getElementById('bd-actions').innerHTML = `
-    <button id="bd-sel-btn" onclick="(function(b){ const on = toggleIdea(${idx}, null); b.innerHTML = on ? '★ Seleccionada' : '☆ ${selLabel}'; b.style.color = on ? 'var(--accent)' : 'var(--text-muted)'; b.style.borderColor = on ? 'rgba(255,107,48,0.3)' : 'var(--border)'; })(this)"
-      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'rgba(255,107,48,0.3)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${sel?'★ Seleccionada':'☆ '+selLabel}</button>
+    <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'rgba(255,107,48,0.3)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
     <button onclick="generarContenidoBanco(${idx})"
-      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(167,139,250,0.4);background:transparent;color:#a78bfa;transition:all 0.15s">✨ Generar contenido</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(167,139,250,0.4);background:transparent;color:#a78bfa;transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
@@ -476,7 +596,7 @@ function renderCalGrid() {
       const estIcon = ESTADO_ICON[est] || '';
       return `<div onclick="openProduction('${a.id}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci.title)} · ${est}">${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
     }).join('');
-    const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px">🎯 DROP</div>` : '';
+    const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
     div.className = 'cal-day' + (isToday ? ' today' : '');
     if (calRange === '1m') div.style.minHeight = '78px';
@@ -496,7 +616,7 @@ function renderCalGrid() {
   if (sideRefs) sideRefs.innerHTML = referencias.slice(0, 6).map((r) => {
     const cats = (r.cat||[]).filter(Boolean); const col = catColor(cats[0]);
     return `<div class="ref-item" onclick="openRefBoxdrop(${r._idx})">
-      <div style="width:26px;height:26px;border-radius:4px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${s(r.emoji)||'📌'}</div>
+      <div style="width:26px;height:26px;border-radius:4px;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s(r.icon)||'pin',15)}</div>
       <div class="ref-info"><div class="ref-title">${s(r.title)}</div><div class="ref-meta">${cats.map(up).join(' · ') || '—'}</div></div>
     </div>`;
   }).join('');
@@ -583,7 +703,7 @@ function kanbanDrop(e, stageKey) {
 // ══════════════════════════════════════════
 // CENTRO DE PRODUCCIÓN (Módulo 9) — por pieza del calendario
 // ══════════════════════════════════════════
-const ESTADO_ICON = { pendiente:'', aprobado:'👍', grabando:'🎥', editando:'✂️', programado:'🗓️', publicado:'✅' };
+const ESTADO_ICON = { pendiente:'', aprobado:icon('thumb',13), grabando:icon('video',13), editando:icon('scissors',13), programado:icon('calendar',13), publicado:icon('check',13) };
 let prodCtx = { launchId: null, itemId: null };
 let prodActiveTab = 'brief';
 
@@ -673,7 +793,7 @@ function prodGuionHTML(p) {
     <div class="script-block">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <input class="input" style="font-family:var(--font-mono);font-size:11px;color:var(--accent)" value="${s(b.time)}" onchange="prodGuionSet(${i},'time',this.value)" placeholder="00:00 – 00:03 · HOOK">
-        <button class="goal-btn reject" onclick="prodGuionDel(${i})" title="Quitar">✕</button>
+        <button class="goal-btn reject" onclick="prodGuionDel(${i})" title="Quitar">${icon('close',12)}</button>
       </div>
       <textarea class="textarea" onchange="prodGuionSet(${i},'text',this.value)" placeholder="Qué pasa / qué se dice">${s(b.text)}</textarea>
       <input class="input" style="margin-top:8px;font-size:11px" value="${s(b.note)}" onchange="prodGuionSet(${i},'note',this.value)" placeholder="Nota (audio, tono, texto en pantalla…)">
@@ -690,7 +810,7 @@ function prodShotsHTML(p) {
       <div class="shot-content">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
           <input class="input" value="${s(sh.name)}" onchange="prodShotSet(${i},'name',this.value)" placeholder="Nombre del plano">
-          <button class="goal-btn reject" onclick="prodShotDel(${i})" title="Quitar">✕</button>
+          <button class="goal-btn reject" onclick="prodShotDel(${i})" title="Quitar">${icon('close',12)}</button>
         </div>
         <textarea class="textarea" style="min-height:50px" onchange="prodShotSet(${i},'detail',this.value)" placeholder="Encuadre, iluminación, duración…">${s(sh.detail)}</textarea>
       </div>
@@ -705,7 +825,7 @@ function prodAssetsHTML(ci, p) {
     <div class="metric-entry-row" style="grid-template-columns:1fr 1.5fr 32px">
       <input class="input" value="${s(as.label)}" onchange="prodAssetSet(${i},'label',this.value)" placeholder="Etiqueta (Foto portada, B-roll…)">
       <input class="input" value="${s(as.link)}" onchange="prodAssetSet(${i},'link',this.value)" placeholder="Link (Drive, Dropbox, archivo…)">
-      <button class="goal-btn reject" onclick="prodAssetDel(${i})" title="Quitar">✕</button>
+      <button class="goal-btn reject" onclick="prodAssetDel(${i})" title="Quitar">${icon('close',12)}</button>
     </div>`).join('');
   return `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Enlaces a fotos, videos y archivos de la pieza (Drive, Dropbox, etc.).</div>
     ${assets || '<div class="empty-hint">Sin assets todavía.</div>'}
@@ -759,7 +879,7 @@ function prodContentHTML(ci, p) {
   const promptStr = buildContentPrompt(ci);
   return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarContenidoIA()">✨ ${c ? 'Regenerar' : 'Generar'} contenido</button>
+      <button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
       ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
@@ -769,7 +889,7 @@ async function generarContenidoIA() {
   const ci = prodItem(); if (!ci) return;
   if (!aiReady()) { abrirAISettings(); return; }
   const res = document.getElementById('prod-content-result');
-  res.innerHTML = '<div class="empty-hint">✨ Generando contenido…</div>';
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando contenido…</div>`;
   try {
     const { text } = await callClaude(buildContentPrompt(ci), 1600);
     const obj = parseJSONObj(text);
@@ -779,7 +899,7 @@ async function generarContenidoIA() {
     saveLaunches();
     renderProd();
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`;
   }
 }
 
@@ -833,14 +953,14 @@ async function generarContenidoBanco(idx) {
   const r = referencias[idx]; if (!r) return;
   const a = activeLaunch(); const art = activeArtist() || {};
   const res = document.getElementById('bd-content-result');
-  res.innerHTML = '<div class="empty-hint">✨ Generando contenido…</div>';
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando contenido…</div>`;
   try {
     const { text } = await callClaude(buildContentPromptFromRef(r, a, art), 1600);
     const obj = parseJSONObj(text);
     if (!obj) throw new Error('La IA no devolvió contenido válido.');
     res.innerHTML = contentResultHTML(obj);
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`;
   }
 }
 
@@ -891,37 +1011,37 @@ function renderPOW() {
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-bottom:18px">${up(d.art.name)} · ${up(d.a.name)} · SEMANA DEL ${powDMd(d.now.mon)} AL ${powDMd(d.now.sun)}</div>
 
     <div class="pow-section">
-      <h4>✅ Semana pasada · hit rate ${hit}%</h4>
+      <h4>${icon('check',14)} Semana pasada · hit rate ${hit}%</h4>
       <div style="font-size:13px;margin-bottom:8px">${d.lastPublished.length} de ${d.lastWeekItems.length} piezas publicadas.</div>
       <div class="progress-track"><div class="progress-fill" style="width:${hit}%"></div></div>
     </div>
 
     <div class="pow-section">
-      <h4>📅 Esta semana · ${d.pending.length} pendiente${d.pending.length===1?'':'s'}</h4>
+      <h4>${icon('calendar',14)} Esta semana · ${d.pending.length} pendiente${d.pending.length===1?'':'s'}</h4>
       ${d.pending.length ? d.pending.map(c => `<div class="pow-row"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:48px">${powDM(c.fecha)}</span><span style="flex:1">${ESTADO_ICON[(c.production&&c.production.estado)||'pendiente']||''} ${s(c.title)}</span><span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${(c.production&&c.production.estado)||'pendiente'}</span></div>`).join('') : '<div style="font-size:12px;color:var(--text-dim)">Sin piezas pendientes esta semana.</div>'}
     </div>
 
     <div class="pow-section">
-      <h4>📊 Métricas top — ${s(d.a.name)}</h4>
+      <h4>${icon('chart',14)} Métricas top — ${s(d.a.name)}</h4>
       ${d.metrics.length ? `<div class="dashboard-grid" style="grid-template-columns:repeat(3,1fr);gap:10px">${d.metrics.map(m => `<div class="stat-card" style="padding:14px"><div class="stat-label">${s(m.metric)}</div><div class="stat-value" style="font-size:24px">${fmtNum(m.value)}</div></div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--text-dim)">Sin métricas cargadas (impórtalas en Métricas).</div>'}
     </div>
 
     <div class="pow-section" style="margin-bottom:0">
-      <h4>💡 Recomendación IA</h4>
+      <h4>${icon('ideas',14)} Recomendación IA</h4>
       <div id="pow-rec">${powRecommendation
         ? `<div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;line-height:1.6">${s(powRecommendation)}</div>`
-        : `<button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarPOWRecomendacion()">✨ Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
+        : `<button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
     </div>`;
 }
 async function generarPOWRecomendacion() {
   if (!aiReady()) { abrirAISettings(); return; }
   const d = powData(); const rec = document.getElementById('pow-rec');
-  rec.innerHTML = '<div class="empty-hint">✨ Generando recomendación…</div>';
+  rec.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando recomendación…</div>`;
   try {
     const { text } = await callClaude(powRecPrompt(d), 400);
     powRecommendation = s(text).trim();
     renderPOW();
-  } catch (e) { rec.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`; }
+  } catch (e) { rec.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
 }
 function powText() {
   const d = powData(); if (!d.a) return '';
@@ -992,7 +1112,7 @@ function renderObjetivos() {
     // Generar-una-vez: si hay info suficiente, IA lista y aún no se intentó → genera y guarda
     if (hasGoalInfo(a, art) && aiReady() && canDo('use_generador_ia') && !a.goalsAITried) {
       a.goalsAITried = true; saveLaunches();
-      host.innerHTML = `<div class="empty-hint">✨ Generando sugerencias de metas con IA (según ADN, campaña e histórico)…</div>`;
+      host.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando sugerencias de metas con IA (según ADN, campaña e histórico)…</div>`;
       sugerirObjetivosIA(true);
       return;
     }
@@ -1000,7 +1120,7 @@ function renderObjetivos() {
       host.innerHTML = `<div class="empty-hint">No hay suficiente información para sugerir metas todavía.<br>
         <span style="color:var(--text-muted)">Agrégalas con <b>“+ Meta manual”</b>, o completa el <b>ADN</b> del artista y los datos del lanzamiento (fecha, campaña). Tener métricas de lanzamientos anteriores también ayuda a que la IA proponga metas.</span></div>`;
     } else {
-      host.innerHTML = `<div class="empty-hint">Aún no hay metas para “${s(a.name)}”. Usa <b>“✨ Sugerir con IA”</b> o <b>“+ Meta manual”</b>.</div>`;
+      host.innerHTML = `<div class="empty-hint">Aún no hay metas para “${s(a.name)}”. Usa <b>“Sugerir con IA”</b> o <b>“+ Meta manual”</b>.</div>`;
     }
     return;
   }
@@ -1008,7 +1128,7 @@ function renderObjetivos() {
     const cls = g.status === 'accepted' ? ' accepted' : (g.status === 'rejected' ? ' rejected' : '');
     const accOn = g.status === 'accepted' ? ' on-accept' : '';
     const rejOn = g.status === 'rejected' ? ' on-reject' : '';
-    const dl = g.deadline ? ` · 📅 ${g.deadline}` : '';
+    const dl = g.deadline ? ` · ${icon('calendar',11)} ${g.deadline}` : '';
     const pr = goalProgress(a, g);
     let progHTML = '';
     if (pr.actual != null) {
@@ -1019,13 +1139,13 @@ function renderObjetivos() {
         <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:3px">logrado ${fmtNum(pr.actual)}${pct != null ? ` · <span style="color:${col}">${pct}%</span>` : ' (objetivo relativo)'}</div></div>`;
     }
     return `<div class="goal-row${cls}">
-      <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'}">${s(g.icon)}</div>
+      <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'};display:flex;align-items:center;justify-content:center;color:var(--text)">${icon(ICONS[s(g.icon)]?s(g.icon):'goals',18)}</div>
       <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}${dl}</div>${progHTML}</div>
       <div class="goal-target">${s(g.target)}<small>OBJETIVO</small></div>
       <div class="goal-ai">${s(g.ai || (g.source === 'manual' ? 'manual' : ''))}</div>
       <div class="goal-actions">
-        <div class="goal-btn accept${accOn}" title="Aceptar" onclick="goalSetStatus(${i},'accepted')">✓</div>
-        <div class="goal-btn reject${rejOn}" title="Quitar" onclick="goalSetStatus(${i},'rejected')">✕</div>
+        <div class="goal-btn accept${accOn}" title="Aceptar" onclick="goalSetStatus(${i},'accepted')">${icon('check',13)}</div>
+        <div class="goal-btn reject${rejOn}" title="Quitar" onclick="goalSetStatus(${i},'rejected')">${icon('close',13)}</div>
       </div>
     </div>`;
   }).join('');
@@ -1100,7 +1220,7 @@ function goalsVsActuals(art) {
     (l.goals || []).filter(g => g.status !== 'rejected').forEach(g => {
       const pr = goalProgress(l, g);
       const got = pr.actual != null ? fmtNum(pr.actual) : 'sin dato';
-      const pc = pr.pct != null ? ` (${pr.pct}%${pr.pct >= 100 ? ' ✓ cumplida' : ''})` : '';
+      const pc = pr.pct != null ? ` (${pr.pct}%${pr.pct >= 100 ? ' '+icon('check',11)+' cumplida' : ''})` : '';
       lines.push(`- [${l.name}] ${g.platform || ''} ${g.metric}: objetivo ${g.target} · logrado ${got}${pc}`);
     });
   });
@@ -1146,12 +1266,12 @@ function artistPerformance(art) {
   const avg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : null;
   const end = latest ? launchEndDate(latest) : '';
   const dleft = end ? diasRestantes(end) : null;
-  let sig = '⚪', label = 'Sin métricas', rank = 2; // rank: 0=rojo(prioridad), 1=amarillo, 2=neutro, 3=verde
+  let sig = 'gray', label = 'Sin métricas', rank = 2; // rank: 0=rojo(prioridad), 1=amarillo, 2=neutro, 3=verde
   if (avg != null) {
-    if (avg >= 100) { sig = '🟢'; label = 'Meta cumplida'; rank = 3; }
-    else if (avg >= 60) { sig = '🟡'; label = 'Cerca'; rank = 1; }
-    else { sig = '🔴'; label = 'Necesita atención'; rank = 0; }
-    if (avg < 100 && dleft != null && dleft < 0) { sig = '🔴'; label = 'Atrasado'; rank = 0; }
+    if (avg >= 100) { sig = 'green'; label = 'Meta cumplida'; rank = 3; }
+    else if (avg >= 60) { sig = 'yellow'; label = 'Cerca'; rank = 1; }
+    else { sig = 'red'; label = 'Necesita atención'; rank = 0; }
+    if (avg < 100 && dleft != null && dleft < 0) { sig = 'red'; label = 'Atrasado'; rank = 0; }
   }
   return { latest, avg, totalGoals, met, end, dleft, sig, label, rank, measured: pcts.length };
 }
@@ -1221,8 +1341,8 @@ function renderMetaModal() {
   const art = activeArtist(), a = activeLaunch();
   const cats = artistCatalog(art);
   const cur = cats.find(p => p.name === _metaSel.platform) || cats[0] || { metrics: [] };
-  const platOpts = cats.map(p => `<option ${p.name === _metaSel.platform ? 'selected' : ''}>${s(p.name)}</option>`).join('') + '<option value="__add">➕ otra plataforma…</option>';
-  const metricOpts = (cur.metrics || []).map(m => `<option ${m === _metaSel.metric ? 'selected' : ''}>${s(m)}</option>`).join('') + '<option value="__add">➕ otra métrica…</option>';
+  const platOpts = cats.map(p => `<option ${p.name === _metaSel.platform ? 'selected' : ''}>${s(p.name)}</option>`).join('') + '<option value="__add">+ otra plataforma…</option>';
+  const metricOpts = (cur.metrics || []).map(m => `<option ${m === _metaSel.metric ? 'selected' : ''}>${s(m)}</option>`).join('') + '<option value="__add">+ otra métrica…</option>';
   document.getElementById('goal-body').innerHTML = `
     <div class="field" style="margin-bottom:12px"><label>Plataforma</label>
       <select class="input" id="meta-plat" onchange="metaPlatChange(this.value)">${platOpts}</select></div>
@@ -1266,10 +1386,10 @@ function guardarMetaManual() {
   document.getElementById('modal-goal').classList.remove('open');
   uiToast('✓ Meta agregada');
 }
-const PLAT_ICON = { spotify:['🎧','rgba(74,222,128,0.12)'], tiktok:['📱','rgba(255,0,80,0.12)'], instagram:['📷','rgba(225,48,108,0.12)'], youtube:['▶','rgba(255,0,0,0.12)'], apple:['🍎','rgba(255,255,255,0.08)'] };
+const PLAT_ICON = { spotify:['headphones','rgba(74,222,128,0.12)'], tiktok:['phone','rgba(255,0,80,0.12)'], instagram:['camera','rgba(225,48,108,0.12)'], youtube:['play','rgba(255,0,0,0.12)'], apple:['apple','rgba(255,255,255,0.08)'] };
 function platIcon(p) {
   const key = Object.keys(PLAT_ICON).find(k => s(p).toLowerCase().includes(k));
-  return PLAT_ICON[key] || ['🎯','rgba(255,107,48,0.12)'];
+  return PLAT_ICON[key] || ['goals','rgba(255,107,48,0.12)'];
 }
 function buildGoalsPrompt(a) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
@@ -1292,7 +1412,7 @@ async function sugerirObjetivosIA(auto) {
   if (!aiReady()) { if (!auto) abrirAISettings(); else renderObjetivos(); return; }
   if (!auto && !requireCan('use_generador_ia')) return;
   const host = document.getElementById('objetivos-list');
-  host.insertAdjacentHTML('afterbegin', '<div id="obj-loading" class="empty-hint" style="margin-bottom:10px">✨ Proponiendo objetivos con IA…</div>');
+  host.insertAdjacentHTML('afterbegin', `<div id="obj-loading" class="empty-hint" style="margin-bottom:10px">${icon('ai',13)} Proponiendo objetivos con IA…</div>`);
   try {
     const { text } = await callClaude(buildGoalsPrompt(a), 800, 'objetivos');
     const arr = parseJSONArray(text);
@@ -1307,7 +1427,7 @@ async function sugerirObjetivosIA(auto) {
     saveLaunches(); renderObjetivos();
   } catch (e) {
     const l = document.getElementById('obj-loading');
-    if (l) l.innerHTML = `⚠ ${s(e.message)} — revisa ⚙ API.`;
+    if (l) l.innerHTML = `${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.`;
   }
 }
 
@@ -1321,11 +1441,11 @@ function renderAprendizajes() {
   const host = document.getElementById('aprend-list'); if (!host) return;
   if (!art) { host.innerHTML = ''; return; }
   const L = art.learnings || [];
-  if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${s(art.name)}. Usa “✨ Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
+  if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${s(art.name)}. Usa “Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
   host.innerHTML = L.map((it, i) => {
     const cls = it.type === 'good' ? ' good' : (it.type === 'bad' ? ' bad' : '');
     return `<div class="learn-card${cls}">
-      <button class="goal-btn reject" style="float:right" onclick="quitarAprendizaje(${i})" title="Quitar">✕</button>
+      <button class="goal-btn reject" style="float:right" onclick="quitarAprendizaje(${i})" title="Quitar">${icon('close',12)}</button>
       <div class="learn-tag">${s(it.tag || art.name)}</div>
       <div class="learn-q">${s(it.q)}</div>
       <div class="learn-a">${s(it.a)}</div>
@@ -1363,14 +1483,14 @@ async function generarAprendizajesIA() {
   const art = activeArtist(); if (!art) return;
   if (!aiReady()) { abrirAISettings(); return; }
   const host = document.getElementById('aprend-list');
-  host.insertAdjacentHTML('afterbegin', '<div id="aprend-loading" class="empty-hint" style="margin-bottom:10px">✨ Analizando lanzamientos…</div>');
+  host.insertAdjacentHTML('afterbegin', `<div id="aprend-loading" class="empty-hint" style="margin-bottom:10px">${icon('ai',13)} Analizando lanzamientos…</div>`);
   try {
     const { text } = await callClaude(buildLearningsPrompt(art), 900);
     const arr = parseJSONArray(text);
     if (!arr.length) throw new Error('La IA no devolvió aprendizajes válidos.');
     arr.forEach(x => art.learnings.unshift({ tag: s(x.tag) || art.name, type: (x.type || 'neutral'), q: s(x.q), a: s(x.a), meta: s(x.meta) }));
     saveArtists(); renderAprendizajes();
-  } catch (e) { const l = document.getElementById('aprend-loading'); if (l) l.innerHTML = `⚠ ${s(e.message)} — revisa ⚙ API.`; }
+  } catch (e) { const l = document.getElementById('aprend-loading'); if (l) l.innerHTML = `${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.`; }
 }
 
 // ══════════════════════════════════════════
@@ -1414,8 +1534,8 @@ function renderIA() {
   const promptStr = buildStrategyPrompt(art);
   host.innerHTML = `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">⬡</span><span class="ph-title">Recomendaciones para ${s(art.name)}</span>
-        <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarEstrategiaIA()">✨ Generar recomendaciones</button>
+      <div class="panel-head"><span class="ph-icon">${icon('ai',18)}</span><span class="ph-title">Recomendaciones para ${s(art.name)}</span>
+        <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
       </div>
       ${aiHintHTML(promptStr, 900)}
     </div>
@@ -1428,8 +1548,8 @@ async function generarEstrategiaIA() {
   if (!lim.ok) { uiAlert(lim.msg); return; }
   if (!aiReady()) { abrirAISettings(); return; }
   const res = document.getElementById('ia-results');
-  if (lim.note) res.innerHTML = `<div class="empty-hint" style="border-color:var(--beat)">ℹ ${lim.note}</div>`;
-  res.innerHTML = '<div class="empty-hint">✨ Analizando estrategia…</div>';
+  if (lim.note) res.innerHTML = `<div class="empty-hint" style="border-color:var(--beat)">${icon('info',13)} ${lim.note}</div>`;
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Analizando estrategia…</div>`;
   try {
     const { text } = await callClaude(buildStrategyPrompt(art), 1200);
     const obj = parseJSONObj(text);
@@ -1437,19 +1557,19 @@ async function generarEstrategiaIA() {
     if (!items.length) throw new Error('La IA no devolvió recomendaciones válidas.');
     art.strategy = { generatedAt: Date.now(), items };
     saveArtists(); renderIA();
-  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">⚠ ${s(e.message)} — revisa ⚙ API.</div>`; }
+  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
 }
 
 // ══════════════════════════════════════════
 // MÉTRICAS (scoped al lanzamiento activo)
 // ══════════════════════════════════════════
 const PLAT_META = {
-  spotify:   { name:'Spotify',     icon:'🎧', color:'#1db954' },
-  tiktok:    { name:'TikTok',      icon:'📱', color:'#ff0050' },
-  instagram: { name:'Instagram',   icon:'📷', color:'#e1306c' },
-  youtube:   { name:'YouTube',     icon:'▶',  color:'#ff0000' },
-  apple:     { name:'Apple Music', icon:'🍎', color:'#fc3c44' },
-  other:     { name:'Otra',        icon:'📊', color:'#888' },
+  spotify:   { name:'Spotify',     icon:icon('headphones',14), color:'#1db954' },
+  tiktok:    { name:'TikTok',      icon:icon('phone',14),      color:'#ff0050' },
+  instagram: { name:'Instagram',   icon:icon('camera',14),     color:'#e1306c' },
+  youtube:   { name:'YouTube',     icon:icon('play',14),       color:'#ff0000' },
+  apple:     { name:'Apple Music', icon:icon('apple',14),      color:'#fc3c44' },
+  other:     { name:'Otra',        icon:icon('chart',14),      color:'#888' },
 };
 function todayISO() { return new Date().toISOString().slice(0,10); }
 function normalizeDateStr(v) { const d = new Date(v); return isNaN(d) ? todayISO() : d.toISOString().slice(0,10); }
@@ -1569,12 +1689,12 @@ function metricsImportarHTML() {
   return `
   <div class="field-grid" style="align-items:start">
     <div class="panel" style="margin:0">
-      <div class="panel-head"><span class="ph-icon">📄</span><span class="ph-title">Importar CSV de plataforma</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Importar CSV de plataforma</span></div>
       <div class="field-grid" style="margin-bottom:12px">
         <div class="field"><label>Nivel</label>${levelSelectHTML('csv-level')}</div>
         <div class="field"><label>Plataforma</label>${platSelectHTML('csv-plat')}</div>
       </div>
-      <label for="mcsv-file" class="btn btn-ghost" style="display:inline-block;margin-bottom:10px">📎 Subir archivo .csv</label>
+      <label for="mcsv-file" class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">${icon('upload',14)} Subir archivo .csv</label>
       <input type="file" id="mcsv-file" accept=".csv,text/csv" style="display:none" onchange="csvFileToText(event)">
       <textarea class="textarea" id="mcsv-text" placeholder="…o pega aquí el contenido del CSV" style="min-height:90px;font-family:var(--font-mono);font-size:11px"></textarea>
       <button class="btn btn-primary" style="margin-top:10px" onclick="analizarMetricasCSV()">Analizar CSV</button>
@@ -1583,12 +1703,12 @@ function metricsImportarHTML() {
     </div>
 
     <div class="panel" style="margin:0">
-      <div class="panel-head"><span class="ph-icon">🖼️</span><span class="ph-title">Cargar por captura (sin IA)</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('image',18)}</span><span class="ph-title">Cargar por captura (sin IA)</span></div>
       <div class="field-grid" style="margin-bottom:12px">
         <div class="field"><label>Nivel</label>${levelSelectHTML('shot-level')}</div>
         <div class="field"><label>Plataforma</label>${platSelectHTML('shot-plat')}</div>
       </div>
-      <label for="shot-file" class="btn btn-ghost" style="display:inline-block;margin-bottom:10px">📷 Subir screenshot</label>
+      <label for="shot-file" class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">${icon('camera',14)} Subir screenshot</label>
       <input type="file" id="shot-file" accept="image/*" style="display:none" onchange="handleMetricScreenshot(event)">
       <div id="shot-preview" style="margin-bottom:10px"></div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:8px">ESCRIBE LOS NÚMEROS QUE VES</div>
@@ -1656,7 +1776,7 @@ function renderCSVPreview() {
     + csvMetricRows.map((e,i) => `<div class="metric-entry-row">
         <input class="input" value="${s(e.metric)}" onchange="csvMetricRows[${i}].metric=this.value">
         <input class="input" value="${e.value}" onchange="csvMetricRows[${i}].value=parseMetricNum(this.value)">
-        <button class="goal-btn reject" onclick="csvMetricRows.splice(${i},1);renderCSVPreview()">✕</button>
+        <button class="goal-btn reject" onclick="csvMetricRows.splice(${i},1);renderCSVPreview()">${icon('close',12)}</button>
       </div>`).join('')
     + `<button class="btn btn-primary" style="margin-top:8px" onclick="guardarCSVMetricas()">Guardar ${csvMetricRows.length} métrica(s)</button>`;
 }
@@ -1697,7 +1817,7 @@ function renderShotFields() {
   host.innerHTML = shotFields.map((f,i) => `<div class="metric-entry-row">
     <input class="input" placeholder="Métrica (ej. Oyentes mensuales)" value="${s(f.metric)}" onchange="shotFields[${i}].metric=this.value">
     <input class="input" placeholder="Valor (ej. 42K)" value="${s(f.value)}" onchange="shotFields[${i}].value=this.value">
-    <button class="goal-btn reject" onclick="shotFields.splice(${i},1);renderShotFields()">✕</button>
+    <button class="goal-btn reject" onclick="shotFields.splice(${i},1);renderShotFields()">${icon('close',12)}</button>
   </div>`).join('');
 }
 function guardarScreenshotMetricas() {
@@ -1866,10 +1986,10 @@ const SEED_LAUNCHES = [
       {fecha:'2026-06-09', title:'Mini documental del proceso', cat:'storytelling', production:{estado:'pendiente'}},
     ],
     goals:[
-      {icon:'🎧', bg:'rgba(74,222,128,0.12)',  metric:'Spotify Streams',       sub:'Primeros 30 días',   target:'150K', ai:'IA: basado en Groserías', status:'proposed'},
-      {icon:'📱', bg:'rgba(255,0,80,0.12)',   metric:'TikTok Views',          sub:'Campaña completa',   target:'2M',   ai:'IA: +34% vs prev.',       status:'proposed'},
-      {icon:'📷', bg:'rgba(225,48,108,0.12)', metric:'Instagram Seguidores',  sub:'Crecimiento neto',   target:'+5K',  ai:'IA: conservador',         status:'proposed'},
-      {icon:'▶',  bg:'rgba(255,0,0,0.12)',    metric:'YouTube Suscriptores',  sub:'Campaña completa',   target:'+2K',  ai:'IA: basado en histórico', status:'proposed'},
+      {icon:'headphones', bg:'rgba(74,222,128,0.12)',  metric:'Spotify Streams',       sub:'Primeros 30 días',   target:'150K', ai:'IA: basado en Groserías', status:'proposed'},
+      {icon:'phone', bg:'rgba(255,0,80,0.12)',   metric:'TikTok Views',          sub:'Campaña completa',   target:'2M',   ai:'IA: +34% vs prev.',       status:'proposed'},
+      {icon:'camera', bg:'rgba(225,48,108,0.12)', metric:'Instagram Seguidores',  sub:'Crecimiento neto',   target:'+5K',  ai:'IA: conservador',         status:'proposed'},
+      {icon:'play',  bg:'rgba(255,0,0,0.12)',    metric:'YouTube Suscriptores',  sub:'Campaña completa',   target:'+2K',  ai:'IA: basado en histórico', status:'proposed'},
     ],
     metrics:{ cards:[], weeks:[] },
     metricEntries:[
@@ -2037,7 +2157,7 @@ function launchCardHTML(l) {
   const cover = /^c[1-5]$/.test(l.cover) ? l.cover : 'c5';
   return `
     <div class="launch-card fade-in" onclick="openLaunch('${l.id}')">
-      <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">✕</button>
+      <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
       <div class="launch-cover ${cover}">${up(l.name).slice(0,9)}</div>
       <div class="launch-info">
         <div class="launch-name">${s(l.name)}</div>

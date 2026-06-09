@@ -52,8 +52,8 @@ function trackChecklistHTML(t) {
       <option value="__default">↺ Restablecer al default</option>
       ${tpls.map(tp => `<option value="${tp.id}">${s(tp.name)}</option>`).join('')}
     </select>
-    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate()">💾 Guardar como plantilla…</button>` : ''}
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel()">📋 Gestionar</button>
+    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate()">${icon('save',13)} Guardar como plantilla…</button>` : ''}
+    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel()">${icon('checklist',13)} Gestionar</button>
     <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
   </div>`;
   const groups = CHECKLIST_GROUP_ORDER.filter(g => def[g] && def[g].length).map(g => `
@@ -61,7 +61,7 @@ function trackChecklistHTML(t) {
       <div style="display:flex;flex-direction:column">
         ${def[g].map(([k, label]) => { const on = !!(c[g] && c[g][k]); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}')"> ${s(label)}</label>
-          ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}')">✕</button>` : ''}
+          ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}')">${icon('close',12)}</button>` : ''}
         </div>`; }).join('')}
       </div></div>`).join('');
   const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:12px" onclick="addChecklistItem('otros')">+ Otra tarea</button>` : '';
@@ -152,7 +152,7 @@ async function deleteTemplate(id) {
 // ── Audio ──
 function trackAudioHTML(t) {
   const f = (label, path, val, ph) => `<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" placeholder="${ph || ''}" onchange="setTrackField('${path}',this.value,'editar_audio')"></div>`;
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">🎧</span><span class="ph-title">Audio & metadata</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('headphones',18)}</span><span class="ph-title">Audio & metadata</span></div>
     ${f('Título', 'title', t.title)}
     ${f('Versión', 'version', t.version, 'Remix, Acoustic, Sped Up…')}
     ${f('ISRC', 'isrc', t.isrc, 'MX-XXX-YY-NNNNN')}
@@ -168,7 +168,7 @@ function trackAudioHTML(t) {
 function trackLabelCopyHTML(t) {
   const lc = t.labelCopy || {};
   const f = (label, path, val) => `<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" onchange="setTrackField('${path}',this.value,'editar_labelcopy')"></div>`;
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">📄</span><span class="ph-title">Label Copy</span><span class="ph-sub">documento madre</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Label Copy</span><span class="ph-sub">documento madre</span></div>
     ${f('Artista principal', 'credits.mainArtist', (t.credits || {}).mainArtist)}
     ${f('Sello', 'labelCopy.label', lc.label)}
     ${f('Distribuidora', 'labelCopy.distributor', lc.distributor)}
@@ -179,13 +179,13 @@ function trackLabelCopyHTML(t) {
     ${f('Sociedad de gestión (PRO)', 'publishing.pro', (t.publishing || {}).pro)}
     <div class="field"><label>Notas</label><textarea class="textarea" onchange="setTrackField('labelCopy.notes',this.value,'editar_labelcopy')">${s(lc.notes)}</textarea></div>
   </div>
-  <div class="panel"><div class="panel-head"><span class="ph-icon">🎤</span><span class="ph-title">Créditos</span></div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">Créditos</span></div>
     ${trackListField(t, 'credits.featured',  [['name','Artista feat.'],['role','Rol']],     'Artistas invitados (feat.)', 'feat')}
     ${trackListField(t, 'credits.producers', [['name','Productor'],['contact','Contacto']],  'Productores',                'productor')}
     ${trackListField(t, 'credits.composers', [['name','Compositor'],['split','% comp.']],    'Compositores (split %)',     'compositor')}
     ${trackListField(t, 'credits.writers',   [['name','Letrista'],['split','% letra']],      'Letristas (split %)',        'letrista')}
   </div>
-  <div class="panel"><div class="panel-head"><span class="ph-icon">📇</span><span class="ph-title">Contactos</span></div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos</span></div>
     ${trackListField(t, 'labelCopy.contacts', [['name','Nombre'],['role','Rol'],['email','Email']], 'Contactos del release', 'contacto')}
   </div>`;
 }
@@ -194,7 +194,7 @@ function trackListField(t, path, fields, label, addLabel) {
   const arr = getPath(t, path) || [];
   const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
       ${fields.map(([fk, fl]) => `<input class="input" style="flex:1;min-width:0;padding:5px 8px;font-size:12px" placeholder="${fl}" value="${s(item[fk])}" onchange="setTrackListItem('${path}',${i},'${fk}',this.value)">`).join('')}
-      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">✕</button>
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
     </div>`).join('');
   return `<div class="field" style="margin-bottom:16px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
 }
@@ -211,7 +211,7 @@ function trackLegalHTML(t) {
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-      <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">✕</button>
+      <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">${icon('close',12)}</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <input class="input" style="flex:1;min-width:120px;padding:5px 8px;font-size:12px" value="${s(d.responsable)}" placeholder="Responsable" ${setF(i,'responsable')}>

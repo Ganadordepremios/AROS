@@ -32,9 +32,9 @@ function releaseInversionHTML(l){
       <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${money(+e.monto || 0)}${e.proveedor ? ` <span style="color:var(--text-muted);font-size:12px;font-weight:400">· ${s(e.proveedor)}</span>` : ''}</div>
         <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(e.fecha) || ''}${e.metodo ? ' · ' + s(e.metodo) : ''}${e.note ? ' · ' + s(e.note) : ''}</div></div>
       ${e.reciboLink ? `<a href="${s(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono)">↗ recibo</a>` : ''}
-      ${editable ? `<button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">✕</button>` : ''}
+      ${editable ? `<button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">${icon('close',12)}</button>` : ''}
     </div>`).join('');
-  const addForm = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">＋</span><span class="ph-title">Registrar gasto</span></div>
+  const addForm = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('plus',18)}</span><span class="ph-title">Registrar gasto</span></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
         <div class="field"><label>Monto</label><input class="input" id="exp-monto" inputmode="decimal" placeholder="0"></div>
         <div class="field"><label>Categoría</label><select class="input" id="exp-cat">${EXPENSE_CATS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
@@ -52,16 +52,16 @@ function releaseInversionHTML(l){
       ${card('Recoupment', fs.recoupPct + '%', fs.estado.replace('_', ' '), estadoColor)}
       ${card('ROI', fs.roi == null ? '—' : fs.roi + '%', fs.roi == null ? 'sin inversión' : '', fs.roi == null ? '' : (fs.roi >= 0 ? '#4ade80' : 'var(--accent2)'))}
     </div>
-    <div class="panel"><div class="panel-head"><span class="ph-icon">💰</span><span class="ph-title">Recoupment</span><span class="ph-sub">ingresos vs inversión</span></div>
+    <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Recoupment</span><span class="ph-sub">ingresos vs inversión</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${fs.recoupPct}%;background:${estadoColor}"></div></div>
       ${editable ? `<div class="field" style="margin-top:12px;max-width:240px"><label>Ingresos acumulados (US$)</label><input class="input" value="${fs.ingresos || ''}" inputmode="decimal" placeholder="0" onchange="setRecoupIngresos(this.value)"></div>` : ''}
     </div>
-    <div class="panel"><div class="panel-head"><span class="ph-icon">📊</span><span class="ph-title">Plan vs. gasto real</span><span class="ph-sub">por categoría</span></div>
+    <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chart',18)}</span><span class="ph-title">Plan vs. gasto real</span><span class="ph-sub">por categoría</span></div>
       <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
         <th style="text-align:left;padding:6px 8px">Categoría</th><th style="text-align:right;padding:6px 8px">Plan</th><th style="text-align:right;padding:6px 8px">Real</th><th style="text-align:right;padding:6px 8px">Dif.</th></tr></thead>
         <tbody>${planRows || '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin presupuesto ni gastos aún.</td></tr>'}</tbody></table>
     </div>
-    ${gastos ? `<div class="panel-head" style="margin:4px 0 8px"><span class="ph-icon">🧾</span><span class="ph-title">Gastos (${(l.expenses || []).length})</span></div>${gastos}` : ''}
+    ${gastos ? `<div class="panel-head" style="margin:4px 0 8px"><span class="ph-icon">${icon('receipt',18)}</span><span class="ph-title">Gastos (${(l.expenses || []).length})</span></div>${gastos}` : ''}
     ${addForm}`;
 }
 function agregarGasto(){

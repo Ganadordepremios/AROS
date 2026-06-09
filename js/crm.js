@@ -97,7 +97,7 @@ function tareasPanelHTML(kind){
       <input class="input" style="width:130px;padding:6px 9px;font-size:12px" placeholder="Responsable" value="${s(tk.responsable)}" onchange="setTaskField('${kind}',${i},'responsable',this.value)">
       <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:12px;${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}',${i},'dueDate',this.value)">
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="setTaskField('${kind}',${i},'estado',this.value)">${TASK_STATES.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
-      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}',${i})">✕</button>`:''}
+      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}',${i})">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Tareas ${kind==='track'?'técnicas de la canción':'de campaña/operación del release'} — con responsable, fecha límite y estado.</div>${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
 }
@@ -122,11 +122,11 @@ function releaseAlerts(l){
   });
   const overdue = (l.tasks||[]).filter(tk=>tk.dueDate && tk.estado!=='hecho' && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
   if(overdue) out.push({level:'red', text:`${overdue} tarea(s) vencida(s)`});
-  if(released) out.push({level:'yellow', text:'Ya salió este lanzamiento — genera el reporte', action:{label:'📊 Reporte', fn:`abrirReporteLanzamiento('${l.id}')`}});
+  if(released) out.push({level:'yellow', text:'Ya salió este lanzamiento — genera el reporte', action:{label:`${icon('report',12)} Reporte`, fn:`abrirReporteLanzamiento('${l.id}')`}});
   return out;
 }
 function alertsHTML(l){
   const a = releaseAlerts(l);
   if(!a.length) return '';
-  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'};border-left:3px solid ${x.level==='red'?'var(--accent2)':'var(--beat)'}"><span>${x.level==='red'?'🔴':'🟡'}</span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
+  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'};border-left:3px solid ${x.level==='red'?'var(--accent2)':'var(--beat)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
 }
