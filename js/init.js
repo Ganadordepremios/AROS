@@ -1,0 +1,22 @@
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+applyTheme(localStorage.getItem('ao_theme') || 'dark');
+renderSidebarArtist();
+renderAllLaunches();
+
+// Banco por defecto: CSV embebido (Test ArtistOS — Ideas de contenido)
+(function loadEmbeddedBank() {
+  try {
+    const el = document.getElementById('bank-csv');
+    if (el && el.textContent.trim()) {
+      const parsed = parsearCSV(el.textContent);
+      if (parsed.length) { setReferencias(parsed); bancoCargado = true; }
+    }
+  } catch (e) { console.warn('No se pudo cargar el banco embebido:', e); }
+})();
+
+iniciarBanco();
+
+// sincronización en la nube al arrancar (si está configurada → pide login)
+if (cloudEnabled()) { showAuthGate(true); setSyncStatus('syncing'); authInit(); } else { setSyncStatus('off'); }
