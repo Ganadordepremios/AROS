@@ -180,10 +180,11 @@ const DEV_OPEN = false;
 const CAPS = ['ver_crm','editar_crm','ver_audio','editar_audio','ver_legal','editar_legal',
   'ver_labelcopy','editar_labelcopy','ver_marketing','editar_marketing','ver_assets','editar_assets',
   'ver_data','editar_data','ver_finanzas','editar_finanzas','ver_reportes','generar_reportes',
-  'gestionar_tareas','aprobar_tareas','gestionar_artista','gestionar_equipo','admin_sello'];
+  'gestionar_tareas','aprobar_tareas','gestionar_artista','gestionar_equipo','gestionar_workspace','admin_sello'];
 const ROLE_PRESETS = {
-  owner:         CAPS.slice(),                                  // todo, incl. gestionar_equipo + admin_sello
-  label_manager: CAPS.filter(c => c !== 'admin_sello'),         // todo salvo super-admin
+  owner:         CAPS.slice(),                                  // todo, incl. gestionar_equipo/workspace + admin_sello + propiedad
+  admin:         CAPS.filter(c => c !== 'admin_sello'),         // todo lo operativo salvo super-admin; NO es dueño del workspace (sin billing/transferir/eliminar)
+  label_manager: CAPS.filter(c => c !== 'admin_sello' && c !== 'gestionar_workspace'), // full operativo; no toca branding/asientos
   manager:       ['ver_crm','editar_crm','ver_audio','ver_labelcopy','ver_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_finanzas','ver_reportes','generar_reportes','gestionar_tareas','aprobar_tareas','gestionar_artista'],
   artista:       ['ver_crm','editar_crm','ver_audio','editar_audio','ver_labelcopy','ver_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_reportes','generar_reportes','gestionar_tareas','gestionar_artista'],
   productor:     ['ver_crm','ver_audio','editar_audio','ver_assets','editar_assets','gestionar_tareas'],
@@ -195,12 +196,28 @@ const ROLE_PRESETS = {
   editor:        ['ver_crm','editar_crm','ver_audio','editar_audio','ver_labelcopy','editar_labelcopy','ver_legal','editar_legal','ver_marketing','editar_marketing','ver_assets','editar_assets','ver_data','editar_data','ver_finanzas','ver_reportes','generar_reportes','gestionar_tareas','aprobar_tareas'],
   lector:        ['ver_crm','ver_audio','ver_labelcopy','ver_legal','ver_marketing','ver_assets','ver_data','ver_reportes'],
 };
-let _myPreset = null; // hook para roles de negocio (futuro); por ahora se deriva del rol+artista
+// Presets de NEGOCIO ofrecidos en la UI (con etiqueta legible). Los legacy editor/lector se mantienen por compat.
+const PRESET_LABELS = {
+  owner: 'Owner (dueño)', admin: 'Admin', label_manager: 'Label Manager', manager: 'Manager del artista',
+  artista: 'Artista', productor: 'Productor', ingeniero: 'Ingeniero', abogado: 'Abogado',
+  marketing: 'Marketing Manager', disenador: 'Diseñador', editor: 'Miembro (editor)', lector: 'Invitado / Lector',
+};
+const BUSINESS_PRESETS = ['admin','label_manager','manager','artista','productor','ingeniero','abogado','marketing','disenador','editor','lector'];
+let _myPreset = null; // rol de negocio del miembro actual (team_members.seat_role); cae a derivado si está vacío
+// Alcance del miembro (de la invitación): null = todo el workspace; {artistIds:[],releaseIds:[]} = restringido.
+let _myScope = null;
+function scopeAllows(scope) {
+  if (!_myScope) return true;                 // sin restricción de alcance
+  if (!scope) return true;                    // acción sin contexto de artista/release → no la limita el alcance
+  const aOk = !_myScope.artistIds || !_myScope.artistIds.length || !scope.artistId || _myScope.artistIds.indexOf(scope.artistId) >= 0;
+  const rOk = !_myScope.releaseIds || !_myScope.releaseIds.length || !scope.releaseId || _myScope.releaseIds.indexOf(scope.releaseId) >= 0;
+  return aOk && rOk;
+}
 function currentPreset() {
   if (!authed()) return 'owner';
+  if (isOwner()) return 'owner';                       // dueño del workspace (rol DB 'owner') → siempre owner
   if (_myPreset && ROLE_PRESETS[_myPreset]) return _myPreset;
-  if (isOwner()) return 'owner';
-  if (_myArtistId || _isArtist) return 'artista';     // artista vinculado → trabaja en lo suyo
+  if (_myArtistId || _isArtist) return 'artista';      // artista vinculado → trabaja en lo suyo
   return myRole() === 'lector' ? 'lector' : 'editor';
 }
 function hasCap(cap) {
@@ -208,6 +225,45 @@ function hasCap(cap) {
   const preset = ROLE_PRESETS[currentPreset()] || [];
   return preset.indexOf(cap) >= 0;
 }
+// ── MODELO DE VERBOS COMPLETO (Sprint 10): ver/crear/editar/aprobar/eliminar × módulo ──
+// Se compone sobre la matriz de caps para no duplicarla. `can(verbo, modulo, scope?)`.
+const PERM_MODULES = ['crm','audio','legal','labelcopy','marketing','assets','data','finanzas','reportes','tareas','artista','equipo','workspace'];
+// Política del verbo destructivo ELIMINAR por preset ('*' = todos los módulos).
+const DELETE_POLICY = {
+  owner: '*', admin: '*', label_manager: '*',
+  manager:   ['crm','marketing','assets','tareas','data'],
+  artista:   ['crm','marketing','assets','tareas'],
+  productor: ['audio','assets','tareas'],
+  ingeniero: ['audio','tareas'],
+  abogado:   ['legal','labelcopy','tareas'],
+  marketing: ['marketing','assets','data','tareas'],
+  disenador: ['assets','tareas'],
+  editor:    ['crm','audio','labelcopy','legal','marketing','assets','data','tareas'],
+  lector:    [],
+};
+function can(verb, mod, scope) {
+  if (DEV_OPEN || !authed()) return true;
+  if (!scopeAllows(scope)) return false;               // alcance de invitación (artista/release) — Sprint 10b
+  switch (verb) {
+    case 'ver':    return hasCap('ver_' + mod) || hasCap('editar_' + mod);
+    case 'crear':
+    case 'editar':
+      if (mod === 'reportes')  return hasCap('generar_reportes');
+      if (mod === 'artista')   return hasCap('gestionar_artista');
+      if (mod === 'equipo')    return hasCap('gestionar_equipo');
+      if (mod === 'workspace') return hasCap('gestionar_workspace');
+      return hasCap('editar_' + mod);
+    case 'aprobar':  return hasCap('aprobar_tareas');
+    case 'eliminar': {
+      const pol = DELETE_POLICY[currentPreset()] || [];
+      return pol === '*' || pol.indexOf(mod) >= 0;
+    }
+    default: return false;
+  }
+}
+// Dueño del workspace (rol DB 'owner'): único que transfiere propiedad, borra el workspace y toca billing/asientos pagados.
+function isWorkspaceOwner() { return isOwner(); }
+function canManageWorkspace() { return hasCap('gestionar_workspace'); } // owner + admin + (10d branding)
 // Acciones (compat con el código existente) → capacidad. Las no mapeadas = 'ver' libre.
 const ACTION_CAP = {
   create_launch: 'editar_crm', edit_launch: 'editar_crm',
@@ -216,6 +272,7 @@ const ACTION_CAP = {
   export: 'generar_reportes', generar_reportes: 'generar_reportes',
   edit_perfil_adn: 'gestionar_artista',
   invite_members: 'gestionar_equipo', manage_roles: 'gestionar_equipo', assign_artist: 'gestionar_equipo',
+  manage_workspace: 'gestionar_workspace', branding: 'gestionar_workspace',
 };
 function canDo(action) {
   if (DEV_OPEN || !authed()) return true; // demo/dev: todo permitido
@@ -298,6 +355,48 @@ function applyRolePerms() {
   const tip = 'Solo lectura · necesitas rol Editor u Owner';
   const nb = document.querySelector('.topbar .btn-primary');
   if (nb) nb.title = lector ? tip : '';
+  applyRoleNav();
+  applyRolePill();
+}
+// ── 10c · El menú lateral morfa por rol: oculta secciones que el rol no puede ver ──
+// Cap de VISTA requerida por página (null = siempre visible).
+const NAV_VIEW_CAP = {
+  dashboard: null, lanzamientos: 'ver_crm', tareas: null, perfil: null, adn: null,
+  banco: 'ver_marketing', ideas: 'ver_marketing', calendario: 'ver_marketing',
+  objetivos: 'ver_marketing', metricas: 'ver_data', aprendizajes: 'ver_marketing', ia: 'ver_marketing',
+};
+function applyRoleNav() {
+  if (!authed() || DEV_OPEN) { // demo/dev: todo visible
+    document.querySelectorAll('.nav-item[data-page]').forEach(n => { if (n.id !== 'nav-label') n.style.display = ''; });
+    return;
+  }
+  let hidActive = false;
+  document.querySelectorAll('.nav-item[data-page]').forEach(n => {
+    const pg = n.dataset.page;
+    if (pg === 'label') return; // lo controla updateLabelNav (staff + 2 artistas)
+    const cap = NAV_VIEW_CAP[pg];
+    const show = (cap == null) || hasCap(cap);
+    n.style.display = show ? '' : 'none';
+    if (!show && n.classList.contains('active')) hidActive = true;
+  });
+  // Si la página activa quedó oculta, manda al usuario a una visible (su home por rol).
+  if (hidActive && typeof showPage === 'function') showPage(roleHomePage());
+}
+// Página de aterrizaje según el rol (las secciones especializadas caen a su mejor vista disponible).
+function roleHomePage() {
+  const p = currentPreset();
+  if (['productor','ingeniero','abogado','disenador','lector'].indexOf(p) >= 0) return 'tareas';
+  return 'dashboard';
+}
+function applyRolePill() {
+  const pill = document.querySelector('.role-pill'); if (!pill) return;
+  if (!authed()) { pill.style.display = 'none'; return; }
+  const p = currentPreset();
+  if (p === 'owner') { pill.style.display = 'none'; return; } // el dueño no necesita el chip
+  const ro = (myRole() === 'lector') && !_myArtistId;
+  pill.style.display = 'inline-flex';
+  pill.innerHTML = `<span data-icon="${ro ? 'eye' : 'team'}" data-isize="13"></span> ${PRESET_LABELS[p] || p}`;
+  if (typeof hydrateIcons === 'function') hydrateIcons(pill);
 }
 const agVal = id => (document.getElementById(id) || {}).value || '';
 function agStatus(msg, err) { const el = document.getElementById('ag-status'); if (el) { el.textContent = msg; el.style.color = err ? 'var(--accent2)' : 'var(--text-muted)'; } }
@@ -368,12 +467,16 @@ async function loadTeam() {
   const sb = await getSb(); if (!sb || !_teamId) return;
   // Reset mensual de contadores (best-effort; no rompe si el RPC no existe aún)
   try { await sb.rpc('reset_monthly_counters', { tid: _teamId }); } catch (e) {}
-  // Miembros + is_artist (con fallback si la columna aún no existe)
-  let tm = await sb.from('team_members').select('user_id, role, email, is_artist').eq('team_id', _teamId);
+  // Miembros + is_artist + seat_role + scope (con fallback en cascada si las columnas aún no existen)
+  let tm = await sb.from('team_members').select('user_id, role, email, is_artist, seat_role, scope').eq('team_id', _teamId);
+  if (tm.error) tm = await sb.from('team_members').select('user_id, role, email, is_artist').eq('team_id', _teamId);
   if (tm.error) tm = await sb.from('team_members').select('user_id, role, email').eq('team_id', _teamId);
   _teamMembers = tm.data || [];
   const mine = _teamMembers.find(m => m.user_id === (_user && _user.id));
   _isArtist = !!(mine && mine.is_artist);
+  // Rol de negocio (preset) y alcance del miembro actual
+  _myPreset = (mine && mine.seat_role && ROLE_PRESETS[mine.seat_role]) ? mine.seat_role : null;
+  _myScope = (mine && mine.scope && (Array.isArray(mine.scope.artistIds) || Array.isArray(mine.scope.releaseIds))) ? mine.scope : null;
   // Plan + contadores del equipo (con fallback si las columnas aún no existen)
   _teamPlan = 'free';
   _teamCounters = { ideas_generadas_mes: 0, ideas_reset_date: null, banco_refreshes: 0, banco_refreshes_reset_date: null };
@@ -506,13 +609,15 @@ function renderTeamModal() {
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
     <div style="margin-bottom:18px">${_teamMembers.map(m => {
       const mine = m.user_id === (_user && _user.id);
-      const roleCtl = (isOwner() && !mine)
-        ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="updateMemberRole('${m.user_id}',this.value)">
-             <option value="owner" ${m.role==='owner'?'selected':''}>Owner</option>
-             <option value="editor" ${m.role==='editor'?'selected':''}>Miembro</option>
-             <option value="lector" ${m.role==='lector'?'selected':''}>Lector</option>
-           </select>`
-        : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(m.role)}</span>`;
+      const curSeat = (m.seat_role && ROLE_PRESETS[m.seat_role]) ? m.seat_role : (m.role === 'owner' ? 'owner' : (m.role === 'lector' ? 'lector' : 'editor'));
+      const roleOpts = ['owner'].concat(BUSINESS_PRESETS).map(p =>
+        `<option value="${p}" ${curSeat===p?'selected':''}>${PRESET_LABELS[p]||p}</option>`).join('');
+      const roleCtl = (isWorkspaceOwner() && !mine)
+        ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" title="Rol del miembro" onchange="updateMemberRole('${m.user_id}',this.value)">${roleOpts}</select>`
+        : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${PRESET_LABELS[curSeat]||s(m.role)}</span>`;
+      const revokeCtl = (isWorkspaceOwner() && !mine)
+        ? `<button class="btn btn-ghost" style="padding:3px 7px;font-size:10px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" title="Revocar acceso" onclick="removeMember('${m.user_id}','${s(m.email)}')">${icon('close',12)}</button>`
+        : '';
       const artistCtl = isOwner()
         ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
              <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">${icon('mic',13)}</label>`
@@ -526,13 +631,27 @@ function renderTeamModal() {
         </div>
         ${artistCtl}
         ${roleCtl}
+        ${revokeCtl}
       </div>`;
     }).join('')}</div>
-    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: gestiona el equipo y permisos · Miembro: crea y edita · Lector: solo ve · ${icon('mic',12)} = el artista (puede editar Perfil/ADN).</div>
-    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('invite',18)}</span><span class="ph-title">Invitar al equipo</span></div>
-    <div class="empty-hint" style="margin-bottom:10px">Genera un enlace y compártelo por correo o WhatsApp. Quien lo abra e inicie sesión se unirá a tu equipo.</div>
+    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: dueño del workspace (propiedad, asientos, branding) · Admin: todo lo operativo · roles especializados (Productor/Abogado/Marketing…) ven y editan solo su área · Lector: solo ve · ${icon('mic',12)} = el artista (edita Perfil/ADN).</div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('invite',18)}</span><span class="ph-title">Invitar al equipo</span><span class="ph-sub">rol · alcance · expiración</span></div>
+    <div class="empty-hint" style="margin-bottom:10px">Genera un enlace con rol y alcance. Quien lo abra e inicie sesión se unirá con ese rol. El enlace puede caducar.</div>
+    ${isWorkspaceOwner() || canDo('invite_members') ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <label style="flex:1;min-width:130px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Rol
+        <select class="input" id="inv-role" style="font-size:12px;margin-top:3px">${BUSINESS_PRESETS.map(p=>`<option value="${p}" ${p==='editor'?'selected':''}>${PRESET_LABELS[p]}</option>`).join('')}</select>
+      </label>
+      <label style="flex:1;min-width:130px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Alcance
+        <select class="input" id="inv-scope" style="font-size:12px;margin-top:3px"><option value="">Todo el workspace</option>${artists.map(a=>`<option value="${a.id}">Solo ${s(a.name)}</option>`).join('')}</select>
+      </label>
+      <label style="flex:1;min-width:110px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Expira
+        <select class="input" id="inv-exp" style="font-size:12px;margin-top:3px"><option value="7">En 7 días</option><option value="1">En 24 horas</option><option value="30">En 30 días</option><option value="">Nunca</option></select>
+      </label>
+    </div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
     <div id="team-invite" style="margin-top:12px"></div>
+    <div id="team-invites-pending" style="margin-top:14px"></div>` : '<div class="empty-hint">No tienes permiso para invitar.</div>'}
     <div class="panel-head" style="margin:18px 0 8px"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos para @menciones</span><span class="ph-sub">nombre + correo</span></div>
     <div class="empty-hint" style="margin-bottom:8px">Pre-registra a quien aún no se une (o ponle nombre a un correo): aparecerá en el autocompletado @ de los comentarios.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
@@ -544,6 +663,7 @@ function renderTeamModal() {
       <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">${s(me)}</span>
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
     </div>`;
+  renderPendingInvites(); // carga las invitaciones activas (best-effort)
 }
 async function renameTeam() {
   if (!requireCan('manage_roles')) return;
@@ -558,14 +678,53 @@ async function createInvite() {
   if (!requireCan('invite_members')) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
   const tok = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('inv-' + Date.now() + Math.random().toString(36).slice(2));
-  const r = await sb.from('invites').insert({ token: tok, team_id: _teamId });
+  const role = agVal('inv-role') || 'editor';
+  const scopeArtist = agVal('inv-scope');
+  const expDays = agVal('inv-exp');
+  const row = { token: tok, team_id: _teamId };
+  row.seat_role = role;
+  if (scopeArtist) row.scope = { artistIds: [scopeArtist] };
+  if (expDays) row.expires_at = new Date(Date.now() + parseInt(expDays, 10) * 86400000).toISOString();
+  // Inserta con metadatos; si las columnas nuevas aún no existen, cae al insert mínimo.
+  let r = await sb.from('invites').insert(row);
+  if (r.error) r = await sb.from('invites').insert({ token: tok, team_id: _teamId });
   if (r.error) { document.getElementById('team-invite').innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(r.error.message)}</div>`; return; }
   const link = `${location.origin}${location.pathname}?invite=${tok}`;
+  const meta = [PRESET_LABELS[role] || role, scopeArtist ? 'alcance: ' + s((artists.find(a => a.id === scopeArtist) || {}).name || '') : 'todo el workspace', expDays ? 'expira en ' + expDays + 'd' : 'sin caducidad'].join(' · ');
   document.getElementById('team-invite').innerHTML = `
     <div style="display:flex;gap:8px">
       <input class="input" id="invite-link" value="${link}" readonly style="font-size:11px">
       <button class="btn btn-ghost" onclick="copyInvite(this)">Copiar</button>
-    </div>`;
+    </div>
+    <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:5px">${meta}</div>`;
+  renderPendingInvites();
+}
+// Lista de invitaciones activas (no usadas, no revocadas) con botón de revocar.
+async function renderPendingInvites() {
+  const host = document.getElementById('team-invites-pending'); if (!host) return;
+  const sb = await getSb(); if (!sb || !_teamId) return;
+  let r = await sb.from('invites').select('token, seat_role, scope, expires_at, used_at, revoked').eq('team_id', _teamId);
+  if (r.error) { host.innerHTML = ''; return; } // tabla sin las columnas nuevas → no muestra el panel
+  const now = Date.now();
+  const live = (r.data || []).filter(i => !i.used_at && !i.revoked && (!i.expires_at || new Date(i.expires_at).getTime() > now));
+  if (!live.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:6px">Invitaciones activas (${live.length})</div>` +
+    live.map(i => {
+      const a = i.scope && i.scope.artistIds && i.scope.artistIds[0] ? (artists.find(x => x.id === i.scope.artistIds[0]) || {}).name : '';
+      const exp = i.expires_at ? new Date(i.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'sin caducidad';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span style="flex:1;min-width:0">${PRESET_LABELS[i.seat_role] || i.seat_role || 'Miembro'}${a ? ' · ' + s(a) : ''} <span style="color:var(--text-dim);font-family:var(--font-mono)">· ${exp}</span></span>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="revokeInvite('${i.token}')">Revocar</button>
+      </div>`;
+    }).join('');
+}
+async function revokeInvite(token) {
+  const sb = await getSb(); if (!sb) return;
+  let r = await sb.from('invites').update({ revoked: true }).eq('token', token).eq('team_id', _teamId);
+  if (r.error) r = await sb.from('invites').delete().eq('token', token).eq('team_id', _teamId); // fallback si no hay columna revoked
+  if (r && r.error) { uiAlert(r.error.message); return; }
+  uiToast('✓ Invitación revocada');
+  renderPendingInvites();
 }
 function copyInvite(btn) {
   const v = (document.getElementById('invite-link') || {}).value || '';
@@ -605,11 +764,33 @@ async function assignArtist(userId, makeArtist) {
     await loadTeam(); renderTeamModal();
   } catch (e) { uiAlert('No se pudo asignar el artista: ' + e.message); }
 }
-async function updateMemberRole(userId, role) {
+// Mapea un rol de negocio (preset) al rol DB que entiende RLS (owner/editor/lector).
+function seatToDbRole(seat) {
+  if (seat === 'owner') return 'owner';
+  if (seat === 'lector') return 'lector';
+  return 'editor'; // todos los demás presets escriben → rol DB 'editor'; la matriz de caps acota la UI
+}
+async function updateMemberRole(userId, seat) {
   if (!requireCan('manage_roles')) return;
+  if (!isWorkspaceOwner()) return uiAlert('Solo el dueño del workspace puede cambiar roles.');
   const sb = await getSb(); if (!sb) return;
-  const r = await sb.from('team_members').update({ role }).eq('team_id', _teamId).eq('user_id', userId);
+  const dbRole = seatToDbRole(seat);
+  // Escribe seat_role + rol DB; si la columna seat_role aún no existe, cae a solo el rol DB.
+  let r = await sb.from('team_members').update({ role: dbRole, seat_role: seat }).eq('team_id', _teamId).eq('user_id', userId);
+  if (r && r.error) r = await sb.from('team_members').update({ role: dbRole }).eq('team_id', _teamId).eq('user_id', userId);
   if (r && r.error) { uiAlert(r.error.message); return; }
+  await loadTeam(); renderTeamModal();
+}
+// Revocar acceso: saca al miembro del equipo (solo el dueño).
+async function removeMember(userId, email) {
+  if (!isWorkspaceOwner()) return uiAlert('Solo el dueño del workspace puede revocar acceso.');
+  if (userId === (_user && _user.id)) return uiAlert('No puedes revocarte a ti mismo.');
+  const ok = await uiConfirm(`¿Revocar el acceso de ${email || 'este miembro'} al workspace?`);
+  if (!ok) return;
+  const sb = await getSb(); if (!sb) return;
+  const r = await sb.from('team_members').delete().eq('team_id', _teamId).eq('user_id', userId);
+  if (r && r.error) { uiAlert(r.error.message); return; }
+  uiToast('✓ Acceso revocado');
   await loadTeam(); renderTeamModal();
 }
 // olvidé mi contraseña (desde el login)
