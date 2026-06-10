@@ -65,7 +65,7 @@ function releasePhase(l) {
 }
 function readyColor(pct) { return pct >= 80 ? '#4ade80' : pct >= 40 ? 'var(--beat)' : 'var(--accent2)'; }
 function phaseColor(phase) {
-  return { 'Idea':'var(--text-dim)','Producción':'#a78bfa','Legal':'var(--beat)','Distribución':'#38bdf8','Lanzado':'#4ade80','Post':'var(--accent)' }[phase] || 'var(--text-dim)';
+  return { 'Idea':'var(--text-dim)','Producción':'var(--beat)','Legal':'#e8924f','Distribución':'var(--accent)','Lanzado':'#4ade80','Post':'var(--accent-dark)' }[phase] || 'var(--text-dim)';
 }
 // Barra "Listo para lanzar" reutilizable
 function readyBarHTML(pct, label) {

@@ -126,7 +126,7 @@ let activeCatFilter = 'all';
 let paginaActual  = 1;
 let porPagina     = 25;
 
-const CAT_PALETTE = ['#FF6B30','#a78bfa','#fb923c','#4ade80','#ff4757','#38bdf8','#f472b6','#fbbf24','#34d399','#f87171','#60a5fa','#c084fc'];
+const CAT_PALETTE = ['#FF6B30','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
 let paletteIdx = 0;
 function catColor(c) {
@@ -457,7 +457,7 @@ function openRefBoxdrop(idx) {
     <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
       style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'rgba(255,107,48,0.3)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
     <button onclick="generarContenidoBanco(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(167,139,250,0.4);background:transparent;color:#a78bfa;transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.35);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
@@ -879,7 +879,7 @@ function prodContentHTML(ci, p) {
   const promptStr = buildContentPrompt(ci);
   return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
+      <button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
       ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
@@ -1030,7 +1030,7 @@ function renderPOW() {
       <h4>${icon('ideas',14)} Recomendación IA</h4>
       <div id="pow-rec">${powRecommendation
         ? `<div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;line-height:1.6">${s(powRecommendation)}</div>`
-        : `<button class="btn btn-ghost" style="border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
+        : `<button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
     </div>`;
 }
 async function generarPOWRecomendacion() {
@@ -1535,7 +1535,7 @@ function renderIA() {
   host.innerHTML = `
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('ai',18)}</span><span class="ph-title">Recomendaciones para ${s(art.name)}</span>
-        <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(167,139,250,0.4);color:#a78bfa" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
+        <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
       </div>
       ${aiHintHTML(promptStr, 900)}
     </div>
@@ -2252,13 +2252,13 @@ function renderDashboard() {
     <div class="stat-card red">
       <div class="stat-label">Lanzamientos</div>
       <div class="stat-value">${ls.length}</div>
-      <div class="stat-trend" style="color:#fb923c">${counts.active} en campaña · ${counts.planning} planeando${counts.complete ? ' · ' + counts.complete + ' lanzados' : ''}</div>
+      <div class="stat-trend" style="color:var(--beat)">${counts.active} en campaña · ${counts.planning} planeando${counts.complete ? ' · ' + counts.complete + ' lanzados' : ''}</div>
       <div class="stat-sub">${nextDrop ? `Próximo: ${s(nextDrop.name)} en ${diasRestantes(nextDrop.date)}d` : 'Sin próximos drops'}</div>
     </div>
     <div class="stat-card purple">
       <div class="stat-label">Contenido Programado</div>
       <div class="stat-value">${next7.length}</div>
-      <div class="stat-trend" style="color:#a78bfa">esta semana · ${upcoming.length} próximos en total</div>
+      <div class="stat-trend" style="color:var(--beat)">esta semana · ${upcoming.length} próximos en total</div>
       <div class="stat-sub">${ideasCount} ideas seleccionadas · ${allCal.length} piezas en calendario</div>
     </div>
     ${(function(){ if(!art) return ''; const f=artistFinance(art.id), legal=artistLegalPending(art.id), alerts=artistAlertCount(art.id), rec=f.inv?Math.min(100,Math.round(f.ing/f.inv*100)):null;

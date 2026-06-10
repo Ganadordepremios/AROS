@@ -203,7 +203,7 @@ function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; c
 function removeTrackListItem(path, i) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; arr.splice(i, 1); saveTracks(); renderTrackTab('labelcopy'); }
 
 // ── Legal (por canción) ──
-const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'#38bdf8', aprobado:'#4ade80' };
+const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'var(--accent)', aprobado:'#4ade80' };
 function trackLegalHTML(t) {
   const legal = t.legal || [];
   const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value)"`;
