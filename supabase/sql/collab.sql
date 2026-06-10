@@ -118,11 +118,16 @@ create index if not exists approvals_gate_idx     on public.approvals (gate);
 -- LECTURA: miembro del equipo + visibilidad de la ficha + alcance de artista restringido.
 -- ESCRITURA: editor/owner del equipo, O el usuario-artista de su propia ficha.
 -- ═════════════════════════════════════════════════════════════
+-- Activación de RLS en sentencias estáticas (visibles para el linter de Supabase):
+alter table public.tasks     enable row level security;
+alter table public.comments  enable row level security;
+alter table public.activity  enable row level security;
+alter table public.approvals enable row level security;
+
 do $$
 declare t text;
 begin
   foreach t in array array['tasks','comments','activity','approvals'] loop
-    execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "%s read" on public.%I;', t, t);
     execute format($f$
       create policy "%s read" on public.%I for select using (
