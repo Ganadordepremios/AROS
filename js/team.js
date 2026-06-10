@@ -62,6 +62,8 @@ async function cloudSyncAll() {
       const tRows = tracks.map(t => ({ id: t.id, artist_id: t.artistId, team_id: _teamId, data: t, updated_at: now }));
       if (tRows.length) await sb.from('tracks').upsert(tRows);
     } catch (e) { /* tabla tracks aún no creada → ignorar */ }
+    // capa colaborativa (tasks/comments/activity/notifications/approvals): best-effort
+    if (typeof collabCloudSync === 'function') { try { await collabCloudSync(sb, now); } catch (e) {} }
     setSyncStatus('ok');
   } catch (e) { setSyncStatus('error', e.message); }
 }
@@ -83,9 +85,13 @@ async function cloudLoad() {
       const tr = await tq;
       if (!tr.error) { tracks = (tr.data || []).map(r => normalizeTrack(r.data)); }
     } catch (e) {}
+    // capa colaborativa: cargar de la nube (best-effort)
+    if (typeof collabCloudLoad === 'function') { try { await collabCloudLoad(sb, _teamId); } catch (e) {} }
     saveArtistsLocal(); saveLaunchesLocal();
     // Migrar launches de la nube que aún no tengan track, y persistir si cambió
-    if (migrateLaunchesToTracks()) scheduleCloudSync();
+    let _migrated = migrateLaunchesToTracks();
+    if (typeof migrateEmbeddedTasks === 'function' && migrateEmbeddedTasks()) _migrated = true;
+    if (_migrated) scheduleCloudSync();
     if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
     renderSidebarArtist(); renderAllLaunches();
     const p = (document.querySelector('.page.active') || {}).id;

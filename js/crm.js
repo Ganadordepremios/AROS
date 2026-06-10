@@ -82,28 +82,33 @@ function readyBarHTML(pct, label) {
 // ══════════════════════════════════════════
 // TAREAS (release + track) — motor compartido (Sprint 3)
 // ══════════════════════════════════════════
-const TASK_STATES = [['pendiente','Pendiente'],['en_progreso','En progreso'],['hecho','Hecho']];
-function _taskArray(kind){
-  if(kind==='track'){ const t=(typeof curTrack==='function')?curTrack():null; if(!t) return null; t.tasks=t.tasks||[]; return t.tasks; }
-  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return null; l.tasks=l.tasks||[]; return l.tasks;
+// Sprint 6: las tareas viven en la TABLA relacional `tasks` (js/collab.js), no embebidas.
+function _taskScope(kind){
+  const l = launches.find(x=>x.id===currentLaunchId);
+  if(kind==='track'){ const t=(typeof curTrack==='function')?curTrack():null; if(!t) return null; return { artistId:t.artistId, releaseId:(l?l.id:null), trackId:t.id }; }
+  if(!l) return null; return { artistId:l.artistId, releaseId:l.id, trackId:null };
 }
-function _taskSave(kind){ if(kind==='track') saveTracks(); else saveLaunches(); }
+function _taskList(kind){
+  if(kind==='track'){ const t=(typeof curTrack==='function')?curTrack():null; return t?tasksOfTrack(t.id):[]; }
+  return tasksOfRelease(currentLaunchId);
+}
 function _taskRerender(kind){ if(kind==='track') renderTrackTab('tareas'); else renderReleaseTab('tareas'); }
 function tareasPanelHTML(kind){
-  const arr=_taskArray(kind)||[]; const editable=canDo('gestionar_tareas');
-  const rows=arr.map((tk,i)=>{ const done=tk.estado==='hecho'; const overdue=tk.dueDate && tk.estado!=='hecho' && new Date(tk.dueDate+'T00:00:00')<new Date(new Date().toDateString());
+  const arr=_taskList(kind); const editable=canDo('gestionar_tareas');
+  const rows=arr.map(tk=>{ const done=tk.estado===TASK_DONE; const overdue=tk.dueDate && !done && new Date(tk.dueDate+'T00:00:00')<new Date(new Date().toDateString());
     return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <input class="input" style="flex:1;min-width:150px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}',${i},'titulo',this.value)">
-      <input class="input" style="width:130px;padding:6px 9px;font-size:12px" placeholder="Responsable" value="${s(tk.responsable)}" onchange="setTaskField('${kind}',${i},'responsable',this.value)">
-      <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:12px;${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}',${i},'dueDate',this.value)">
-      <select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="setTaskField('${kind}',${i},'estado',this.value)">${TASK_STATES.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
-      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}',${i})">${icon('close',12)}</button>`:''}
+      <input class="input" style="flex:1;min-width:150px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
+      <input class="input" style="width:120px;padding:6px 9px;font-size:12px" placeholder="Responsable" value="${s(tk.responsable)}" onchange="setTaskField('${kind}','${tk.id}','responsable',this.value)">
+      <select class="input" style="width:auto;padding:6px 8px;font-size:11px" title="Prioridad" onchange="setTaskField('${kind}','${tk.id}','priority',this.value)">${TASK_PRIORITIES.map(x=>`<option value="${x[0]}" ${tk.priority===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+      <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:12px;${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}','${tk.id}','dueDate',this.value)">
+      <select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="setTaskField('${kind}','${tk.id}','estado',this.value)">${TASK_ESTADOS.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+      ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}','${tk.id}')">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
-  return `<div class="empty-hint" style="margin-bottom:12px">Tareas ${kind==='track'?'técnicas de la canción':'de campaña/operación del release'} — con responsable, fecha límite y estado.</div>${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
+  return `<div class="empty-hint" style="margin-bottom:12px">Tareas ${kind==='track'?'técnicas de la canción':'de campaña/operación del release'} — responsable, prioridad, fecha y estado. (También alimentan el inbox global "Mis tareas" — Sprint 7.)</div>${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
 }
-async function addTask(kind){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(!arr) return; const tit=(await uiPrompt('Tarea:',{title:'Nueva tarea'})||'').trim(); if(!tit) return; arr.push({id:'tk-'+Date.now(),titulo:tit,responsable:'',estado:'pendiente',dueDate:''}); _taskSave(kind); _taskRerender(kind); }
-function setTaskField(kind,i,f,val){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(arr&&arr[i]){ arr[i][f]=val; _taskSave(kind); if(f==='estado'||f==='dueDate') _taskRerender(kind); } }
-function removeTask(kind,i){ if(!requireCan('gestionar_tareas')) return; const arr=_taskArray(kind); if(arr&&arr[i]){ arr.splice(i,1); _taskSave(kind); _taskRerender(kind); } }
+async function addTask(kind){ if(!requireCan('gestionar_tareas')) return; const scope=_taskScope(kind); if(!scope) return; const tit=(await uiPrompt('Tarea:',{title:'Nueva tarea'})||'').trim(); if(!tit) return; createTask(scope,{titulo:tit}); _taskRerender(kind); }
+function setTaskField(kind,id,f,val){ if(!requireCan('gestionar_tareas')) return; const patch={}; patch[f]=val; updateTaskRow(id,patch); if(f==='estado'||f==='dueDate'||f==='priority') _taskRerender(kind); }
+function removeTask(kind,id){ if(!requireCan('gestionar_tareas')) return; deleteTaskRow(id); _taskRerender(kind); }
 
 // ══════════════════════════════════════════
 // ALERTAS del release (Sprint 3) — señales accionables
@@ -120,7 +125,8 @@ function releaseAlerts(l){
     if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`});
     if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`});
   });
-  const overdue = (l.tasks||[]).filter(tk=>tk.dueDate && tk.estado!=='hecho' && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
+  const _rtasks = (typeof tasks!=='undefined') ? tasks.filter(t=>t.releaseId===l.id) : [];
+  const overdue = _rtasks.filter(tk=>tk.dueDate && tk.estado!==TASK_DONE && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
   if(overdue) out.push({level:'red', text:`${overdue} tarea(s) vencida(s)`});
   if(released) out.push({level:'yellow', text:'Ya salió este lanzamiento — genera el reporte', action:{label:`${icon('report',12)} Reporte`, fn:`abrirReporteLanzamiento('${l.id}')`}});
   return out;

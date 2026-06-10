@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════
 hydrateIcons();   // íconos SVG declarados en el HTML estático (nav, modales, paneles)
 applyTheme(localStorage.getItem('ao_theme') || 'dark');
+if (typeof migrateEmbeddedTasks === 'function') migrateEmbeddedTasks();   // tareas embebidas → tabla relacional (idempotente)
 renderSidebarArtist();
 renderAllLaunches();
 
