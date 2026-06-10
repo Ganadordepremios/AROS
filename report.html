@@ -960,7 +960,7 @@ async function callAI(context,sc){
   const { data:sess } = await sb.auth.getSession();
   if(!sess || !sess.session){ throw new Error('Inicia sesión en Tempo OS para usar la IA del reporte (abre el reporte desde la app).'); }
   const teamId=(ST.ctx&&ST.ctx.teamId)||null;
-  const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-20250514', max_tokens:1200, team_id:teamId, feature:'reporte' } });
+  const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-6', max_tokens:1200, team_id:teamId, feature:'reporte' } });
   if(error) throw new Error(error.message||'Error de la función claude (¿desplegada?)');
   if(data && data.error) throw new Error(data.error);
   return (data && data.text) || '';
