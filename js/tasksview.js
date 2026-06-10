@@ -155,9 +155,10 @@ function tvRenderBody() {
 function _taskCardHTML(t) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
   const du = _dueInfo(t);
-  return `<div class="tk-card" style="border-left-color:${TASK_PRI_COLOR[t.priority] || 'var(--border)'}" onclick="openTaskContext('${t.id}')">
+  const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
+  return `<div class="tk-card" style="border-left-color:${blocked ? 'var(--accent2)' : (TASK_PRI_COLOR[t.priority] || 'var(--border)')}" onclick="openTaskContext('${t.id}')">
     <div class="tk-main">
-      <div class="tk-title ${done ? 'done' : ''}">${s(t.titulo) || '(sin título)'}</div>
+      <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
       <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.responsable ? ' · ' + icon('person', 11) + ' ' + s(t.responsable) : ''}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}</div>
     </div>
     <div class="tk-right" onclick="event.stopPropagation()">
@@ -186,7 +187,7 @@ function tvKanban(list) {
     const arr = _sortTasks(list.filter(t => t.estado === est));
     const c = TASK_ESTADO_COLOR[est];
     const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskContext('${t.id}')">
-        <div class="ktitle">${s(t.titulo) || '(sin título)'}</div>
+        <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
         <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span></div>
       </div>`).join('') || `<div style="font-size:11px;color:var(--text-dim);padding:6px 2px">—</div>`;
     return `<div class="tk-col" data-est="${est}" ondragover="tvDragOver(event,this)" ondragleave="this.classList.remove('drop')" ondrop="tvDrop(event,this,'${est}')">

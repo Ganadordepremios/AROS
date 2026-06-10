@@ -2033,10 +2033,24 @@ function launchContextHTML() {
 }
 
 const STATUS_MAP = {
-  active:   { cls:'status-active',   word:'En campaña', tag:'EN CAMPAÑA' },
   planning: { cls:'status-planning', word:'Planeando',  tag:'PLANEADO' },
+  active:   { cls:'status-active',   word:'En campaña', tag:'EN CAMPAÑA' },
+  bloqueado:{ cls:'status-blocked',  word:'Bloqueado',  tag:'BLOQUEADO' },
+  analisis: { cls:'status-analysis', word:'En análisis',tag:'ANÁLISIS' },
   complete: { cls:'status-complete', word:'Completado', tag:'LANZADO' },
+  cerrado:  { cls:'status-closed',   word:'Cerrado',    tag:'CERRADO' },
 };
+// Cambia el estado del release (con automatización + actividad).
+function setLaunchStatus(id, st) {
+  if (!requireCan('edit_launch')) return;
+  const l = launches.find(x => x.id === id); if (!l || !STATUS_MAP[st]) return;
+  const prev = l.status; if (prev === st) return;
+  l.status = st; saveLaunches();
+  if (typeof logActivity === 'function') logActivity('status_changed', `Release → ${STATUS_MAP[st].word}: ${s(l.name)}`, { artistId: l.artistId, releaseId: l.id });
+  if (typeof runAutomations === 'function') runAutomations();
+  if (typeof renderReleaseTab === 'function' && currentLaunchId === id) renderReleaseTab('resumen');
+  renderAllLaunches();
+}
 const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 function launchDateLabel(l) {

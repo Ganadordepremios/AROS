@@ -96,12 +96,16 @@ function _taskRerender(kind){ if(kind==='track') renderTrackTab('tareas'); else 
 function tareasPanelHTML(kind){
   const arr=_taskList(kind); const editable=canDo('gestionar_tareas');
   const rows=arr.map(tk=>{ const done=tk.estado===TASK_DONE; const overdue=tk.dueDate && !done && new Date(tk.dueDate+'T00:00:00')<new Date(new Date().toDateString());
-    return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <input class="input" style="flex:1;min-width:150px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
+    const blocked=(typeof taskIsBlocked==='function')&&taskIsBlocked(tk);
+    const depsCount=(tk.deps||[]).length;
+    return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;${blocked?'border-left:3px solid var(--accent2)':''}">
+      ${blocked?`<span title="${(typeof blockedReason==='function')?blockedReason(tk):'Bloqueada'}" style="color:var(--accent2);display:flex">${icon('lock',13)}</span>`:''}
+      <input class="input" style="flex:1;min-width:140px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
       <input class="input" style="width:120px;padding:6px 9px;font-size:12px" placeholder="Responsable" value="${s(tk.responsable)}" onchange="setTaskField('${kind}','${tk.id}','responsable',this.value)">
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px" title="Prioridad" onchange="setTaskField('${kind}','${tk.id}','priority',this.value)">${TASK_PRIORITIES.map(x=>`<option value="${x[0]}" ${tk.priority===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
       <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:12px;${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}','${tk.id}','dueDate',this.value)">
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="setTaskField('${kind}','${tk.id}','estado',this.value)">${TASK_ESTADOS.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+      ${editable?`<button class="goal-btn" title="Dependencias${depsCount?' ('+depsCount+')':''}" style="${depsCount?'color:var(--accent)':''}" onclick="openDepsPicker('${tk.id}')">${icon('link',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}','${tk.id}')">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Tareas ${kind==='track'?'técnicas de la canción':'de campaña/operación del release'} — responsable, prioridad, fecha y estado. (También alimentan el inbox global "Mis tareas" — Sprint 7.)</div>${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;

@@ -225,13 +225,17 @@ function renderTrackPicker(filter){
 }
 function releaseResumenHTML(l) {
   const rr = releaseReady(l), phase = releasePhase(l);
+  const editable = canDo('edit_launch');
+  const statusSel = `<select class="input" style="width:auto;padding:5px 9px;font-size:11px;margin-left:auto" ${editable?'':'disabled'} onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k=>`<option value="${k}" ${l.status===k?'selected':''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
+  const tplBtn = (typeof openTemplatePicker==='function' && canDo('gestionar_tareas')) ? `<button class="btn btn-ghost" style="margin-top:12px;font-size:12px" onclick="openTemplatePicker('${l.id}')">${icon('checklist',13)} ${l.templateApplied?'Aplicar otra plantilla':'Aplicar plantilla de proyecto'}</button>` : '';
   const statusPanel = `
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('flag',18)}</span><span class="ph-title">Estado del release</span>
-        <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span></div>
+        <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span>${statusSel}</div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
       ${alertsHTML(l)}
+      ${tplBtn}
     </div>`;
   return statusPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
 }

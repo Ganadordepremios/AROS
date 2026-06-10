@@ -159,6 +159,7 @@ function updateTaskRow(id, patch) {
     logActivity('assigned', `Asignada a ${patch.responsable}: ${t.titulo}`, { artistId: t.artistId, releaseId: t.releaseId, trackId: t.trackId, taskId: t.id });
     if (patch.responsable !== _meId()) notify(patch.responsable, 'assigned', 'Tarea asignada', t.titulo, { taskId: t.id, releaseId: t.releaseId });
   }
+  if (patch.estado && patch.estado !== before.estado && typeof runAutomations === 'function') runAutomations(); // desbloqueo de dependientes, etc.
   return t;
 }
 function deleteTaskRow(id) {
@@ -190,6 +191,8 @@ function decideApproval(id, estado, note) {
   saveApprovals();
   logActivity(estado === 'aprobado' ? 'approved' : 'rejected', `Aprobación ${estado}: ${ap.gate}`, { artistId: ap.artistId, releaseId: ap.releaseId, trackId: ap.trackId });
   if (ap.requestedBy && ap.requestedBy !== _meId()) notify(ap.requestedBy, estado === 'aprobado' ? 'approved' : 'system', 'Aprobación ' + estado, ap.gate, { releaseId: ap.releaseId });
+  // Automatización 8: calendario aprobado → crear tareas de publicación
+  if (estado === 'aprobado' && ap.gate === 'calendario' && ap.releaseId && typeof onCalendarApproved === 'function') onCalendarApproved(ap.releaseId);
   return ap;
 }
 

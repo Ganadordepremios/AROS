@@ -73,6 +73,7 @@ function toggleTrackCheck(g, k) {
   t.checklist = t.checklist || {}; t.checklist[g] = t.checklist[g] || {};
   t.checklist[g][k] = !t.checklist[g][k];
   saveTracks(); renderTrackDetail(); // recalcula fase + barra
+  if (typeof runAutomations === 'function') runAutomations(); // legal completo → desbloquear distribución
 }
 // Materializa la definición propia del track (para editar sin tocar la default)
 function ensureTrackDef(t) { if (!t.checklistDef) t.checklistDef = cloneDef(trackChecklistDef(t)); t.checklistDef.otros = t.checklistDef.otros || []; return t.checklistDef; }
