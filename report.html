@@ -61,6 +61,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .id-field input:focus{outline:none;border-color:var(--border2)}
 .id-field select{background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-family:var(--sans);font-size:14px;padding:10px 14px;width:100%;cursor:pointer;transition:border-color .18s;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);background-position:calc(100% - 18px) 18px,calc(100% - 13px) 18px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 .id-field select:focus{outline:none;border-color:var(--accent)}
+.saved-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid var(--border);border-radius:11px;background:var(--surface);margin-bottom:8px}
+.saved-row .saved-dt{font-size:13px;font-weight:600;color:var(--ink)}
+.saved-row .saved-meta{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.04em;margin-top:2px}
+.saved-row .saved-load{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1.5px solid rgba(255,107,48,.35);background:transparent;color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.saved-row .saved-load:hover{background:rgba(255,107,48,.08)}
 .id-field input::placeholder{color:var(--dim)}
 .sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px;margin-bottom:28px}
 .src-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s}
@@ -112,8 +117,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .sc-badge.b-ideal{color:var(--gads);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25)}
 .topbar-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .dl-btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid;white-space:nowrap}
-.dl-html{color:var(--meta);background:rgba(77,201,255,.07);border-color:rgba(77,201,255,.25)}
-.dl-html:hover{background:rgba(77,201,255,.12)}
+.dl-html{color:#8a93a6;background:rgba(138,147,166,.07);border-color:rgba(138,147,166,.28)}
+.dl-html:hover{background:rgba(138,147,166,.14)}
 .dl-json{color:var(--accent);background:rgba(255,107,48,.06);border-color:rgba(255,107,48,.25)}
 .dl-json:hover{background:rgba(255,107,48,.12)}
 .dl-pptx{color:var(--organic);background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25)}
@@ -210,6 +215,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <div class="id-field"><label>Artista</label><input id="inp-artist" placeholder="Nombre del artista"></div>
     <div class="id-field"><label>Lanzamiento / Canción</label><input id="inp-project" placeholder="Nombre del proyecto"></div>
   </div>
+
+  <!-- Reportes guardados (nube) — para comparar temporalidades -->
+  <div class="section-label" id="saved-label" style="display:none;margin-top:32px">Reportes guardados · este release</div>
+  <div id="saved-list" style="display:none;margin-bottom:44px"></div>
 
   <!-- Sources -->
   <div class="section-label">Fuentes de datos</div>
@@ -455,9 +464,7 @@ function loadSnapshot(file){
         document.getElementById('inp-artist').value=snap.identity.artist||'';
         document.getElementById('inp-project').value=snap.identity.project||'';
       }
-      ST.sc=snap.sc||'realista';
-      document.querySelectorAll('.sc-pill').forEach(b=>b.classList.toggle('active',b.dataset.sc===ST.sc));
-      document.getElementById('sc-desc').textContent=SC_DESC[ST.sc];
+      ST.sc=snap.sc||'ideal';
       if(snap.manual){
         Object.entries(snap.manual).forEach(([src,vals])=>{
           if(!vals||!Object.keys(vals).length)return;
@@ -982,6 +989,8 @@ async function generate(){
     document.getElementById('setup').style.display='none';
     document.getElementById('report').style.display='block';
     window.scrollTo(0,0);
+    // Guardado en nube (best-effort): solo si vino desde la app con sesión iniciada
+    saveReportCloud(buildSnapshot()).then(id=>{ if(id){ toast('✓ Reporte guardado en la nube'); refreshSavedReports(); } });
   }catch(e){
     const err=document.getElementById('err');
     err.textContent='⚠ '+e.message;err.style.display='block';
@@ -1245,6 +1254,69 @@ function dlJSON(){const snap=buildSnapshot();const artist=(ST.identity.artist||'
 function dlHTML(){const body=document.getElementById('report').innerHTML;const full=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reporte — ${ST.identity.artist||'Artista'} · ${ST.identity.project||'Lanzamiento'}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet"><style>${document.querySelector('style').innerHTML}</style></head><body style="background:var(--bg)">${body}</body></html>`;const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([full],{type:'text/html'}));a.download=`reporte_${artist}_${project}_${Date.now()}.html`;a.click();toast('✓ Reporte HTML descargado');}
 function goBack(){document.getElementById('setup').style.display='block';document.getElementById('report').style.display='none';killCharts();}
 
+// ── NUBE (Supabase) — guardar/listar reportes para comparar temporalidades ──
+// Reusa la sesión del usuario (mismo origen que la app). Credenciales públicas (la protege RLS+Auth).
+const REP_SUPABASE={url:'https://fzemsxyrzyssxprewwzs.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6ZW1zeHlyenlzc3hwcmV3d3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTI3OTcsImV4cCI6MjA5NjI2ODc5N30.6rZw5gzIhUryZOzC2Mx4-kgrZSxWtjXSXS_-EL--FUg'};
+let _sb=null,_sbTried=false;
+async function getSb(){
+  if(_sb||_sbTried) return _sb;
+  _sbTried=true;
+  try{
+    if(!window.supabase){
+      await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+    }
+    _sb=window.supabase.createClient(REP_SUPABASE.url,REP_SUPABASE.key);
+  }catch(e){ _sb=null; }
+  return _sb;
+}
+async function cloudUser(){ const sb=await getSb(); if(!sb) return null; try{ const {data}=await sb.auth.getUser(); return (data&&data.user)||null; }catch(e){ return null; } }
+function repReleaseId(){ const ctx=ST.ctx||{}; return ctx.releaseId||ctx.launchId|| (document.getElementById('sel-release')?document.getElementById('sel-release').value:'') ||''; }
+async function saveReportCloud(snap){
+  const ctx=ST.ctx||{};
+  if(!ctx.teamId||!repReleaseId()) return null;          // solo si vino desde la app con contexto
+  const u=await cloudUser(); if(!u) return null;          // solo si hay sesión
+  const sb=await getSb(); if(!sb) return null;
+  const id='rep_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  const row={id,team_id:ctx.teamId,artist_id:ctx.artistId||null,release_id:repReleaseId(),track_id:ctx.trackId||null,scenario:snap.sc||'ideal',data:snap};
+  try{ const {error}=await sb.from('reports').insert(row); if(error) throw error; return id; }
+  catch(e){ console.warn('saveReportCloud:',e.message||e); return null; }
+}
+async function listReportsCloud(relId){
+  if(!relId) return [];
+  const u=await cloudUser(); if(!u) return [];
+  const sb=await getSb(); if(!sb) return [];
+  try{ const {data,error}=await sb.from('reports').select('id,created_at,scenario,data').eq('release_id',relId).order('created_at',{ascending:false}); if(error) throw error; return data||[]; }
+  catch(e){ console.warn('listReportsCloud:',e.message||e); return []; }
+}
+async function refreshSavedReports(){
+  const lab=document.getElementById('saved-label'), wrap=document.getElementById('saved-list');
+  if(!lab||!wrap) return;
+  const relId=repReleaseId();
+  const rows=await listReportsCloud(relId);
+  if(!rows.length){ lab.style.display='none'; wrap.style.display='none'; wrap.innerHTML=''; return; }
+  lab.style.display='block'; wrap.style.display='block';
+  wrap.innerHTML=rows.map(r=>{
+    const d=new Date(r.created_at);
+    const dt=d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+    const proj=(r.data&&r.data.identity&&r.data.identity.project)||'';
+    return `<div class="saved-row"><div><div class="saved-dt">${dt}</div><div class="saved-meta">${proj?proj+' · ':''}${r.scenario||'ideal'}</div></div><button class="saved-load" onclick="loadReportCloud('${r.id}')">${icon('report',13)} Ver</button></div>`;
+  }).join('');
+  hydrateIcons(wrap);
+}
+async function loadReportCloud(id){
+  const sb=await getSb(); if(!sb) return;
+  try{
+    const {data,error}=await sb.from('reports').select('data').eq('id',id).single(); if(error) throw error;
+    const snap=data&&data.data; if(!snap) throw new Error('reporte vacío');
+    ST.snapshot=snap; ST.sc=snap.sc||'ideal'; ST.identity=snap.identity||ST.identity;
+    ST.parsedData=snap.data; ST.aiInsights=snap.aiInsights; ST.csvHeaders=snap.csvHeaders||{};
+    renderReport(snap.data,snap.identity||{});
+    document.getElementById('setup').style.display='none';
+    document.getElementById('report').style.display='block';
+    toast('✓ Reporte cargado desde la nube');
+  }catch(e){ toast('No se pudo cargar el reporte: '+(e.message||e),'error'); }
+}
+
 // ── SELECTOR DE PROYECTO (boxdrop) — lee datos locales de Tempo OS; fallback manual si no hay ──
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
 function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v==null?'':v; }
@@ -1278,9 +1350,10 @@ function initProjectPicker(){
   if(aid) selA.value=aid;
   fillReleases();
   if(ctx.launchId) selR.value=ctx.launchId;
+  if(!selR.value && selR.options.length) selR.value=selR.options[0].value;   // fallback si el release del ctx no está local
   labEl.value=ctx.label||document.getElementById('inp-label').value||'';
-  selA.onchange=()=>{ fillReleases(); applyPick(); };
-  selR.onchange=applyPick;
+  selA.onchange=()=>{ fillReleases(); applyPick(); refreshSavedReports(); };
+  selR.onchange=()=>{ applyPick(); refreshSavedReports(); };
   labEl.oninput=applyPick;
   applyPick();
 }
@@ -1297,6 +1370,7 @@ function initProjectPicker(){
   initProjectPicker();
   if(typeof updateBtn==='function') updateBtn();
   if(ctx && typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde Tempo OS');
+  refreshSavedReports();
 })();
 updateBtn();
 hydrateIcons();

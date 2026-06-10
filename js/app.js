@@ -1134,7 +1134,7 @@ function abrirReporteLanzamiento(id) {
     if (!metrics.some(m => (m.metric || '').toLowerCase() === (e.metric || '').toLowerCase()))
       metrics.push({ platform: e.platform || '', metric: e.metric, value: fmtNum(e.value) });
   });
-  const ctx = { label: _teamName || '', artist: art.name || '', project: l.name || '', teamId: _teamId || null, launchId: l.id, metrics };
+  const ctx = { label: _teamName || '', artist: art.name || '', project: l.name || '', teamId: _teamId || null, artistId: art.id || l.artistId || null, launchId: l.id, releaseId: l.id, metrics };
   try { localStorage.setItem('ao_report_ctx', JSON.stringify(ctx)); } catch (e) {}
   const w = window.open('report.html', '_blank');
   if (!w) uiAlert('Permite las ventanas emergentes para abrir el reporte, o abre report.html manualmente.');
