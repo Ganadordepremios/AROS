@@ -1568,7 +1568,57 @@ function metricsResumenHTML() {
     ${artLatest.length ? `<div class="dashboard-grid">${artLatest.map(e => metricCardHTML(e, art.metricEntries)).join('')}</div>` : `<div class="empty-hint">Sin métricas del artista. Cárgalas en la pestaña “Importar / Cargar”.</div>`}
     <div class="section-header" style="margin-top:26px"><div class="section-title">MÉTRICAS DEL LANZAMIENTO · ${a ? up(a.name) : '—'}</div></div>
     ${lnLatest.length ? `<div class="dashboard-grid">${lnLatest.map(e => metricCardHTML(e, a.metricEntries)).join('')}</div>${metricsTimeSeriesHTML(a.metricEntries)}` : `<div class="empty-hint">Sin métricas para este lanzamiento.</div>`}
-    ${screenshotsStripHTML()}`;
+    ${screenshotsStripHTML()}
+    ${metricEntriesAdminHTML()}`;
+}
+
+// ── Historial y edición de entradas de métricas (editar valor/fecha/nombre · borrar) ──
+function _metricArr(scope) {
+  if (scope === 'launch') { const a = activeLaunch(); return a ? (a.metricEntries = a.metricEntries || []) : null; }
+  const art = activeArtist(); return art ? (art.metricEntries = art.metricEntries || []) : null;
+}
+function _metricSave(scope) { if (scope === 'launch') saveLaunches(); else saveArtists(); }
+function editMetricEntry(scope, id, field, val) {
+  if (!requireCan('editar_data')) return;
+  const arr = _metricArr(scope); if (!arr) return;
+  const e = arr.find(x => x.id === id); if (!e) return;
+  if (field === 'value') { const n = (typeof parseMetricNum === 'function') ? parseMetricNum(val) : parseFloat(val); e.value = isNaN(n) ? 0 : n; }
+  else e[field] = val;
+  e.source = (e.source === 'seed') ? 'editado' : (e.source || 'manual');
+  _metricSave(scope); renderMetricas();
+  if (typeof uiToast === 'function') uiToast('Métrica actualizada');
+}
+async function deleteMetricEntry(scope, id) {
+  if (!requireCan('editar_data')) return;
+  const arr = _metricArr(scope); if (!arr) return;
+  const e = arr.find(x => x.id === id);
+  if (!await uiConfirm(`¿Borrar esta entrada${e ? ` (${s(e.metric)} = ${fmtNum(e.value)} · ${s(e.date)})` : ''}? No se puede deshacer.`, { danger: true, okText: 'Borrar' })) return;
+  const i = arr.findIndex(x => x.id === id);
+  if (i >= 0) { arr.splice(i, 1); _metricSave(scope); renderMetricas(); if (typeof uiToast === 'function') uiToast('Entrada borrada'); }
+}
+function metricEntriesAdminHTML() {
+  const art = activeArtist(); const a = activeLaunch();
+  const editable = canDo('editar_data');
+  const inp = 'background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px';
+  const section = (scope, title, arr) => {
+    if (!arr || !arr.length) return '';
+    const rows = arr.slice().sort((x, y) => (y.date || '') < (x.date || '') ? 1 : -1).reverse().map(e => {
+      const pm = PLAT_META[e.platform] || PLAT_META.other;
+      return `<div style="display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap">
+        <span title="${pm.name}" style="display:flex;color:${pm.color};flex-shrink:0">${pm.icon}</span>
+        <input class="input" style="${inp};flex:1;min-width:120px" value="${s(e.metric)}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','metric',this.value)">
+        <input class="input" type="number" step="any" style="${inp};width:120px" value="${e.value}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','value',this.value)">
+        <input class="input" type="date" style="${inp};width:auto" value="${s(e.date)}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','date',this.value)">
+        <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);min-width:46px">${s(e.source || '')}</span>
+        ${editable ? `<button class="goal-btn reject" title="Borrar entrada" onclick="deleteMetricEntry('${scope}','${e.id}')">${icon('trash', 12)}</button>` : ''}
+      </div>`;
+    }).join('');
+    return `<div style="margin:14px 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-muted)">${title} · ${arr.length} entrada${arr.length === 1 ? '' : 's'}</div>${rows}`;
+  };
+  const body = section('artist', 'ARTISTA · ' + up(art.name), art.metricEntries) + (a ? section('launch', 'LANZAMIENTO · ' + up(a.name), a.metricEntries) : '');
+  if (!body) return '';
+  return `<div class="panel" style="margin-top:26px"><div class="panel-head"><span class="ph-icon">${icon('pencil', 18)}</span><span class="ph-title">Historial y edición de entradas</span><span class="ph-sub">corrige un valor o borra una entrada</span></div>
+    <div class="empty-hint" style="margin-bottom:6px">Cada carga (CSV · captura · manual) es una entrada con su fecha. Edita el <b>nombre</b>, <b>valor</b> o <b>fecha</b>, o <b>bórrala</b>. La tarjeta de arriba muestra el valor más reciente por métrica.</div>${body}</div>`;
 }
 
 function levelSelectHTML(id) {
