@@ -2098,6 +2098,90 @@ function diasRestantes(iso) {
 }
 
 // ── DASHBOARD (per-artista, datos reales) ──
+// ── Tendencia (gráfica real, Chart.js bajo demanda) ──
+let _chartJsP = null;
+function ensureChartJs() {
+  if (window.Chart) return Promise.resolve();
+  if (_chartJsP) return _chartJsP;
+  _chartJsP = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+    sc.onload = res; sc.onerror = rej; document.head.appendChild(sc);
+  });
+  return _chartJsP;
+}
+function fmtDateShort(iso) { const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : `${d.getDate()} ${MESES_CAL[d.getMonth()]}`; }
+// Serie temporal: agrega metricEntries (artista + lanzamientos), elige la métrica con más fechas distintas.
+function dashTrendSeries(art, ls) {
+  const all = [];
+  ((art && art.metricEntries) || []).forEach(e => all.push(e));
+  (ls || []).forEach(l => (l.metricEntries || []).forEach(e => all.push(e)));
+  if (!all.length) return null;
+  const groups = {};
+  all.forEach(e => { const k = (e.platform || '') + '|' + (e.metric || ''); (groups[k] = groups[k] || []).push(e); });
+  let best = null, bestScore = 0;
+  Object.entries(groups).forEach(([k, arr]) => {
+    const dates = new Set(arr.map(e => e.date || '').filter(Boolean));
+    const pref = /stream|reproduc|oyente|listen|seguidor|follow|view|vista|alcance|reach/i.test(k) ? 1 : 0;
+    const score = dates.size * 10 + pref;
+    if (dates.size >= 2 && score > bestScore) { bestScore = score; best = { k, arr }; }
+  });
+  if (!best) return null;
+  const byDate = {};
+  best.arr.forEach(e => { const d = e.date || ''; if (d) byDate[d] = (byDate[d] || 0) + (+e.value || 0); });
+  const dates = Object.keys(byDate).sort();
+  if (dates.length < 2) return null;
+  const [platform, metric] = best.k.split('|');
+  return { dates, values: dates.map(d => byDate[d]), metric: metric || 'Métrica', platform: platform || '' };
+}
+let _dashChart = null;
+async function renderDashTrend(art, ls) {
+  const host = document.getElementById('dash-chart-host'); const sub = document.getElementById('dash-trend-sub');
+  if (!host) return;
+  const series = dashTrendSeries(art, ls);
+  if (!series) {
+    if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} _dashChart = null; }
+    host.innerHTML = '<div class="dash-chart-empty">Sin histórico suficiente para una tendencia.<br>Importa métricas en varias fechas (Métricas) y verás aquí la evolución.</div>';
+    if (sub) sub.textContent = '';
+    return;
+  }
+  host.innerHTML = '<canvas id="dash-trend"></canvas>';
+  if (sub) sub.textContent = `${series.platform ? up(series.platform) + ' · ' : ''}${series.metric}`;
+  try { await ensureChartJs(); } catch (e) { host.innerHTML = '<div class="dash-chart-empty">No se pudo cargar la gráfica (¿sin internet?).</div>'; return; }
+  const cv = document.getElementById('dash-trend'); if (!cv) return;
+  const css = getComputedStyle(document.documentElement);
+  const accent = (css.getPropertyValue('--accent').trim()) || '#FF6B30';
+  const grid = (css.getPropertyValue('--border').trim()) || 'rgba(255,255,255,.08)';
+  const txt = (css.getPropertyValue('--text-muted').trim()) || '#8a8a8a';
+  const ctx = cv.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, accent + '40'); grad.addColorStop(1, accent + '00');
+  if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} }
+  _dashChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: series.dates.map(fmtDateShort), datasets: [{ data: series.values, borderColor: accent, backgroundColor: grad, fill: true, tension: 0.32, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: accent, pointBorderColor: accent }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,12,10,.92)', borderColor: grid, borderWidth: 1, padding: 10, displayColors: false, callbacks: { label: c => fmtNum(c.parsed.y) } } },
+      scales: { x: { grid: { display: false }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 }, callback: v => fmtNum(v) }, beginAtZero: false } }
+    }
+  });
+}
+function sigTile(ic, cls, val, label) {
+  return `<div class="sig-tile"><div class="sig-ic ${cls}">${icon(ic, 17)}</div><div class="sig-main"><div class="sig-v">${val}</div><div class="sig-l">${label}</div></div></div>`;
+}
+function renderDashSignals(art) {
+  const host = document.getElementById('dash-signals'); if (!host) return;
+  if (!art) { host.innerHTML = '<div class="empty-hint" style="margin:0">Selecciona un artista.</div>'; return; }
+  const f = artistFinance(art.id), legal = artistLegalPending(art.id), alerts = artistAlertCount(art.id), next = nextRelease(art.id);
+  const rec = f.inv ? Math.min(100, Math.round(f.ing / f.inv * 100)) : null;
+  host.innerHTML =
+    sigTile('flag', next ? 'accent' : '', next ? (diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy') : '—', next ? 'Próximo: ' + s(next.name) : 'Sin próximos drops') +
+    sigTile('warning', alerts ? 'warn' : 'ok', alerts || '0', alerts ? 'alerta' + (alerts > 1 ? 's' : '') + ' abiertas' : 'sin alertas') +
+    sigTile('file', legal ? 'beat' : 'ok', legal || '0', legal ? 'documentos legales pendientes' : 'legal al día') +
+    sigTile('finance', (rec != null && rec >= 100) ? 'ok' : 'accent', rec != null ? rec + '%' : '—', 'recoup · ROI ' + (f.roi != null ? f.roi + '%' : '—'));
+}
+
 function renderDashboard() {
   renderDashLaunches();
   const art = activeArtist();
@@ -2133,34 +2217,46 @@ function renderDashboard() {
   // ideas seleccionadas (total)
   let ideasCount = 0; ls.forEach(l => ideasCount += (l.ideas || []).length);
 
+  // sparkline de streams (si hay histórico en ≥2 fechas)
+  const streamHist = (function () {
+    const by = {}; ls.forEach(l => (l.metricEntries || []).forEach(e => { if (/stream|reproduc/i.test(e.metric)) { const d = e.date || ''; if (d) by[d] = (by[d] || 0) + (+e.value || 0); } }));
+    return Object.keys(by).sort().map(d => by[d]);
+  })();
+  const streamSpark = streamHist.length >= 2 ? sparklineSVG(streamHist, 130, 30, 'var(--accent)') : '';
+
+  // título / subtítulo del dashboard
+  const titleEl2 = document.getElementById('dash-title'), subEl = document.getElementById('dash-subtitle');
+  if (titleEl2) titleEl2.textContent = art ? s(art.name) : 'Dashboard';
+  if (subEl) subEl.textContent = art ? `${ls.length} lanzamiento${ls.length === 1 ? '' : 's'} · ${counts.active} en campaña · ${counts.planning} en plan` : 'Resumen del artista';
+
+  const recoup = (function () { if (!art) return null; const f = artistFinance(art.id); return f.inv ? Math.min(100, Math.round(f.ing / f.inv * 100)) : null; })();
+  const roi = art ? artistFinance(art.id).roi : null;
   statsHost.innerHTML = `
     <div class="stat-card">
       <div class="stat-label">Streams / Reproducciones</div>
       <div class="stat-value">${hasMetrics ? fmtNum(streams) : '—'}</div>
-      ${hasMetrics
-        ? `<div class="stat-trend">Suma de lanzamientos con métricas</div>`
-        : `<div class="stat-trend" style="color:var(--text-muted)">Sin métricas aún</div>`}
-      <div class="stat-sub">${hasMetrics ? 'Total acumulado' : 'Impórtalas en Métricas →'}</div>
+      ${streamSpark || `<div class="stat-sub">${hasMetrics ? 'Total acumulado' : 'Impórtalas en Métricas'}</div>`}
     </div>
-    <div class="stat-card red">
+    <div class="stat-card">
       <div class="stat-label">Lanzamientos</div>
       <div class="stat-value">${ls.length}</div>
       <div class="stat-trend" style="color:var(--beat)">${counts.active} en campaña · ${counts.planning} planeando${counts.complete ? ' · ' + counts.complete + ' lanzados' : ''}</div>
       <div class="stat-sub">${nextDrop ? `Próximo: ${s(nextDrop.name)} en ${diasRestantes(nextDrop.date)}d` : 'Sin próximos drops'}</div>
     </div>
-    <div class="stat-card purple">
+    <div class="stat-card">
       <div class="stat-label">Contenido Programado</div>
       <div class="stat-value">${next7.length}</div>
       <div class="stat-trend" style="color:var(--beat)">esta semana · ${upcoming.length} próximos en total</div>
-      <div class="stat-sub">${ideasCount} ideas seleccionadas · ${allCal.length} piezas en calendario</div>
+      <div class="stat-sub">${ideasCount} ideas · ${allCal.length} piezas en calendario</div>
     </div>
-    ${(function(){ if(!art) return ''; const f=artistFinance(art.id), legal=artistLegalPending(art.id), alerts=artistAlertCount(art.id), rec=f.inv?Math.min(100,Math.round(f.ing/f.inv*100)):null;
-      return `<div class="stat-card">
-      <div class="stat-label">CRM del artista</div>
-      <div class="stat-value">${rec!=null?rec+'%':'—'}<span style="font-size:13px;color:var(--text-muted)"> recoup</span></div>
-      <div class="stat-trend" style="color:${f.roi!=null&&f.roi>=0?'#4ade80':'var(--accent2)'}">${f.roi!=null?'ROI '+f.roi+'%':'sin inversión'} · inv ${money(f.inv)}</div>
-      <div class="stat-sub">${alerts?alerts+' alerta'+(alerts>1?'s':'')+' · ':''}${legal?legal+' legal pend.':'legal al día'}</div>
-    </div>`; })()}`;
+    <div class="stat-card">
+      <div class="stat-label">Recoupment</div>
+      <div class="stat-value">${recoup != null ? recoup + '%' : '—'}</div>
+      <div class="kpi-delta ${roi != null ? (roi >= 0 ? 'up' : 'down') : 'flat'}">${roi != null ? icon(roi >= 0 ? 'trend' : 'trend', 12) + ' ROI ' + roi + '%' : 'sin inversión'}</div>
+      <div class="stat-sub">${art ? 'inv ' + money(artistFinance(art.id).inv) : '—'}</div>
+    </div>`;
+  renderDashSignals(art);
+  renderDashTrend(art, ls);
 
   // próximo contenido (lista)
   const dueSoon = upcoming.filter(ci => diasRestantes(ci.fecha) <= 2 && (ci.production && ci.production.estado) !== 'publicado');
@@ -2168,7 +2264,7 @@ function renderDashboard() {
     if (!upcoming.length) {
       nextHost.innerHTML = `<div class="empty-hint">No hay contenido próximo. Agrega piezas desde el Banco de Referencias o el Generador de Ideas.</div>`;
     } else {
-      const alert = dueSoon.length ? `<div class="deadline-alert">⏰ <strong>${dueSoon.length}</strong> pieza${dueSoon.length>1?'s':''} con deadline en las próximas 48h${(activeArtist()&&!aiReady())?'':''}</div>` : '';
+      const alert = dueSoon.length ? `<div class="deadline-alert" style="display:flex;align-items:center;gap:8px">${icon('clock',15)}<span><strong>${dueSoon.length}</strong> pieza${dueSoon.length>1?'s':''} con deadline en las próximas 48h</span></div>` : '';
       nextHost.innerHTML = alert + upcoming.slice(0, 6).map(ci => {
         const col = catColor(ci.cat);
         const dr = diasRestantes(ci.fecha);
@@ -2176,7 +2272,7 @@ function renderDashboard() {
         const urgent = dr <= 2 && estado !== 'publicado';
         const dlabel = dr === 0 ? 'HOY' : (dr === 1 ? 'MAÑANA' : (() => { const d = new Date(ci.fecha + 'T00:00:00'); return `${MESES_CAL[d.getMonth()]} ${d.getDate()}`; })());
         return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;cursor:pointer;">
-          <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px">${urgent?'⏰ ':''}${dlabel}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
           <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${s(ci.title)}</span>
           <div style="margin-left:auto;font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${s(ci.launch)}</div>
         </div>`;
