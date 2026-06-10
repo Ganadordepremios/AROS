@@ -6,6 +6,7 @@
 <title>Tempo OS · Reporte de Lanzamiento</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="js/icons.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -20,11 +21,11 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh;
-  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(167,139,250,.07),transparent),
-  radial-gradient(ellipse 40% 30% at 90% 50%,rgba(255,77,109,.05),transparent);}
+  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(255,107,48,.06),transparent),
+  radial-gradient(ellipse 40% 30% at 90% 50%,rgba(255,170,0,.04),transparent);}
 #setup{max-width:920px;margin:0 auto;padding:52px 32px 100px}
 .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:48px}
-.logo-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gads),var(--insight));display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--beat));display:flex;align-items:center;justify-content:center;font-size:16px}
 .logo-text{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:.06em}
 .hero{margin-bottom:48px}
 .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gads);margin-bottom:14px}
@@ -33,14 +34,14 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .hero p{color:var(--sub);font-size:15px;max-width:520px;line-height:1.65;font-weight:300}
 .section-label{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
 .past-zone{border:1.5px dashed var(--border2);border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;position:relative;margin-bottom:44px;background:var(--surface)}
-.past-zone:hover,.past-zone.over{border-color:var(--insight);background:rgba(167,139,250,.05)}
+.past-zone:hover,.past-zone.over{border-color:var(--accent);background:rgba(255,107,48,.05)}
 .past-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.past-icon{width:38px;height:38px;border-radius:9px;background:rgba(167,139,250,.12);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.past-icon{width:38px;height:38px;border-radius:9px;background:rgba(255,107,48,.12);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .past-text .t1{font-size:14px;font-weight:600;margin-bottom:2px}
 .past-text .t2{font-family:var(--mono);font-size:11px;color:var(--dim)}
 .past-loaded{display:none;margin-left:auto;align-items:center;gap:10px;font-family:var(--mono);font-size:11px}
 .past-loaded.show{display:flex}
-.past-loaded .pname{color:var(--insight);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.past-loaded .pname{color:var(--accent);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .past-loaded .pclear{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 2px}
 .past-loaded .pclear:hover{color:var(--gads)}
 .scenario-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
@@ -58,6 +59,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .id-field label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
 .id-field input{background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-family:var(--sans);font-size:14px;padding:10px 14px;width:100%;transition:border-color .18s}
 .id-field input:focus{outline:none;border-color:var(--border2)}
+.id-field select{background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-family:var(--sans);font-size:14px;padding:10px 14px;width:100%;cursor:pointer;transition:border-color .18s;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);background-position:calc(100% - 18px) 18px,calc(100% - 13px) 18px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.id-field select:focus{outline:none;border-color:var(--accent)}
 .id-field input::placeholder{color:var(--dim)}
 .sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px;margin-bottom:28px}
 .src-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s}
@@ -111,8 +114,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .dl-btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid;white-space:nowrap}
 .dl-html{color:var(--meta);background:rgba(77,201,255,.07);border-color:rgba(77,201,255,.25)}
 .dl-html:hover{background:rgba(77,201,255,.12)}
-.dl-json{color:var(--insight);background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.25)}
-.dl-json:hover{background:rgba(167,139,250,.12)}
+.dl-json{color:var(--accent);background:rgba(255,107,48,.06);border-color:rgba(255,107,48,.25)}
+.dl-json:hover{background:rgba(255,107,48,.12)}
 .dl-pptx{color:var(--organic);background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25)}
 .dl-pptx:hover{background:rgba(245,158,11,.12)}
 .dl-pptx:disabled{opacity:.4;cursor:not-allowed}
@@ -146,8 +149,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 .col-tag{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim)}
 .col-tag.mapped{border-color:rgba(61,240,192,.25);color:rgba(61,240,192,.7);background:rgba(61,240,192,.05)}
 .src-tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:5px;margin-right:5px;margin-bottom:3px}
-.ai-block{border:1px solid rgba(167,139,250,.2);border-radius:14px;background:linear-gradient(160deg,rgba(167,139,250,.05),rgba(167,139,250,.01));padding:22px;margin-bottom:12px}
-.ai-label{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--insight)}
+.ai-block{border:1px solid rgba(255,107,48,.2);border-radius:14px;background:linear-gradient(160deg,rgba(255,107,48,.05),rgba(255,107,48,.01));padding:22px;margin-bottom:12px}
+.ai-label{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
 .ai-content{font-size:14px;color:var(--ink);line-height:1.75;font-weight:300}
 .ai-content strong{font-weight:600}
 .ai-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
@@ -172,42 +175,37 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 <!-- ══════════════ SETUP ══ -->
 <div id="setup">
   <div class="logo-row">
-    <div class="logo-mark">⏱</div>
+    <div class="logo-mark"><span data-icon="report" data-isize="18"></span></div>
     <span class="logo-text">Tempo OS · Reporte de Lanzamiento</span>
-  </div>
-  <div class="hero">
-    <div class="hero-eyebrow">Sistema de análisis de lanzamientos</div>
-    <h1>Sube tus datos.<br><em>La IA hace el resto.</em></h1>
-    <p>Importa los datos de las plataformas que tengas. El reporte se adapta a lo disponible y genera insights accionables. Guarda el snapshot .json para retomar en el próximo ciclo.</p>
   </div>
 
   <!-- Past report -->
   <div class="section-label">Cargar reporte anterior</div>
   <div class="past-zone" id="past-zone" ondragover="pDrag(event,this)" ondragleave="pLeave(this)" ondrop="pDrop(event)">
     <input type="file" accept=".json" onchange="pInput(event)" id="past-input">
-    <div class="past-icon">📂</div>
+    <div class="past-icon"><span data-icon="file" data-isize="17"></span></div>
     <div class="past-text">
       <div class="t1">Arrastra un snapshot .json aquí</div>
       <div class="t2">Carga un reporte anterior para editarlo o regenerarlo</div>
     </div>
     <div class="past-loaded" id="past-loaded">
       <span class="pname" id="past-fname"></span>
-      <button class="pclear" onclick="clearPast(event)">✕</button>
+      <button class="pclear" onclick="clearPast(event)"><span data-icon="close" data-isize="13"></span></button>
     </div>
   </div>
 
-  <!-- Scenario -->
-  <div class="section-label">Nivel de reporte</div>
-  <div class="scenario-row">
-    <button class="sc-pill" data-sc="conservador" onclick="setSc(this)"><span class="pd" style="background:var(--spotify)"></span>Conservador</button>
-    <button class="sc-pill active" data-sc="realista" onclick="setSc(this)"><span class="pd" style="background:var(--organic)"></span>Realista</button>
-    <button class="sc-pill" data-sc="ideal" onclick="setSc(this)"><span class="pd" style="background:var(--gads)"></span>Ideal</button>
-  </div>
-  <div class="sc-desc" id="sc-desc">KPIs de todas las fuentes, comparativas de eficiencia y análisis cruzado.</div>
-
   <!-- Identity -->
-  <div class="section-label" style="margin-top:32px">Identidad del proyecto</div>
-  <div class="identity-grid">
+  <div class="section-label" style="margin-top:32px">Proyecto</div>
+  <!-- Selector (cuando hay datos de Tempo OS) — auto-poblado desde el release donde se hizo clic -->
+  <div id="project-picker" style="display:none">
+    <div class="identity-grid">
+      <div class="id-field"><label>Artista</label><select id="sel-artist"></select></div>
+      <div class="id-field"><label>Release / Canción</label><select id="sel-release"></select></div>
+      <div class="id-field"><label>Label / Equipo</label><input id="inp-label-picker" placeholder="Label / equipo"></div>
+    </div>
+  </div>
+  <!-- Fallback manual (sin datos locales) — fuente de verdad para generate() -->
+  <div class="identity-grid" id="identity-manual">
     <div class="id-field"><label>Label / Equipo</label><input id="inp-label" placeholder="Nombre del label"></div>
     <div class="id-field"><label>Artista</label><input id="inp-artist" placeholder="Nombre del artista"></div>
     <div class="id-field"><label>Lanzamiento / Canción</label><input id="inp-project" placeholder="Nombre del proyecto"></div>
@@ -220,7 +218,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <!-- Google Ads -->
     <div class="src-card" id="card-gads">
       <div class="src-header">
-        <div class="src-icon" style="background:rgba(255,77,109,.12)">📢</div>
+        <div class="src-icon" style="background:rgba(255,107,48,.12)"><span data-icon="megaphone" data-isize="16"></span></div>
         <div class="src-title">Google Ads</div>
         <span class="src-badge">CSV o manual</span>
       </div>
@@ -244,13 +242,13 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <!-- YouTube (Studio organic) -->
     <div class="src-card src-card-wide" id="card-yt">
       <div class="src-header">
-        <div class="src-icon" style="background:rgba(255,0,0,.12)">▶</div>
+        <div class="src-icon" style="background:rgba(255,0,0,.12)"><span data-icon="play" data-isize="16"></span></div>
         <div class="src-title">YouTube</div>
         <span class="src-badge">YouTube Studio · 4 reportes</span>
       </div>
       <div class="yt-sub-grid">
         <div class="yt-sub" id="ytsub-content">
-          <div class="yt-sub-label">📹 Content</div>
+          <div class="yt-sub-label"><span data-icon="video" data-isize="13"></span> Content</div>
           <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_content')">
             <input type="file" multiple accept=".csv" onchange="fi(event,'yt_content')">
             <div class="dz-label">CSV de Content</div>
@@ -259,7 +257,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
           <div class="files-list" id="fl-yt_content"></div>
         </div>
         <div class="yt-sub" id="ytsub-traffic">
-          <div class="yt-sub-label">🚦 Traffic Source</div>
+          <div class="yt-sub-label"><span data-icon="trend" data-isize="13"></span> Traffic Source</div>
           <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_traffic')">
             <input type="file" multiple accept=".csv" onchange="fi(event,'yt_traffic')">
             <div class="dz-label">CSV de Traffic Source</div>
@@ -268,7 +266,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
           <div class="files-list" id="fl-yt_traffic"></div>
         </div>
         <div class="yt-sub" id="ytsub-geo">
-          <div class="yt-sub-label">🌎 Geography</div>
+          <div class="yt-sub-label"><span data-icon="globe" data-isize="13"></span> Geography</div>
           <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_geo')">
             <input type="file" multiple accept=".csv" onchange="fi(event,'yt_geo')">
             <div class="dz-label">CSV de Geography</div>
@@ -277,7 +275,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
           <div class="files-list" id="fl-yt_geo"></div>
         </div>
         <div class="yt-sub" id="ytsub-age">
-          <div class="yt-sub-label">👥 Viewers Age</div>
+          <div class="yt-sub-label"><span data-icon="team" data-isize="13"></span> Viewers Age</div>
           <div class="drop-zone yt-mini-dz" ondragover="ev(event,this)" ondragleave="el(this)" ondrop="ed(event,'yt_age')">
             <input type="file" multiple accept=".csv" onchange="fi(event,'yt_age')">
             <div class="dz-label">CSV de Viewers Age</div>
@@ -300,7 +298,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <!-- Meta -->
     <div class="src-card" id="card-meta">
       <div class="src-header">
-        <div class="src-icon" style="background:rgba(77,201,255,.12)">📱</div>
+        <div class="src-icon" style="background:rgba(77,201,255,.12)"><span data-icon="phone" data-isize="16"></span></div>
         <div class="src-title">Meta Ads</div>
         <span class="src-badge">CSV o manual</span>
       </div>
@@ -324,7 +322,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <!-- Spotify -->
     <div class="src-card" id="card-spotify">
       <div class="src-header">
-        <div class="src-icon" style="background:rgba(29,185,84,.12)">🎧</div>
+        <div class="src-icon" style="background:rgba(29,185,84,.12)"><span data-icon="headphones" data-isize="16"></span></div>
         <div class="src-title">Spotify for Artists</div>
         <span class="src-badge">CSV o manual</span>
       </div>
@@ -348,7 +346,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
     <!-- Organic -->
     <div class="src-card" id="card-organic">
       <div class="src-header">
-        <div class="src-icon" style="background:rgba(245,158,11,.12)">📊</div>
+        <div class="src-icon" style="background:rgba(245,158,11,.12)"><span data-icon="chart" data-isize="16"></span></div>
         <div class="src-title">Redes Orgánicas</div>
         <span class="src-badge">CSV o manual</span>
       </div>
@@ -374,7 +372,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 
   <div class="err" id="err"></div>
   <button class="gen-btn" id="gen-btn" onclick="generate()" disabled>
-    <span id="gen-label">Generar reporte con IA</span>
+    <span id="gen-label">Generar reporte</span>
     <span class="gen-sub" id="gen-sub">— selecciona al menos una fuente —</span>
   </button>
 </div>
@@ -386,9 +384,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
       <button class="back-btn" onclick="goBack()">← Volver</button>
       <span class="sc-badge" id="r-badge"></span>
       <div class="topbar-actions">
-        <button class="dl-btn dl-json" onclick="dlJSON()">⬇ Snapshot .json</button>
-        <button class="dl-btn dl-pptx" id="dl-pptx-btn" onclick="dlPPTX()">⬇ Presentación .pptx</button>
-        <button class="dl-btn dl-html" onclick="dlHTML()">⬇ Reporte .html</button>
+        <button class="dl-btn dl-json" onclick="dlJSON()"><span data-icon="download" data-isize="13"></span> Snapshot .json</button>
+        <button class="dl-btn dl-pptx" id="dl-pptx-btn" onclick="dlPPTX()"><span data-icon="download" data-isize="13"></span> Presentación .pptx</button>
+        <button class="dl-btn dl-html" onclick="dlHTML()"><span data-icon="download" data-isize="13"></span> Reporte .html</button>
       </div>
     </div>
     <div id="report-body"></div>
@@ -399,7 +397,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 <script>
 // ── STATE ──────────────────────────────────────────────
 const ST={
-  sc:'realista',
+  sc:'ideal',
   files:{gads:[],yt_content:[],yt_traffic:[],yt_geo:[],yt_age:[],meta:[],spotify:[],organic:[]},
   parsedData:null,
   csvHeaders:{},
@@ -414,8 +412,8 @@ const SC_DESC={
   realista:'KPIs de todas las fuentes, comparativas de eficiencia y análisis cruzado.',
   ideal:'Diagnóstico estratégico completo, costo por resultado y hoja de ruta para el equipo.'
 };
-const COLORS={gads:'#FF6B30',yt:'#ff4444',meta:'#4dc9ff',spotify:'#1db954',organic:'#f59e0b',insight:'#a78bfa'};
-const CAMP_COLS=['#FF6B30','#4dc9ff','#f59e0b','#a78bfa','#34d399','#fb923c'];
+const COLORS={gads:'#FF6B30',yt:'#ff4444',meta:'#4dc9ff',spotify:'#1db954',organic:'#f59e0b',insight:'#8a93a6'};
+const CAMP_COLS=['#FF6B30','#4dc9ff','#f59e0b','#8a93a6','#34d399','#fb923c'];
 
 // ── TOAST ──────────────────────────────────────────────
 function toast(msg,type='success'){
@@ -497,7 +495,7 @@ function renderFiles(src){
   if(!list)return;
   list.innerHTML=ST.files[src].map(f=>`
     <div class="file-chip"><span style="width:6px;height:6px;border-radius:50%;background:${col};flex-shrink:0"></span>
-    <span class="fn">${f.name}</span><button onclick="removeFile('${src}','${f.name}')">✕</button></div>`).join('');
+    <span class="fn">${f.name}</span><button onclick="removeFile('${src}','${f.name}')">${icon('close',12)}</button></div>`).join('');
   if(src.startsWith('yt_')){
     document.getElementById('card-yt')?.classList.toggle('has-data',ytHasFiles());
   } else {
@@ -988,7 +986,7 @@ async function generate(){
     const err=document.getElementById('err');
     err.textContent='⚠ '+e.message;err.style.display='block';
   }finally{
-    btn.disabled=false;document.getElementById('gen-label').textContent='Generar reporte con IA';
+    btn.disabled=false;document.getElementById('gen-label').textContent='Generar reporte';
     updateBtn();
   }
 }
@@ -1027,7 +1025,7 @@ function renderReport(data,identity){
   if(data.organic.length)srcTags.push(`<span class="src-tag" style="background:rgba(245,158,11,.1);color:var(--organic);border:1px solid rgba(245,158,11,.2)">● Orgánico</span>`);
 
   let html='';
-  html+=`<div class="r-identity">${identity.label?`<span class="r-label-badge">🎵 ${identity.label}</span>`:''}${srcTags.join('')}</div>
+  html+=`<div class="r-identity">${identity.label?`<span class="r-label-badge">${icon('music',13)} ${identity.label}</span>`:''}${srcTags.join('')}</div>
     <div class="r-eyebrow">Reporte de Lanzamiento · ${new Date().toLocaleDateString('es',{year:'numeric',month:'long'})}</div>
     <div class="r-title">${identity.artist||'[Artista]'}<br><span class="hi">${identity.project||'Lanzamiento'}</span></div>
     <p class="r-sub">${sc==='conservador'?'Resumen de campaña — los números clave.':sc==='realista'?'Análisis de rendimiento multiplataforma.':'Diagnóstico estratégico completo.'}</p>
@@ -1051,7 +1049,7 @@ function renderReport(data,identity){
     html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Paid Media · Search & Display</div><div class="sec-title2">Google Ads</div></div>`;
     const gadsFiles=ST.files.gads.map(f=>f.name);
     const gadsMappings=gadsFiles.reduce((acc,fn)=>{if(ST.csvHeaders[fn]){const m=detectMappings(ST.csvHeaders[fn],'gads');Object.assign(acc,m);}return acc;},{});
-    if(Object.keys(gadsMappings).length){html+=`<div class="col-tags">`;['impressions','clicks','cost','cpc','ctr'].forEach(k=>{if(gadsMappings[k])html+=`<span class="col-tag mapped" title="Columna detectada: ${gadsMappings[k]}">✓ ${gadsMappings[k]}</span>`;});html+=`</div>`;}
+    if(Object.keys(gadsMappings).length){html+=`<div class="col-tags">`;['impressions','clicks','cost','cpc','ctr'].forEach(k=>{if(gadsMappings[k])html+=`<span class="col-tag mapped" title="Columna detectada: ${gadsMappings[k]}">${icon('check',11)} ${gadsMappings[k]}</span>`;});html+=`</div>`;}
     const gadsStats=Object.entries(gAdsCamps).map(([name,rows],i)=>{const a=aggRows(rows,['impressions','clicks','cost']);return{name,col:CAMP_COLS[i%CAMP_COLS.length],...a,ctr:a.impressions>0?a.clicks/a.impressions*100:0,cpc:a.clicks>0?a.cost/a.clicks:0};});
     html+=`<div class="kpi-grid">`;
     const gAdsAgg=aggRows(data.gads,['impressions','clicks','cost']);
@@ -1070,7 +1068,7 @@ function renderReport(data,identity){
   if(ytT.hasData){
     html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Streaming · YouTube Studio</div><div class="sec-title2">YouTube</div></div>`;
     const ytAllFiles=[...ST.files.yt_content,...ST.files.yt_traffic,...ST.files.yt_geo,...ST.files.yt_age].map(f=>f.name);
-    if(ytAllFiles.length){html+=`<div class="col-tags">`;if(ST.files.yt_content.length)html+=`<span class="col-tag mapped">📹 Content (${ST.files.yt_content.length})</span>`;if(ST.files.yt_traffic.length)html+=`<span class="col-tag mapped">🚦 Traffic (${ST.files.yt_traffic.length})</span>`;if(ST.files.yt_geo.length)html+=`<span class="col-tag mapped">🌎 Geography (${ST.files.yt_geo.length})</span>`;if(ST.files.yt_age.length)html+=`<span class="col-tag mapped">👥 Viewers Age (${ST.files.yt_age.length})</span>`;html+=`</div>`;}
+    if(ytAllFiles.length){html+=`<div class="col-tags">`;if(ST.files.yt_content.length)html+=`<span class="col-tag mapped">${icon('video',12)} Content (${ST.files.yt_content.length})</span>`;if(ST.files.yt_traffic.length)html+=`<span class="col-tag mapped">${icon('trend',12)} Traffic (${ST.files.yt_traffic.length})</span>`;if(ST.files.yt_geo.length)html+=`<span class="col-tag mapped">${icon('globe',12)} Geography (${ST.files.yt_geo.length})</span>`;if(ST.files.yt_age.length)html+=`<span class="col-tag mapped">${icon('team',12)} Viewers Age (${ST.files.yt_age.length})</span>`;html+=`</div>`;}
     html+=`<div class="kpi-grid">`;
     const ytKpis=[{l:'VIEWS',v:fN(ytT.views),c:COLORS.yt},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',c:COLORS.yt},{l:'SUBSCRIBERS',v:fN(ytT.subscribers),c:COLORS.yt},{l:'AVG DURATION',v:Math.round(ytT.avgDuration)+'s',c:COLORS.organic}];
     if(ytT.impressions)ytKpis.push({l:'IMPRESIONES',v:fM(ytT.impressions),c:'#52526a'});
@@ -1080,7 +1078,7 @@ function renderReport(data,identity){
 
     if(data.yt.content?.length&&sc!=='conservador'){
       const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,8);
-      html+=`<div class="cbox"><div class="cbox-title">📹 Top Content</div><div class="cbox-sub">Los videos con mejor performance del periodo.</div>
+      html+=`<div class="cbox"><div class="cbox-title">${icon('video',12)} Top Content</div><div class="cbox-sub">Los videos con mejor performance del periodo.</div>
         <table class="cmp-table"><thead><tr><th>Video</th><th>Views</th><th>Watch hrs</th><th>Subs</th><th>Avg dur.</th><th>CTR</th></tr></thead><tbody>
         ${top.map(v=>`<tr><td>${v.title.length>40?v.title.slice(0,40)+'…':v.title}</td><td>${fN(v.views)}</td><td>${v.watchHours.toFixed(0)}</td><td>${fN(v.subscribers)}</td><td>${Math.round(v.avgDuration)}s</td><td>${v.ctr?fP(v.ctr):'—'}</td></tr>`).join('')}
         </tbody></table></div>`;
@@ -1089,14 +1087,14 @@ function renderReport(data,identity){
     if(data.yt.traffic?.length){
       const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;
       const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,6);
-      html+=`<div class="g2"><div class="cbox"><div class="cbox-title">🚦 Traffic Source</div><div class="cbox-sub">De dónde llegaron las views.</div>
+      html+=`<div class="g2"><div class="cbox"><div class="cbox-title">${icon('trend',12)} Traffic Source</div><div class="cbox-sub">De dónde llegaron las views.</div>
           <table class="cmp-table"><thead><tr><th>Fuente</th><th>Views</th><th>%</th><th>Watch hrs</th></tr></thead><tbody>
           ${top.map(r=>`<tr><td>${r.source}</td><td>${fN(r.views)}</td><td>${(r.views/totalV*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td></tr>`).join('')}
           </tbody></table></div>`;
       if(data.yt.geo?.length){
         const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;
         const topG=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,6);
-        html+=`<div class="cbox"><div class="cbox-title">🌎 Geography</div><div class="cbox-sub">Top países por views.</div>
+        html+=`<div class="cbox"><div class="cbox-title">${icon('globe',12)} Geography</div><div class="cbox-sub">Top países por views.</div>
           <table class="cmp-table"><thead><tr><th>País</th><th>Views</th><th>%</th><th>Watch hrs</th></tr></thead><tbody>
           ${topG.map(r=>`<tr><td>${r.country}</td><td>${fN(r.views)}</td><td>${(r.views/totalG*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td></tr>`).join('')}
           </tbody></table></div>`;
@@ -1105,7 +1103,7 @@ function renderReport(data,identity){
     } else if(data.yt.geo?.length){
       const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;
       const topG=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,8);
-      html+=`<div class="cbox"><div class="cbox-title">🌎 Geography</div><div class="cbox-sub">Top países por views.</div>
+      html+=`<div class="cbox"><div class="cbox-title">${icon('globe',12)} Geography</div><div class="cbox-sub">Top países por views.</div>
         <table class="cmp-table"><thead><tr><th>País</th><th>Views</th><th>%</th><th>Watch hrs</th><th>Avg dur.</th></tr></thead><tbody>
         ${topG.map(r=>`<tr><td>${r.country}</td><td>${fN(r.views)}</td><td>${(r.views/totalG*100).toFixed(1)}%</td><td>${r.watchHours.toFixed(0)}</td><td>${Math.round(r.avgDuration||0)}s</td></tr>`).join('')}
         </tbody></table></div>`;
@@ -1114,9 +1112,9 @@ function renderReport(data,identity){
     if(data.yt.age?.length){
       const totalA=data.yt.age.reduce((s,r)=>s+r.views,0)||1;
       const sortedAge=[...data.yt.age].sort((a,b)=>b.views-a.views);
-      html+=`<div class="cbox"><div class="cbox-title">👥 Viewers Age</div><div class="cbox-sub">Distribución demográfica de la audiencia.</div>
+      html+=`<div class="cbox"><div class="cbox-title">${icon('team',12)} Viewers Age</div><div class="cbox-sub">Distribución demográfica de la audiencia.</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-        ${sortedAge.map((r,i)=>{const pct=(r.views/totalA*100);const colors=['#ff4444','#a78bfa','#4dc9ff','#1db954','#f59e0b','#34d399'];const col=colors[i%colors.length];return `<div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;border-left:3px solid ${col}"><div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.08em;margin-bottom:4px">${r.ageGroup}</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:${col}">${pct.toFixed(1)}%</div><div style="font-size:10px;color:var(--sub);margin-top:2px">${fN(r.views)} views</div></div>`;}).join('')}
+        ${sortedAge.map((r,i)=>{const pct=(r.views/totalA*100);const colors=['#ff4444','#8a93a6','#4dc9ff','#1db954','#f59e0b','#34d399'];const col=colors[i%colors.length];return `<div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;border-left:3px solid ${col}"><div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.08em;margin-bottom:4px">${r.ageGroup}</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:${col}">${pct.toFixed(1)}%</div><div style="font-size:10px;color:var(--sub);margin-top:2px">${fN(r.views)} views</div></div>`;}).join('')}
         </div></div>`;
     }
   }
@@ -1150,7 +1148,7 @@ function renderReport(data,identity){
     html+=`<hr class="r-div"><div class="sec-head"><div class="sec-label2">Streaming · Spotify for Artists</div><div class="sec-title2">${hasPaid?'Resultados en Streaming':'Rendimiento en Spotify'}</div></div>`;
     const spFiles=ST.files.spotify.map(f=>f.name);
     const spMappings=spFiles.reduce((acc,fn)=>{if(ST.csvHeaders[fn]){const m=detectMappings(ST.csvHeaders[fn],'spotify');Object.assign(acc,m);}return acc;},{});
-    if(Object.keys(spMappings).length){html+=`<div class="col-tags">`;['streams','listeners','saves','playlists'].forEach(k=>{if(spMappings[k])html+=`<span class="col-tag mapped" title="Columna: ${spMappings[k]}">✓ ${spMappings[k]}</span>`;});html+=`</div>`;}
+    if(Object.keys(spMappings).length){html+=`<div class="col-tags">`;['streams','listeners','saves','playlists'].forEach(k=>{if(spMappings[k])html+=`<span class="col-tag mapped" title="Columna: ${spMappings[k]}">${icon('check',11)} ${spMappings[k]}</span>`;});html+=`</div>`;}
     html+=`<div class="kpi-grid">`;
     [{l:'STREAMS',v:fN(spAgg.streams),c:COLORS.spotify},{l:'OYENTES',v:fN(spAgg.listeners),c:COLORS.spotify},{l:'GUARDADOS',v:fN(spAgg.saves),c:COLORS.spotify},{l:'PLAYLIST ADDS',v:fN(spAgg.playlists),c:COLORS.organic},{l:'STR./OYENTE',v:spAgg.spl.toFixed(2),c:COLORS.organic},{l:'TASA GUARDADO',v:fP(spAgg.sr),c:'#52526a'}].forEach(k=>{html+=`<div class="kpi"><div style="position:absolute;inset:0 0 auto 0;height:2px;background:${k.c};border-radius:13px 13px 0 0"></div><div class="k-src">Spotify</div><div class="k-val" style="color:${k.c}">${k.v}</div><div class="k-lbl">${k.l}</div></div>`;});
     html+=`</div>`;
@@ -1185,7 +1183,7 @@ async function dlPPTX(){
   btn.disabled=true;btn.textContent='Generando…';
   try{await generatePPTX();toast('✓ Presentación generada');}
   catch(e){toast('Error: '+e.message,'error');console.error(e);}
-  finally{btn.disabled=false;btn.textContent='⬇ Presentación .pptx';}
+  finally{btn.disabled=false;btn.innerHTML=icon('download',13)+' Presentación .pptx';}
 }
 
 async function generatePPTX(){
@@ -1195,8 +1193,8 @@ async function generatePPTX(){
   pres.layout='LAYOUT_16x9';
   pres.title=`${identity.artist||'Artista'} — ${identity.project||'Lanzamiento'}`;
   const BG='060808',PANEL='1a201a',LINE='2a312a',INK='F5F0F5',MUTED='9aa39a',DIM='5a635a';
-  const C_GADS='FF6B30',C_YT='ff4444',C_META='4dc9ff',C_SPOTIFY='1db954',C_ORG='FFAA00',C_INST='a78bfa';
-  const CAMP_C=['FF6B30','4dc9ff','f59e0b','a78bfa','34d399'];
+  const C_GADS='FF6B30',C_YT='ff4444',C_META='4dc9ff',C_SPOTIFY='1db954',C_ORG='FFAA00',C_INST='8a93a6';
+  const CAMP_C=['FF6B30','4dc9ff','f59e0b','8a93a6','34d399'];
   const fN=n=>Math.round(n).toLocaleString('es');
   const fM=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1000?(n/1000).toFixed(0)+'K':String(Math.round(n));
   const fP=n=>n.toFixed(1)+'%';
@@ -1217,13 +1215,13 @@ async function generatePPTX(){
   const ytT=ytTotals(data.yt);
   const totalPaid=gAdsAgg.cost+(mAgg?.cost||0);
   // Cover
-  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:-.5,w:4,h:4,fill:{color:'FF6B30',transparency:93},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8,y:2.5,w:3,h:3,fill:{color:'a78bfa',transparency:95},line:{type:'none'}});kicker(s,'REPORTE DE LANZAMIENTO · '+sc.toUpperCase(),0.55,0.5);s.addText(identity.artist||'[Artista]',{x:.55,y:.8,w:9,h:.7,fontSize:44,color:INK,bold:true,fontFace:'Georgia',margin:0});s.addText(identity.project||'Lanzamiento',{x:.55,y:1.55,w:9,h:.65,fontSize:36,color:'FF6B30',bold:true,fontFace:'Georgia',italic:true,margin:0});s.addShape(pres.shapes.LINE,{x:.55,y:2.42,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,identity.label?`${identity.label} · `+new Date().toLocaleDateString('es',{year:'numeric',month:'long'}):new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.55,2.56,7,.28,MUTED,12);const srcs=[];if(data.gads.length)srcs.push('Google Ads');if(ytT.hasData)srcs.push('YouTube');if(data.meta.length)srcs.push('Meta Ads');if(data.spotify.length)srcs.push('Spotify');if(data.organic.length)srcs.push('Orgánico');bodyTxt(s,'Fuentes: '+srcs.join(' · '),.55,2.88,8,.24,DIM,10);}
+  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:-.5,w:4,h:4,fill:{color:'FF6B30',transparency:93},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8,y:2.5,w:3,h:3,fill:{color:'8a93a6',transparency:95},line:{type:'none'}});kicker(s,'REPORTE DE LANZAMIENTO · '+sc.toUpperCase(),0.55,0.5);s.addText(identity.artist||'[Artista]',{x:.55,y:.8,w:9,h:.7,fontSize:44,color:INK,bold:true,fontFace:'Georgia',margin:0});s.addText(identity.project||'Lanzamiento',{x:.55,y:1.55,w:9,h:.65,fontSize:36,color:'FF6B30',bold:true,fontFace:'Georgia',italic:true,margin:0});s.addShape(pres.shapes.LINE,{x:.55,y:2.42,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,identity.label?`${identity.label} · `+new Date().toLocaleDateString('es',{year:'numeric',month:'long'}):new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.55,2.56,7,.28,MUTED,12);const srcs=[];if(data.gads.length)srcs.push('Google Ads');if(ytT.hasData)srcs.push('YouTube');if(data.meta.length)srcs.push('Meta Ads');if(data.spotify.length)srcs.push('Spotify');if(data.organic.length)srcs.push('Orgánico');bodyTxt(s,'Fuentes: '+srcs.join(' · '),.55,2.88,8,.24,DIM,10);}
   // KPIs
   {const s=darkSlide();kicker(s,'RESUMEN GLOBAL',0.5,.28);sTitle(s,'De un vistazo',.5,.52,8);const cards=[];if(data.gads.length){const ctr=gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0;cards.push({l:'CLICS',v:fN(gAdsAgg.clicks),h:'Google Ads',c:C_GADS},{l:'CTR',v:fP(ctr),h:'Tasa de clic',c:C_GADS});}if(ytT.hasData){cards.push({l:'VIEWS YT',v:fM(ytT.views),h:'YouTube',c:C_YT},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',h:'YouTube',c:C_YT});if(ytT.subscribers)cards.push({l:'SUBS',v:fN(ytT.subscribers),h:'YouTube',c:C_YT});}if(mAgg)cards.push({l:'PLAYS META',v:fM(mAgg.views),h:'ThruPlays',c:C_META});if(spAgg)cards.push({l:'STREAMS',v:fN(spAgg.streams),h:'Spotify',c:C_SPOTIFY},{l:'OYENTES',v:fN(spAgg.listeners),h:'Únicos',c:C_SPOTIFY});if(totalPaid>0)cards.push({l:'GASTO TOTAL',v:'$'+totalPaid.toFixed(2),h:'Ad spend',c:DIM});const cw=1.76,gap=.1,startX=.5;const maxCols=Math.min(cards.length,5);cards.slice(0,10).forEach((k,i)=>{const col=i%maxCols,row=Math.floor(i/maxCols);kpiCard(s,startX+col*(cw+gap),1.38+row*1.32,cw,1.2,k.l,k.v,k.h,k.c);});}
   // Google Ads slide
   if(data.gads.length){const s=darkSlide();kicker(s,'PAID MEDIA · SEARCH & DISPLAY',0.5,.28,C_GADS);sTitle(s,'Google Ads',.5,.52,9,INK);const ctr=gAdsAgg.impressions>0?gAdsAgg.clicks/gAdsAgg.impressions*100:0;const cpc=gAdsAgg.clicks>0?gAdsAgg.cost/gAdsAgg.clicks:0;[{l:'IMPRESIONES',v:fM(gAdsAgg.impressions),h:'Alcance',c:C_GADS},{l:'CLICS',v:fN(gAdsAgg.clicks),h:'Total',c:C_GADS},{l:'CTR',v:fP(ctr),h:'Tasa de clic',c:C_INST},{l:'CPC',v:'$'+cpc.toFixed(3),h:'Costo por clic',c:DIM},{l:'GASTO',v:'$'+gAdsAgg.cost.toFixed(2),h:'Ad spend',c:DIM}].forEach((k,i)=>{kpiCard(s,.5+i*1.86,1.38,1.76,1.2,k.l,k.v,k.h,k.c);});const gadsStats=Object.entries(gAdsCamps).map(([name,rows])=>{const a=aggRows(rows,['impressions','clicks','cost']);return{name,...a,ctr:a.impressions>0?a.clicks/a.impressions*100:0,cpc:a.clicks>0?a.cost/a.clicks:0};});if(gadsStats.length>0){s.addChart(pres.charts.BAR,[{name:'Clics',labels:gadsStats.map(c=>c.name),values:gadsStats.map(c=>c.clicks)}],{x:.5,y:2.75,w:5.8,h:2.55,barDir:'col',barGapWidthPct:55,chartColors:[C_GADS],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:10,dataLabelFontBold:true,showLegend:false,valAxisNumFmt:'#,##0',title:'Clics por campaña',showTitle:true,titleColor:MUTED,titleFontSize:10,});}insightCard(s,6.55,2.75,3.05,2.55,'CTR y costo por clic',`CTR: ${fP(ctr)}. CPC: $${cpc.toFixed(3)}. ${ctr>1.5?'El CTR está por encima del promedio para anuncios de música.':'Hay margen para optimizar el CTR con creativos más directos.'}`,C_GADS);}
   // YouTube slide
-  if(ytT.hasData){const s=darkSlide();kicker(s,'STREAMING · YOUTUBE STUDIO',0.5,.28,C_YT);sTitle(s,'YouTube',.5,.52,9,INK);const kCards=[{l:'VIEWS',v:fN(ytT.views),h:'Total',c:C_YT},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',h:'Horas',c:C_YT},{l:'SUBSCRIBERS',v:fN(ytT.subscribers),h:'Ganados',c:C_YT},{l:'AVG DURATION',v:Math.round(ytT.avgDuration)+'s',h:'Por view',c:C_ORG},{l:'CTR',v:ytT.ctr?fP(ytT.ctr):'—',h:'Tasa de clic',c:C_ORG}];kCards.forEach((k,i)=>{kpiCard(s,.5+i*1.86,1.38,1.76,1.2,k.l,k.v,k.h,k.c);});if(data.yt.content?.length>0){const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,6);s.addChart(pres.charts.BAR,[{name:'Views',labels:top.map(v=>v.title.length>22?v.title.slice(0,22)+'…':v.title),values:top.map(v=>Math.round(v.views))}],{x:.5,y:2.75,w:5.8,h:2.55,barDir:'bar',barGapWidthPct:35,chartColors:[C_YT],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLabelFontSize:9,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:9,showLegend:false,valAxisNumFmt:'#,##0',title:'Top videos por views',showTitle:true,titleColor:MUTED,titleFontSize:10,});}if(data.yt.traffic?.length){const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,5);let txt='Top fuentes de tráfico:\n';top.forEach(r=>{txt+=`• ${r.source}: ${(r.views/totalV*100).toFixed(1)}% (${Math.round(r.views).toLocaleString()})\n`;});insightCard(s,6.55,2.75,3.05,1.22,'🚦 Traffic Source',txt,C_YT);}if(data.yt.geo?.length){const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,4);let txt='Top países:\n';top.forEach(r=>{txt+=`• ${r.country}: ${(r.views/totalG*100).toFixed(1)}%\n`;});const yPos=data.yt.traffic?.length?4.05:2.75;const h=data.yt.traffic?.length?1.25:2.55;insightCard(s,6.55,yPos,3.05,h,'🌎 Geography',txt,C_INST);}}
+  if(ytT.hasData){const s=darkSlide();kicker(s,'STREAMING · YOUTUBE STUDIO',0.5,.28,C_YT);sTitle(s,'YouTube',.5,.52,9,INK);const kCards=[{l:'VIEWS',v:fN(ytT.views),h:'Total',c:C_YT},{l:'WATCH TIME',v:fM(ytT.watchHours)+'h',h:'Horas',c:C_YT},{l:'SUBSCRIBERS',v:fN(ytT.subscribers),h:'Ganados',c:C_YT},{l:'AVG DURATION',v:Math.round(ytT.avgDuration)+'s',h:'Por view',c:C_ORG},{l:'CTR',v:ytT.ctr?fP(ytT.ctr):'—',h:'Tasa de clic',c:C_ORG}];kCards.forEach((k,i)=>{kpiCard(s,.5+i*1.86,1.38,1.76,1.2,k.l,k.v,k.h,k.c);});if(data.yt.content?.length>0){const top=[...data.yt.content].sort((a,b)=>b.views-a.views).slice(0,6);s.addChart(pres.charts.BAR,[{name:'Views',labels:top.map(v=>v.title.length>22?v.title.slice(0,22)+'…':v.title),values:top.map(v=>Math.round(v.views))}],{x:.5,y:2.75,w:5.8,h:2.55,barDir:'bar',barGapWidthPct:35,chartColors:[C_YT],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLabelFontSize:9,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:9,showLegend:false,valAxisNumFmt:'#,##0',title:'Top videos por views',showTitle:true,titleColor:MUTED,titleFontSize:10,});}if(data.yt.traffic?.length){const totalV=data.yt.traffic.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.traffic].sort((a,b)=>b.views-a.views).slice(0,5);let txt='Top fuentes de tráfico:\n';top.forEach(r=>{txt+=`• ${r.source}: ${(r.views/totalV*100).toFixed(1)}% (${Math.round(r.views).toLocaleString()})\n`;});insightCard(s,6.55,2.75,3.05,1.22,'Traffic Source',txt,C_YT);}if(data.yt.geo?.length){const totalG=data.yt.geo.reduce((s,r)=>s+r.views,0)||1;const top=[...data.yt.geo].sort((a,b)=>b.views-a.views).slice(0,4);let txt='Top países:\n';top.forEach(r=>{txt+=`• ${r.country}: ${(r.views/totalG*100).toFixed(1)}%\n`;});const yPos=data.yt.traffic?.length?4.05:2.75;const h=data.yt.traffic?.length?1.25:2.55;insightCard(s,6.55,yPos,3.05,h,'Geography',txt,C_INST);}}
   // Viewers Age slide
   if(data.yt.age?.length){const s=darkSlide();kicker(s,'AUDIENCIA · YOUTUBE',0.5,.28,C_YT);sTitle(s,'Viewers Age',.5,.52,9,INK);const totalA=data.yt.age.reduce((s,r)=>s+r.views,0)||1;const sorted=[...data.yt.age].sort((a,b)=>b.views-a.views);s.addChart(pres.charts.BAR,[{name:'% de views',labels:sorted.map(r=>r.ageGroup),values:sorted.map(r=>+(r.views/totalA*100).toFixed(1))}],{x:.5,y:1.4,w:6.5,h:3.7,barDir:'col',barGapWidthPct:50,chartColors:[C_YT],chartArea:{fill:{color:'0e0f1a'}},plotArea:{fill:{color:'0e0f1a'}},catAxisLabelColor:MUTED,valAxisLabelColor:MUTED,catAxisLineShow:false,valAxisLineShow:false,valGridLine:{color:'1e2035',size:.5},catGridLine:{style:'none'},showValue:true,dataLabelColor:INK,dataLabelFontSize:11,dataLabelFontBold:true,dataLabelFormatCode:'0.0"%"',showLegend:false,title:'Distribución por edad (% views)',showTitle:true,titleColor:MUTED,titleFontSize:10,});const topAge=sorted[0];insightCard(s,7.3,1.4,2.3,1.7,'Grupo dominante',`${topAge.ageGroup}\n${(topAge.views/totalA*100).toFixed(1)}% de la audiencia.`,C_YT);insightCard(s,7.3,3.2,2.3,1.9,'Promedio de duración',`${Math.round(topAge.avgDuration||0)}s por view en el grupo principal.`,C_INST);}
   // Cross slide
@@ -1247,19 +1245,61 @@ function dlJSON(){const snap=buildSnapshot();const artist=(ST.identity.artist||'
 function dlHTML(){const body=document.getElementById('report').innerHTML;const full=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reporte — ${ST.identity.artist||'Artista'} · ${ST.identity.project||'Lanzamiento'}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet"><style>${document.querySelector('style').innerHTML}</style></head><body style="background:var(--bg)">${body}</body></html>`;const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([full],{type:'text/html'}));a.download=`reporte_${artist}_${project}_${Date.now()}.html`;a.click();toast('✓ Reporte HTML descargado');}
 function goBack(){document.getElementById('setup').style.display='block';document.getElementById('report').style.display='none';killCharts();}
 
+// ── SELECTOR DE PROYECTO (boxdrop) — lee datos locales de Tempo OS; fallback manual si no hay ──
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v==null?'':v; }
+function initProjectPicker(){
+  const artists=lsGet('ao_artists')||[];
+  const launches=lsGet('ao_launches')||[];
+  if(!artists.length){ return; } // sin datos locales → se quedan los inputs manuales
+  const picker=document.getElementById('project-picker');
+  const manual=document.getElementById('identity-manual');
+  const selA=document.getElementById('sel-artist');
+  const selR=document.getElementById('sel-release');
+  const labEl=document.getElementById('inp-label-picker');
+  picker.style.display='block'; manual.style.display='none';
+  selA.innerHTML=artists.map(a=>`<option value="${a.id}">${(a.name||'Artista').replace(/"/g,'&quot;')}</option>`).join('');
+  const ctx=ST.ctx||{};
+  function fillReleases(){
+    const rels=launches.filter(l=>l.artistId===selA.value);
+    selR.innerHTML=rels.length?rels.map(l=>`<option value="${l.id}">${(l.name||'Release').replace(/"/g,'&quot;')}</option>`).join(''):'<option value="">— sin releases para este artista —</option>';
+  }
+  function applyPick(){
+    const a=artists.find(x=>x.id===selA.value)||{};
+    const l=launches.find(x=>x.id===selR.value)||{};
+    setVal('inp-artist',a.name||''); setVal('inp-project',l.name||'');
+    setVal('inp-label',labEl.value||'');
+    if(typeof updateBtn==='function') updateBtn();
+  }
+  // preselección desde el contexto del clic (artista + release)
+  let aid=null;
+  if(ctx.launchId){ const l=launches.find(x=>x.id===ctx.launchId); if(l) aid=l.artistId; }
+  if(!aid && ctx.artist){ const a=artists.find(x=>x.name===ctx.artist); if(a) aid=a.id; }
+  if(aid) selA.value=aid;
+  fillReleases();
+  if(ctx.launchId) selR.value=ctx.launchId;
+  labEl.value=ctx.label||document.getElementById('inp-label').value||'';
+  selA.onchange=()=>{ fillReleases(); applyPick(); };
+  selR.onchange=applyPick;
+  labEl.oninput=applyPick;
+  applyPick();
+}
+
 // ── PREFILL desde Tempo OS (handoff por localStorage al abrir desde un lanzamiento) ──
 (function prefillFromTempo(){
   let ctx=null; try{ ctx=JSON.parse(localStorage.getItem('ao_report_ctx')||'null'); }catch(e){}
-  if(!ctx) return;
-  ST.ctx=ctx;
-  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
-  set('inp-label',ctx.label); set('inp-artist',ctx.artist); set('inp-project',ctx.project);
-  if(Array.isArray(ctx.metrics)&&ctx.metrics.length) ST.prefillMetrics=ctx.metrics;
-  try{ localStorage.removeItem('ao_report_ctx'); }catch(e){} // un solo uso
+  if(ctx){
+    ST.ctx=ctx;
+    setVal('inp-label',ctx.label); setVal('inp-artist',ctx.artist); setVal('inp-project',ctx.project);
+    if(Array.isArray(ctx.metrics)&&ctx.metrics.length) ST.prefillMetrics=ctx.metrics;
+    try{ localStorage.removeItem('ao_report_ctx'); }catch(e){} // un solo uso
+  }
+  initProjectPicker();
   if(typeof updateBtn==='function') updateBtn();
-  if(typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde Tempo OS');
+  if(ctx && typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde Tempo OS');
 })();
 updateBtn();
+hydrateIcons();
 </script>
 </body>
 </html>
