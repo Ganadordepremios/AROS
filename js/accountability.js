@@ -65,11 +65,56 @@ function markAllNotifsRead() {
 }
 
 // ══════════════════════════════════════════
-// COMENTARIOS (canales por área + @menciones)
+// CONTACTOS / @menciones (nombre + correo)
+// ══════════════════════════════════════════
+// Mapa de nombres por equipo (correo→nombre), editable en "Mi equipo". Sin SQL nuevo.
+function _nameMapKey() { return 'ao_member_names_' + ((typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'local'); }
+function _nameMap() { try { return JSON.parse(localStorage.getItem(_nameMapKey())) || {}; } catch (e) { return {}; } }
+function setMemberName(email, name) { const m = _nameMap(); const k = s(email).toLowerCase(); if (s(name).trim()) m[k] = s(name).trim(); else delete m[k]; try { localStorage.setItem(_nameMapKey(), JSON.stringify(m)); } catch (e) {} }
+function addContactName() {
+  const ne = document.getElementById('contact-name'), ee = document.getElementById('contact-email');
+  const name = ne ? ne.value.trim() : '', email = ee ? ee.value.trim() : '';
+  if (!email || !/.+@.+\..+/.test(email)) { if (typeof uiAlert === 'function') uiAlert('Escribe un correo válido.'); return; }
+  setMemberName(email, name || email);
+  if (ne) ne.value = ''; if (ee) ee.value = '';
+  if (typeof uiToast === 'function') uiToast('Contacto agregado para @menciones');
+}
+const DEMO_CONTACTS = [
+  { id: 'josh@hookspa.com', name: 'Josh Josephs', email: 'josh@hookspa.com' },
+  { id: 'info@geniosmusicales.com', name: 'Genios Musicales', email: 'info@geniosmusicales.com' },
+  { id: 'ana@hookspa.com', name: 'Ana Torres', email: 'ana@hookspa.com' },
+  { id: 'legal@hookspa.com', name: 'Carlos Ruiz (Legal)', email: 'legal@hookspa.com' },
+];
+// Contactos mencionables = miembros reales (con su nombre del mapa) ∪ nombres pre-registrados ∪ demo.
+function mentionContacts() {
+  const map = _nameMap(), byEmail = {};
+  _members().forEach(m => { const e = s(m.email).toLowerCase(); if (!e) return; byEmail[e] = { id: m.user_id || s(m.email), name: map[e] || '', email: s(m.email) }; });
+  Object.keys(map).forEach(e => { if (!byEmail[e]) byEmail[e] = { id: e, name: map[e], email: e }; });
+  let out = Object.values(byEmail);
+  if (!out.length) out = DEMO_CONTACTS.slice();
+  return out;
+}
+function contactLabel(c) { return c.name || c.email; }
+function contactById(id) { return mentionContacts().find(c => c.id === id || s(c.email).toLowerCase() === s(id).toLowerCase()) || null; }
+function _esc(x) { return s(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+// ══════════════════════════════════════════
+// COMENTARIOS (canales por área + @menciones inline)
 // ══════════════════════════════════════════
 let _cmtCanal = 'general';
 function _renderMentions(body) {
-  return s(body).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/@([\w.\-+]+@?[\w.\-]*)/g, '<span class="mention">@$1</span>');
+  let html = _esc(body);
+  // resalta @nombre / @correo de contactos conocidos (más largos primero), mostrando el nombre
+  const cs = mentionContacts().slice().sort((a, b) => contactLabel(b).length - contactLabel(a).length);
+  const done = new Set();
+  cs.forEach(c => {
+    [c.name, c.email].filter(Boolean).forEach(tok => {
+      const key = tok.toLowerCase(); if (done.has('@' + key)) return; done.add('@' + key);
+      const esc = _esc(tok).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp('@' + esc + '(?![\\w@.\\-])', 'gi'), '<span class="mention">@' + _esc(contactLabel(c)) + '</span>');
+    });
+  });
+  return html;
 }
 function commentsPanelHTML(scope) {
   const all = (typeof commentsOf === 'function') ? commentsOf(scope) : [];
@@ -79,26 +124,77 @@ function commentsPanelHTML(scope) {
       <div class="cmt-av">${_initials(c.author)}</div>
       <div class="cmt-body"><div class="cmt-meta">${s(c.author)} · ${_ago(c.createdAt)}</div><div class="cmt-text">${_renderMentions(c.body)}</div></div>
     </div>`).join('') : `<div class="empty-hint">Sin comentarios en este canal.</div>`;
-  const mem = _members();
-  const mentionSel = mem.length ? `<select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="if(this.value){cmtInsertMention(this.value);this.value=''}"><option value="">@ mencionar…</option>${mem.map(m => `<option value="${s(m.email) || m.user_id}">${s(m.email) || m.user_id}</option>`).join('')}</select>` : '';
   const composer = canDo('gestionar_tareas') ? `<div class="cmt-compose">
-      <textarea class="textarea" id="cmt-input" placeholder="Escribe un comentario… usa @ para mencionar" style="min-height:60px"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">${mentionSel}<button class="btn btn-primary" style="margin-left:auto" onclick="sendComment()">${icon('chat', 13)} Comentar${_cmtCanal === 'interno-privado' ? ' (privado)' : ''}</button></div>
+      <textarea class="textarea" id="cmt-input" placeholder="Escribe un comentario… escribe @ para mencionar" style="min-height:60px" oninput="cmtInput()" onkeydown="cmtKeydown(event)" onblur="setTimeout(cmtCloseMention,150)"></textarea>
+      <div class="mention-pop" id="mention-pop" style="display:none"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">@ para mencionar (por nombre o correo)</span><button class="btn btn-primary" style="margin-left:auto" onclick="sendComment()">${icon('chat', 13)} Comentar${_cmtCanal === 'interno-privado' ? ' (privado)' : ''}</button></div>
     </div>` : '';
   return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chat', 18)}</span><span class="ph-title">Comentarios</span><span class="ph-sub">canales por área + @menciones</span></div>
     <div class="cmt-tabs">${tabs}</div>${thread}${composer}</div>`;
 }
 function setCmtCanal(k) { _cmtCanal = k; if (currentLaunchId && typeof renderReleaseTab === 'function') renderReleaseTab('actividad'); }
-function cmtInsertMention(token) { const ta = document.getElementById('cmt-input'); if (!ta) return; ta.value = (ta.value + (ta.value && !/\s$/.test(ta.value) ? ' ' : '') + '@' + token + ' '); ta.focus(); }
+
+// ── Autocompletado inline de @menciones ──
+let _mtnItems = [], _mtnIdx = 0, _mtnStart = -1;
+function _mtnQuery(ta) {
+  const pos = ta.selectionStart;
+  const pre = ta.value.slice(0, pos);
+  const m = pre.match(/(?:^|\s)@([^\s@]*)$/);
+  if (!m) return null;
+  return { start: pos - m[1].length - 1, query: m[1] };
+}
+function cmtInput() {
+  const ta = document.getElementById('cmt-input'); if (!ta) return;
+  const q = _mtnQuery(ta);
+  if (!q) { cmtCloseMention(); return; }
+  const ql = q.query.toLowerCase();
+  _mtnItems = mentionContacts().filter(c => !ql || s(c.name).toLowerCase().includes(ql) || s(c.email).toLowerCase().includes(ql)).slice(0, 8);
+  _mtnStart = q.start; _mtnIdx = 0;
+  _renderMentionPop(ta);
+}
+function _renderMentionPop(ta) {
+  const pop = document.getElementById('mention-pop'); if (!pop) return;
+  if (!_mtnItems.length) { cmtCloseMention(); return; }
+  pop.innerHTML = _mtnItems.map((c, i) => `<div class="mention-opt ${i === _mtnIdx ? 'sel' : ''}" onmousedown="event.preventDefault();acceptMention(${i})">
+      <div class="mav">${_initials(c.name || c.email)}</div>
+      <div style="min-width:0"><div class="mn">${_esc(c.name || c.email)}</div>${c.name ? `<div class="me">${_esc(c.email)}</div>` : ''}</div>
+    </div>`).join('');
+  pop.style.left = '0px';
+  pop.style.top = (ta.offsetTop + ta.offsetHeight + 4) + 'px';
+  pop.style.display = 'block';
+}
+function cmtCloseMention() { const pop = document.getElementById('mention-pop'); if (pop) pop.style.display = 'none'; _mtnItems = []; _mtnStart = -1; }
+function cmtKeydown(e) {
+  const pop = document.getElementById('mention-pop');
+  if (!pop || pop.style.display === 'none' || !_mtnItems.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); _mtnIdx = (_mtnIdx + 1) % _mtnItems.length; _renderMentionPop(document.getElementById('cmt-input')); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _mtnIdx = (_mtnIdx - 1 + _mtnItems.length) % _mtnItems.length; _renderMentionPop(document.getElementById('cmt-input')); }
+  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); acceptMention(_mtnIdx); }
+  else if (e.key === 'Escape') { e.preventDefault(); cmtCloseMention(); }
+}
+function acceptMention(i) {
+  const ta = document.getElementById('cmt-input'); const c = _mtnItems[i]; if (!ta || !c || _mtnStart < 0) return;
+  const pos = ta.selectionStart;
+  const label = contactLabel(c);
+  const before = ta.value.slice(0, _mtnStart);
+  const after = ta.value.slice(pos);
+  const insert = '@' + label + ' ';
+  ta.value = before + insert + after;
+  const caret = (before + insert).length;
+  ta.focus(); ta.setSelectionRange(caret, caret);
+  cmtCloseMention();
+}
 function _scopeOfCurrentRelease() { const l = launches.find(x => x.id === currentLaunchId); return l ? { artistId: l.artistId, releaseId: l.id, trackId: null, taskId: null } : null; }
 function sendComment() {
   if (!requireCan('gestionar_tareas')) return;
   const ta = document.getElementById('cmt-input'); const body = ta ? ta.value.trim() : ''; if (!body) return;
   const scope = _scopeOfCurrentRelease(); if (!scope) return;
-  // resolver @menciones contra miembros del equipo
-  const tokens = (body.match(/@([\w.\-+]+@?[\w.\-]*)/g) || []).map(x => x.slice(1).toLowerCase());
-  const mentions = _members().filter(m => tokens.includes(s(m.email).toLowerCase()) || tokens.includes(s(m.user_id).toLowerCase())).map(m => m.user_id);
-  addComment(scope, _cmtCanal, body, mentions);
+  // resolver @menciones: coincide por NOMBRE o por CORREO contra los contactos
+  const lc = body.toLowerCase();
+  const mentions = mentionContacts().filter(c =>
+    (c.name && lc.includes('@' + s(c.name).toLowerCase())) || (c.email && lc.includes('@' + s(c.email).toLowerCase()))
+  ).map(c => c.id);
+  addComment(scope, _cmtCanal, body, [...new Set(mentions)]);
   if (typeof renderReleaseTab === 'function') renderReleaseTab('actividad');
   renderNotifBadge();
 }

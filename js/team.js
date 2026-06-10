@@ -517,9 +517,13 @@ function renderTeamModal() {
         ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
              <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">${icon('mic',13)}</label>`
         : (m.is_artist ? `<span style="font-size:10px;color:var(--accent)" title="Artista del equipo">${icon('mic',13)}</span>` : '');
+      const nm = (typeof _nameMap==='function') ? (_nameMap()[s(m.email).toLowerCase()] || '') : '';
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(m.email||'?').slice(0,1)}</div>
-        <span style="flex:1;font-size:13px">${s(m.email)||m.user_id}${mine?' <span style="color:var(--text-dim)">(tú)</span>':''}</span>
+        <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(nm||m.email||'?').slice(0,1)}</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+          <input class="input" style="padding:4px 8px;font-size:12px;max-width:170px" placeholder="Nombre (para @menciones)" value="${s(nm)}" onchange="if(typeof setMemberName==='function')setMemberName('${s(m.email)}',this.value)">
+          <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${s(m.email)||m.user_id}${mine?' · tú':''}</span>
+        </div>
         ${artistCtl}
         ${roleCtl}
       </div>`;
@@ -529,6 +533,13 @@ function renderTeamModal() {
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace y compártelo por correo o WhatsApp. Quien lo abra e inicie sesión se unirá a tu equipo.</div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
     <div id="team-invite" style="margin-top:12px"></div>
+    <div class="panel-head" style="margin:18px 0 8px"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos para @menciones</span><span class="ph-sub">nombre + correo</span></div>
+    <div class="empty-hint" style="margin-bottom:8px">Pre-registra a quien aún no se une (o ponle nombre a un correo): aparecerá en el autocompletado @ de los comentarios.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+      <input class="input" id="contact-name" placeholder="Nombre" style="flex:1;min-width:120px;font-size:12px">
+      <input class="input" id="contact-email" placeholder="correo@ejemplo.com" style="flex:1;min-width:150px;font-size:12px">
+      <button class="btn btn-ghost" onclick="addContactName()">Agregar</button>
+    </div>
     <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">${s(me)}</span>
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
