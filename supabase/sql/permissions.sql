@@ -110,7 +110,41 @@ grant execute on function public.accept_invite(text) to authenticated;
 alter table public.invites add column if not exists used_by uuid;
 
 -- ──────────────────────────────────────────────────────────────
--- 6) Verificación rápida (opcional):
--- select user_id, role, seat_role, scope from team_members where team_id = '<tu-team-id>';
+-- 6) Branding del workspace (Sprint 10d): color de acento + logo + nombre de marca.
+-- ──────────────────────────────────────────────────────────────
+alter table public.teams
+  add column if not exists brand_color text,
+  add column if not exists logo_url    text,
+  add column if not exists brand_name  text;
+
+-- ──────────────────────────────────────────────────────────────
+-- 7) Auditoría de archivos (Sprint 10e): registro append-only de ver/copiar/descargar.
+--    Asientos (seat_type) ya existen en plans_tiers.sql — no se recrean aquí.
+-- ──────────────────────────────────────────────────────────────
+create table if not exists public.audit_log (
+  id          uuid primary key default gen_random_uuid(),
+  team_id     uuid not null references public.teams(id) on delete cascade,
+  actor       text,                       -- email o id de quien hizo la acción
+  action      text not null,              -- ver | copiar | descargar
+  target_type text,                       -- asset | reporte | ...
+  target_id   text,
+  label       text,                       -- descripción legible (nombre del archivo · release)
+  created_at  timestamptz not null default now()
+);
+create index if not exists audit_log_team_created_idx on public.audit_log (team_id, created_at desc);
+
+alter table public.audit_log enable row level security;
+
+-- Cualquier miembro puede registrar un evento (insert); solo editores/gestión lo leen.
+drop policy if exists "audit insert" on public.audit_log;
+create policy "audit insert" on public.audit_log for insert with check (is_member(team_id));
+drop policy if exists "audit read" on public.audit_log;
+create policy "audit read" on public.audit_log for select using (is_editor(team_id));
+
+-- ──────────────────────────────────────────────────────────────
+-- 8) Verificación rápida (opcional):
+-- select user_id, role, seat_role, scope, seat_type from team_members where team_id = '<tu-team-id>';
 -- select token, seat_role, expires_at, revoked, used_at from invites where team_id = '<tu-team-id>';
+-- select brand_color, logo_url, brand_name, plan from teams where id = '<tu-team-id>';
+-- select actor, action, target_type, label, created_at from audit_log where team_id = '<tu-team-id>' order by created_at desc limit 20;
 -- ──────────────────────────────────────────────────────────────

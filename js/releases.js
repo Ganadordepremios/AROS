@@ -117,13 +117,24 @@ function renderReleaseTab(name){
 const ASSET_TIPOS = [['portada','Portada'],['audio','Audio'],['video','Video'],['documento','Documento'],['otro','Otro']];
 function releaseAssetsHTML(l){
   const editable = canDo('editar_assets');
+  const seePriv = (typeof canSeePrivate==='function') ? canSeePrivate() : true;
   const assets = l.assets || [];
-  const rows = assets.map(a=>`<div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s((ASSET_TIPOS.find(x=>x[0]===a.tipo)||['','Otro'])[1])}</span>
-      <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${s(a.label)||'(sin nombre)'}</div>
-        <a href="${s(a.url)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${s(a.url)}</a></div>
+  const rows = assets.map(a=>{
+    const tipoLabel = s((ASSET_TIPOS.find(x=>x[0]===a.tipo)||['','Otro'])[1]);
+    const lock = a.private ? `<span class="chip" style="cursor:default;font-size:10px;color:var(--beat);border-color:var(--beat)" title="Archivo privado">${icon('lock',11)} Privado</span>` : '';
+    const blocked = a.private && !seePriv;
+    const body = blocked
+      ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">${icon('lock',12)} Archivo privado · sin acceso</div>`
+      : `<a href="${s(a.url)}" target="_blank" rel="noopener" ${a.private?`onclick="logAssetOpen('${a.id}')"`:''} style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${s(a.url)}</a>`;
+    const copyBtn = blocked ? '' : `<button class="goal-btn" title="Copiar link" onclick="copyAssetLink('${a.id}')">${icon('link',12)}</button>`;
+    return `<div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${tipoLabel}</span>
+      <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">${s(a.label)||'(sin nombre)'} ${lock}</div>${body}</div>
+      ${copyBtn}
+      ${editable?`<button class="goal-btn" title="${a.private?'Hacer público':'Hacer privado'}" onclick="toggleAssetPrivate('${a.id}')">${icon(a.private?'eye':'lock',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">${icon('close',12)}</button>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('link',18)}</span><span class="ph-title">Agregar asset</span></div>
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
         <div class="field"><label>Nombre</label><input class="input" id="asset-label" placeholder="Ej. Cover final 3000px"></div>
@@ -131,8 +142,9 @@ function releaseAssetsHTML(l){
         <button class="btn btn-primary" onclick="agregarAsset()">Agregar</button>
       </div>
       <div class="field" style="margin-top:8px"><label>Link (Drive / Dropbox / WeTransfer / URL)</label><input class="input" id="asset-url" placeholder="https://…" onkeydown="if(event.key==='Enter')agregarAsset()"></div>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);cursor:pointer"><input type="checkbox" id="asset-private"> ${icon('lock',12)} Privado (solo gestión; se audita quién lo abre)</label>
     </div>` : '';
-  return `<div class="empty-hint" style="margin-bottom:12px">Links de archivos del release clasificados (portada, audio, video, documentos). No subimos archivos — guardamos los enlaces.</div>${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
+  return `<div class="empty-hint" style="margin-bottom:12px">Links de archivos del release clasificados. No subimos archivos — guardamos los enlaces. Los marcados como <strong>privados</strong> solo los ven roles de gestión y se registra quién los abre/copia.</div>${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
 }
 function agregarAsset(){
   if(!requireCan('editar_assets')) return;
@@ -140,9 +152,29 @@ function agregarAsset(){
   const label=(document.getElementById('asset-label').value||'').trim();
   const url=(document.getElementById('asset-url').value||'').trim();
   const tipo=(document.getElementById('asset-tipo')||{}).value||'otro';
+  const priv=!!(document.getElementById('asset-private')||{}).checked;
   if(!url){ uiAlert('Pega el link del asset.'); return; }
-  l.assets=l.assets||[]; l.assets.push({ id:'as-'+Date.now(), tipo, url, label });
+  l.assets=l.assets||[]; l.assets.push({ id:'as-'+Date.now(), tipo, url, label, private:priv });
   saveLaunches(); renderReleaseTab('assets'); uiToast('✓ Asset agregado');
+}
+function toggleAssetPrivate(id){
+  if(!requireCan('editar_assets')) return;
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  const a=(l.assets||[]).find(x=>x.id===id); if(!a) return;
+  a.private=!a.private; saveLaunches(); renderReleaseTab('assets');
+}
+// Registra la apertura de un asset privado (auditoría 10e).
+function logAssetOpen(id){
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  const a=(l.assets||[]).find(x=>x.id===id); if(!a) return;
+  if(typeof logAudit==='function') logAudit('ver','asset',id,(a.label||a.tipo||'asset')+' · '+s(l.name));
+}
+function copyAssetLink(id){
+  const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
+  const a=(l.assets||[]).find(x=>x.id===id); if(!a) return;
+  if(navigator.clipboard) navigator.clipboard.writeText(a.url||'');
+  uiToast('✓ Link copiado');
+  if(a.private && typeof logAudit==='function') logAudit('copiar','asset',id,(a.label||a.tipo||'asset')+' · '+s(l.name));
 }
 function quitarAsset(id){
   if(!requireCan('editar_assets')) return;

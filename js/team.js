@@ -142,6 +142,8 @@ let _teams = []; // todos los equipos del usuario: [{id, name, role}]
 // ── PLANES / TIERS / ASIENTOS (v0.11) ──
 let _teamPlan = 'free';   // 'free' | 'pro' | 'manager' | 'custom'
 let _teamStatus = 'active'; // 'active' | 'suspended'
+// ── BRANDING DE WORKSPACE (Sprint 10d) ──
+let _brandColor = null, _logoUrl = null, _brandName = null;
 let _myArtistId = null, _restrictedArtist = false; // artista ligado a su ficha → solo ve lo suyo
 function computeArtistRestriction() {
   _myArtistId = null; _restrictedArtist = false;
@@ -468,7 +470,8 @@ async function loadTeam() {
   // Reset mensual de contadores (best-effort; no rompe si el RPC no existe aún)
   try { await sb.rpc('reset_monthly_counters', { tid: _teamId }); } catch (e) {}
   // Miembros + is_artist + seat_role + scope (con fallback en cascada si las columnas aún no existen)
-  let tm = await sb.from('team_members').select('user_id, role, email, is_artist, seat_role, scope').eq('team_id', _teamId);
+  let tm = await sb.from('team_members').select('user_id, role, email, is_artist, seat_role, scope, seat_type').eq('team_id', _teamId);
+  if (tm.error) tm = await sb.from('team_members').select('user_id, role, email, is_artist, seat_role, scope').eq('team_id', _teamId);
   if (tm.error) tm = await sb.from('team_members').select('user_id, role, email, is_artist').eq('team_id', _teamId);
   if (tm.error) tm = await sb.from('team_members').select('user_id, role, email').eq('team_id', _teamId);
   _teamMembers = tm.data || [];
@@ -495,6 +498,16 @@ async function loadTeam() {
   // Estado de la cuenta (suspendida) — query separada para no romper si la columna no existe
   _teamStatus = 'active';
   try { const ss = await sb.from('teams').select('status').eq('id', _teamId).single(); if (!ss.error && ss.data) _teamStatus = ss.data.status || 'active'; } catch (e) {}
+  // Branding del workspace (Sprint 10d) — query separada/resiliente; cachea para pintado instantáneo.
+  _brandColor = null; _logoUrl = null; _brandName = null;
+  try {
+    const br = await sb.from('teams').select('brand_color, logo_url, brand_name').eq('id', _teamId).single();
+    if (!br.error && br.data) {
+      _brandColor = br.data.brand_color || null; _logoUrl = br.data.logo_url || null; _brandName = br.data.brand_name || null;
+      localStorage.setItem('ao_brand', JSON.stringify({ color: _brandColor, logo: _logoUrl, name: _brandName }));
+    }
+  } catch (e) {}
+  applyBranding();
   // ¿Soy super-admin? (autoritativo del servidor; cae a false si el RPC no existe aún)
   try { const sa = await sb.rpc('is_super_admin'); _isSuperAdmin = !(sa && sa.error) && !!(sa && sa.data); } catch (e) { _isSuperAdmin = false; }
   const t = activeTeam();
@@ -604,6 +617,23 @@ function renderTeamModal() {
     <div class="field" style="margin-bottom:16px"><label>Nombre del equipo activo</label>
       <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}" ${canEditName?'':'disabled'}>${canEditName?'<button class="btn btn-ghost" onclick="renameTeam()">Guardar</button>':''}</div>
     </div>
+    ${canManageWorkspace() ? `
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('settings',18)}</span><span class="ph-title">Marca del workspace</span><span class="ph-sub">logo · color · nombre</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+      <label style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Color de acento
+        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B30'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B30" style="width:90px;font-size:12px;font-family:var(--font-mono)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
+      </label>
+      <label style="flex:1;min-width:160px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Nombre de marca
+        <input class="input" id="brand-name" value="${s(_brandName)}" placeholder="(opcional)" style="font-size:12px;margin-top:3px">
+      </label>
+    </div>
+    <label style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);display:block;margin-bottom:10px">URL del logo (imagen)
+      <input class="input" id="brand-logo" value="${s(_logoUrl)}" placeholder="https://…/logo.png" style="font-size:12px;margin-top:3px">
+    </label>
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <button class="btn btn-primary" onclick="saveBranding()">Guardar marca</button>
+      <button class="btn btn-ghost" onclick="saveBranding(true)">Restablecer a Tempo</button>
+    </div>` : ''}
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">Artistas de ${s(_teamName)} (${artists.length})</span><span class="ph-sub">asigna a otro equipo</span></div>
     <div style="margin-bottom:18px">${assignList}</div>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Miembros (${_teamMembers.length})</span><span class="ph-sub">tu rol: ${s(myRole())}</span></div>
@@ -635,6 +665,11 @@ function renderTeamModal() {
       </div>`;
     }).join('')}</div>
     <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: dueño del workspace (propiedad, asientos, branding) · Admin: todo lo operativo · roles especializados (Productor/Abogado/Marketing…) ven y editan solo su área · Lector: solo ve · ${icon('mic',12)} = el artista (edita Perfil/ADN).</div>
+    ${canSeePrivate() ? `
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('lock',18)}</span><span class="ph-title">Asientos del workspace</span><span class="ph-sub">plan · ocupación</span></div>
+    <div id="team-seats" style="margin-bottom:18px"></div>
+    <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('eye',18)}</span><span class="ph-title">Auditoría de archivos</span><span class="ph-sub">ver · copiar · descargar</span></div>
+    <div id="team-audit" style="margin-bottom:18px"><div class="empty-hint">Cargando…</div></div>` : ''}
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('invite',18)}</span><span class="ph-title">Invitar al equipo</span><span class="ph-sub">rol · alcance · expiración</span></div>
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace con rol y alcance. Quien lo abra e inicie sesión se unirá con ese rol. El enlace puede caducar.</div>
     ${isWorkspaceOwner() || canDo('invite_members') ? `
@@ -664,6 +699,99 @@ function renderTeamModal() {
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
     </div>`;
   renderPendingInvites(); // carga las invitaciones activas (best-effort)
+  if (canSeePrivate()) { renderSeats(); renderAuditLog(); } // 10e/10f (best-effort)
+}
+// Guardar branding del workspace (Sprint 10d). reset=true → vuelve a la marca Tempo.
+async function saveBranding(reset) {
+  if (!canManageWorkspace()) return uiAlert('Solo Owner/Admin pueden cambiar la marca del workspace.');
+  const color = reset ? null : (_hex(agVal('brand-color-hex')) || _hex(agVal('brand-color')));
+  const name = reset ? null : (agVal('brand-name').trim() || null);
+  const logo = reset ? null : (agVal('brand-logo').trim() || null);
+  _brandColor = color; _brandName = name; _logoUrl = logo;
+  localStorage.setItem('ao_brand', JSON.stringify({ color, name, logo }));
+  applyBranding();
+  const sb = await getSb();
+  if (sb && _teamId) {
+    const r = await sb.from('teams').update({ brand_color: color, brand_name: name, logo_url: logo }).eq('id', _teamId);
+    if (r && r.error) { uiAlert('Se aplicó localmente, pero no se pudo guardar en la nube: ' + r.error.message); return; }
+  }
+  uiToast(reset ? '✓ Marca restablecida' : '✓ Marca guardada');
+  renderSidebarArtist();
+}
+// ── AUDITORÍA (Sprint 10e) ── registro append-only de ver/copiar/descargar de archivos privados + reportes.
+// Quién puede VER archivos privados (confidenciales): roles de gestión.
+function canSeePrivate() {
+  if (DEV_OPEN || !authed()) return true;
+  return isWorkspaceOwner() || canManageWorkspace() || hasCap('gestionar_equipo') || hasCap('editar_finanzas');
+}
+const AUDIT_LABEL = { ver: 'abrió', copiar: 'copió link de', descargar: 'descargó' };
+async function logAudit(action, targetType, targetId, label) {
+  if (!authed()) return; // sin sesión no hay auditoría
+  try {
+    const sb = await getSb(); if (!sb || !_teamId) return;
+    await sb.from('audit_log').insert({
+      team_id: _teamId, actor: (_user && _user.email) || (_user && _user.id) || 'desconocido',
+      action, target_type: targetType, target_id: targetId || null, label: label || null,
+    });
+  } catch (e) {} // best-effort: si la tabla aún no existe, no rompe nada
+}
+async function renderAuditLog() {
+  const host = document.getElementById('team-audit'); if (!host) return;
+  const sb = await getSb(); if (!sb || !_teamId) { host.innerHTML = ''; return; }
+  let r = await sb.from('audit_log').select('actor, action, target_type, label, created_at').eq('team_id', _teamId).order('created_at', { ascending: false }).limit(40);
+  if (r.error) { host.innerHTML = '<div class="empty-hint">La auditoría se activa al correr <code>permissions.sql</code>.</div>'; return; }
+  const rows = r.data || [];
+  if (!rows.length) { host.innerHTML = '<div class="empty-hint">Sin actividad de archivos todavía.</div>'; return; }
+  host.innerHTML = rows.map(e => {
+    const nm = (typeof _nameMap === 'function') ? (_nameMap()[s(e.actor).toLowerCase()] || '') : '';
+    const when = e.created_at ? new Date(e.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+      <span style="flex:1;min-width:0"><strong>${s(nm || e.actor)}</strong> ${AUDIT_LABEL[e.action] || s(e.action)} ${s(e.label || e.target_type || '')}</span>
+      <span style="color:var(--text-dim);font-family:var(--font-mono);white-space:nowrap">${when}</span>
+    </div>`;
+  }).join('');
+}
+// ── ASIENTOS / PLANES INTERNOS (Sprint 10f) ── maquinaria lista; BILLING_ENFORCED sigue off (no cobra).
+const PLAN_SEATS = { free: 2, pro: 5, manager: 10, custom: 99 };
+const PLAN_LABEL = { free: 'Free', pro: 'Pro', manager: 'Manager', custom: 'Custom' };
+function renderSeats() {
+  const host = document.getElementById('team-seats'); if (!host) return;
+  const included = PLAN_SEATS[_teamPlan] || 2;
+  const members = _teamMembers || [];
+  const used = members.length;
+  const addl = members.filter(m => m.seat_type === 'additional').length;
+  const over = Math.max(0, used - included);
+  const planSel = isWorkspaceOwner()
+    ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="setTeamPlan(this.value)">${Object.keys(PLAN_SEATS).map(p => `<option value="${p}" ${_teamPlan===p?'selected':''}>${PLAN_LABEL[p]}</option>`).join('')}</select>`
+    : `<span class="chip on" style="cursor:default">${PLAN_LABEL[_teamPlan] || _teamPlan}</span>`;
+  const list = members.map(m => {
+    const nm = (typeof _nameMap === 'function') ? (_nameMap()[s(m.email).toLowerCase()] || '') : '';
+    const seat = m.seat_type === 'additional' ? 'additional' : 'included';
+    const ctl = isWorkspaceOwner()
+      ? `<select class="input" style="width:auto;padding:3px 7px;font-size:10px" onchange="setMemberSeat('${m.user_id}',this.value)"><option value="included" ${seat==='included'?'selected':''}>Incluido</option><option value="additional" ${seat==='additional'?'selected':''}>Adicional</option></select>`
+      : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${seat==='additional'?'adicional':'incluido'}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;min-width:0">${s(nm || m.email || m.user_id)}</span>${ctl}</div>`;
+  }).join('');
+  host.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Plan</span>${planSel}
+      <span style="font-size:11px;font-family:var(--font-mono);color:${over?'var(--beat)':'var(--text-muted)'}">${used} de ${included} asientos${over?` · +${over} adicional${over>1?'es':''}`:''}</span>
+    </div>${list}
+    <div style="font-size:10px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono)">Cobro desactivado (BILLING_ENFORCED=off): los asientos son informativos por ahora.</div>`;
+}
+async function setTeamPlan(plan) {
+  if (!isWorkspaceOwner()) return;
+  const sb = await getSb(); if (!sb || !_teamId) return;
+  const r = await sb.from('teams').update({ plan }).eq('id', _teamId);
+  if (r && r.error) { uiAlert(r.error.message); return; }
+  _teamPlan = plan; renderSeats(); uiToast('✓ Plan: ' + (PLAN_LABEL[plan] || plan));
+}
+async function setMemberSeat(userId, seatType) {
+  if (!isWorkspaceOwner()) return;
+  const sb = await getSb(); if (!sb || !_teamId) return;
+  const r = await sb.from('team_members').update({ seat_type: seatType }).eq('team_id', _teamId).eq('user_id', userId);
+  if (r && r.error) { uiAlert(r.error.message); return; }
+  const m = _teamMembers.find(x => x.user_id === userId); if (m) m.seat_type = seatType;
+  renderSeats();
 }
 async function renameTeam() {
   if (!requireCan('manage_roles')) return;
@@ -1122,6 +1250,53 @@ function applyTheme(t) {
   localStorage.setItem('ao_theme', t);
   const b = document.getElementById('theme-toggle');
   if (b) b.innerHTML = icon(t === 'light' ? 'sun' : 'moon', 15);
+  applyBranding(); // el color de marca debe sobrevivir el cambio de tema
+}
+// ── BRANDING (Sprint 10d) ── color de acento + logo + nombre del workspace.
+function _hex(v) { v = String(v || '').trim(); return /^#?[0-9a-fA-F]{6}$/.test(v) ? ('#' + v.replace('#', '')) : null; }
+function _shade(hex, p) { // oscurece (p<0) / aclara (p>0) un hex; p en [-1,1]
+  const n = parseInt(hex.slice(1), 16); let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const f = x => Math.max(0, Math.min(255, Math.round(x + (p < 0 ? x * p : (255 - x) * p))));
+  return '#' + [f(r), f(g), f(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function _rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+function _contrast(hex) { const n = parseInt(hex.slice(1), 16); const l = 0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255); return l > 150 ? '#1a1a1a' : '#ffffff'; }
+// Lee branding de cache local (pintado instantáneo antes del login) y de la nube tras loadTeam.
+function brandCache() { try { return JSON.parse(localStorage.getItem('ao_brand')) || {}; } catch (e) { return {}; } }
+function applyBranding() {
+  const c = brandCache();
+  const color = _hex(_brandColor || c.color);
+  const root = document.documentElement.style;
+  if (color) {
+    root.setProperty('--accent', color);
+    root.setProperty('--accent-dark', _shade(color, -0.22));
+    root.setProperty('--accent-fg', _contrast(color));
+    root.setProperty('--glow', _rgba(color, 0.30));
+  } else {
+    ['--accent', '--accent-dark', '--accent-fg', '--glow'].forEach(v => root.removeProperty(v));
+  }
+  // Logo: si hay logo_url, reemplaza el logotipo SVG por la imagen; el nombre va al subtítulo.
+  const logoEl = document.querySelector('.sidebar .logo');
+  const url = (_logoUrl || c.logo);
+  const name = (_brandName || c.name);
+  if (logoEl) {
+    const word = logoEl.querySelector('.logo-word');
+    const img = logoEl.querySelector('.brand-logo-img');
+    if (url) {
+      if (word) word.style.display = 'none';
+      if (!img) {
+        const i = document.createElement('img');
+        i.className = 'brand-logo-img'; i.alt = name || 'Logo';
+        i.style.cssText = 'max-height:30px;max-width:140px;object-fit:contain;display:block';
+        const mark = logoEl.querySelector('.logo-mark');
+        logoEl.insertBefore(i, mark ? mark.nextSibling : logoEl.firstChild);
+      }
+      logoEl.querySelector('.brand-logo-img').src = url;
+    } else {
+      if (word) word.style.display = '';
+      if (img) img.remove();
+    }
+  }
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
