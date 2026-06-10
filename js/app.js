@@ -124,7 +124,7 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   document.getElementById('page-title').textContent = up(titles[id] || id);
   document.getElementById('btn-sheet-config').style.display = id === 'banco' ? '' : 'none';
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
@@ -137,6 +137,7 @@ function showPage(id) {
   if (id === 'aprendizajes') renderAprendizajes();
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
+  if (id === 'tareas')       renderTareas();
   if (id === 'dashboard')    renderDashboard();
   if (id === 'label')        renderLabel();
   document.querySelector('.content').scrollTop = 0;
