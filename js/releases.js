@@ -96,7 +96,7 @@ function renderLaunchDetail() {
 
 // ── Ficha de RELEASE con pestañas (Sprint 1) ──
 let _releaseTab = 'resumen';
-const RELEASE_TABS = [['resumen','Resumen'],['tracklist','Tracklist'],['marketing','Marketing'],['contenido','Contenido'],['data','Data'],['inversion','Inversión'],['assets','Assets'],['tareas','Tareas'],['reportes','Reportes']];
+const RELEASE_TABS = [['resumen','Resumen'],['tracklist','Tracklist'],['marketing','Marketing'],['contenido','Contenido'],['data','Data'],['inversion','Inversión'],['assets','Assets'],['tareas','Tareas'],['actividad','Actividad'],['reportes','Reportes']];
 function setReleaseTab(name){ _releaseTab = name; document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name)); renderReleaseTab(name); document.querySelector('.content').scrollTop = 0; }
 function renderReleaseTab(name){
   const l = launches.find(x=>x.id===currentLaunchId); if(!l) return;
@@ -110,6 +110,7 @@ function renderReleaseTab(name){
   else if(name==='assets') host.innerHTML = releaseAssetsHTML(l);
   else if(name==='tareas') host.innerHTML = tareasPanelHTML('release');
   else if(name==='inversion') host.innerHTML = releaseInversionHTML(l);
+  else if(name==='actividad') { host.innerHTML = (typeof releaseActividadHTML==='function') ? releaseActividadHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(host); }
   else host.innerHTML = `<div class="empty-hint">${s(name)}</div>`;
 }
 // ── Assets del release (links clasificados) ──
@@ -237,7 +238,8 @@ function releaseResumenHTML(l) {
       ${alertsHTML(l)}
       ${tplBtn}
     </div>`;
-  return statusPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
+  const aprPanel = (typeof approvalsPanelHTML==='function') ? approvalsPanelHTML(l) : '';
+  return statusPanel + aprPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
 }
 // Identidad del release (UPC / distribuidora / notas)
 function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }

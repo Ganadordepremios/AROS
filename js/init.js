@@ -6,6 +6,7 @@ applyTheme(localStorage.getItem('ao_theme') || 'dark');
 if (typeof migrateEmbeddedTasks === 'function') migrateEmbeddedTasks();   // tareas embebidas → tabla relacional (idempotente)
 if (typeof runAutomations === 'function') runAutomations();               // motor de automatizaciones (recordatorios/atrasos/desbloqueo)
 if (typeof updateTaskBadge === 'function') updateTaskBadge();             // contador del nav "Tareas"
+if (typeof renderNotifBadge === 'function') renderNotifBadge();          // campana de notificaciones
 renderSidebarArtist();
 renderAllLaunches();
 
