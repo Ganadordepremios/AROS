@@ -27,7 +27,9 @@ function openLaunch(id) {
   if (!l) return;
   currentLaunchId = id;
   _releaseTab = 'resumen';
-  showPage('launch');
+  if (typeof currentTrackId !== 'undefined') currentTrackId = null;
+  if (typeof _viewingTrack !== 'undefined') _viewingTrack = false;
+  showPage('launch'); // graba la vista previa (lanzamientos/dashboard/…)
   renderLaunchDetail();
 }
 

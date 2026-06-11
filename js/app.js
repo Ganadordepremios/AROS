@@ -119,14 +119,67 @@ function toggleSidebar(force) {
   const open = (force === undefined) ? !document.body.classList.contains('sidebar-open') : force;
   document.body.classList.toggle('sidebar-open', open);
 }
-function showPage(id) {
+// ── HISTORIAL DE NAVEGACIÓN (flecha "atrás" global) ──
+let _navStack = [];            // pila de vistas anteriores
+let _navSuppress = false;      // true mientras restauramos (no grabar)
+let _viewingTrack = false;     // ¿la ficha de release muestra un track?
+function navCurrentView() {
+  const active = document.querySelector('.page.active');
+  const page = active ? active.id.replace('page-', '') : 'dashboard';
+  return {
+    page,
+    launchId: (typeof currentLaunchId !== 'undefined') ? currentLaunchId : null,
+    trackId: (_viewingTrack && typeof currentTrackId !== 'undefined') ? currentTrackId : null,
+    releaseTab: (typeof _releaseTab !== 'undefined') ? _releaseTab : 'resumen',
+  };
+}
+function navRecord() {
+  if (_navSuppress) return;
+  const v = navCurrentView();
+  const top = _navStack[_navStack.length - 1];
+  if (top && top.page === v.page && top.launchId === v.launchId && top.trackId === v.trackId) return; // dedupe consecutivo
+  _navStack.push(v);
+  if (_navStack.length > 50) _navStack.shift();
+}
+function updateBackBtn() {
+  const b = document.getElementById('nav-back-btn'); if (!b) return;
+  b.style.display = _navStack.length ? 'flex' : 'none';
+}
+function navBack() {
+  const snap = _navStack.pop();
+  if (!snap) { updateBackBtn(); return; }
+  _navSuppress = true;
+  try {
+    if (snap.page === 'launch' && snap.launchId && launches.find(x => x.id === snap.launchId)) {
+      currentLaunchId = snap.launchId;
+      _releaseTab = snap.releaseTab || 'resumen';
+      if (snap.trackId && typeof tracks !== 'undefined' && tracks.find(t => t.id === snap.trackId)) {
+        showPage('launch', true); currentTrackId = snap.trackId; _viewingTrack = true;
+        if (typeof renderTrackDetail === 'function') renderTrackDetail();
+      } else {
+        currentTrackId = null; _viewingTrack = false;
+        showPage('launch', true);
+        if (typeof renderLaunchDetail === 'function') renderLaunchDetail();
+      }
+    } else {
+      currentTrackId = null; _viewingTrack = false;
+      showPage(snap.page, true);
+    }
+  } catch (e) {}
+  _navSuppress = false;
+  updateBackBtn();
+}
+function showPage(id, skipRecord) {
+  if (!skipRecord) navRecord();         // graba la vista que dejamos (antes de cambiar)
   document.body.classList.remove('sidebar-open'); // cierra el menú en móvil al navegar
   if (typeof releaseRestorePages === 'function') releaseRestorePages(); // devuelve páginas embebidas a .content antes de navegar
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
-  document.getElementById('page-title').textContent = up(titles[id] || id);
+  let _ttl = titles[id] || id;
+  if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
+  document.getElementById('page-title').textContent = up(_ttl);
   document.getElementById('btn-sheet-config').style.display = id === 'banco' ? '' : 'none';
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
   if (id === 'banco')      { bancoCargado ? (renderFiltros(), renderBanco()) : iniciarBanco(); }
@@ -142,6 +195,8 @@ function showPage(id) {
   if (id === 'dashboard')    renderDashboard();
   if (id === 'label')        renderLabel();
   document.querySelector('.content').scrollTop = 0;
+  if (id !== 'launch') _viewingTrack = false; // navegar fuera del release ya no es vista de track
+  updateBackBtn();
 }
 
 // ══════════════════════════════════════════

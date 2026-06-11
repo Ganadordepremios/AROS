@@ -3,8 +3,20 @@
 // ══════════════════════════════════════════
 let currentTrackId = null, _trackTab = 'checklist';
 function curTrack() { return tracks.find(x => x.id === currentTrackId); }
-function openTrack(id) { currentTrackId = id; _trackTab = 'checklist'; renderTrackDetail(); const c = document.querySelector('.content'); if (c) c.scrollTop = 0; }
-function backToRelease() { currentTrackId = null; renderLaunchDetail(); }
+function openTrack(id) {
+  if (typeof navRecord === 'function') navRecord(); // graba la vista del release antes de entrar al track
+  currentTrackId = id; _trackTab = 'checklist';
+  if (typeof _viewingTrack !== 'undefined') _viewingTrack = true;
+  renderTrackDetail();
+  const c = document.querySelector('.content'); if (c) c.scrollTop = 0;
+  if (typeof updateBackBtn === 'function') updateBackBtn();
+}
+function backToRelease() {
+  currentTrackId = null;
+  if (typeof _viewingTrack !== 'undefined') _viewingTrack = false;
+  renderLaunchDetail();
+  if (typeof updateBackBtn === 'function') updateBackBtn();
+}
 function setTrackField(path, val, cap) { if (cap && !requireCan(cap)) return; const t = curTrack(); if (!t) return; setPath(t, path, val); saveTracks(); }
 
 function renderTrackDetail() {
