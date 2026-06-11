@@ -1320,22 +1320,71 @@ function toggleArchetype(ch) {
   saveArtists();
 }
 
-// equipo de trabajo
+// equipo de trabajo — conectado a los miembros del workspace (se gestionan en "Mi equipo")
+// Cada entrada de a.team es: { email, role } (ligada a un miembro del workspace, nombre vivo) o { name, role } (externo manual).
+function _artistMemberName(m){
+  if (m && m.email){ const nm = (typeof _nameMap==='function') ? _nameMap()[s(m.email).toLowerCase()] : ''; return nm || m.name || m.email; }
+  return (m && m.name) || '—';
+}
 function renderTeam() {
   const a = activeArtist(); const host = document.getElementById('team-list'); if (!host) return;
-  if (!a || !a.team.length) { host.innerHTML = `<div class="empty-hint">Aún no hay miembros. Agrega manager, productor, editor, social media…</div>`; return; }
-  host.innerHTML = a.team.map((m,i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div class="artist-avatar" style="width:30px;height:30px;font-size:12px">${up(m.name||'?').slice(0,1)}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${s(m.name)}</div><div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${s(m.role)||'—'}</div></div>
+  const team = (a && Array.isArray(a.team)) ? a.team : [];
+  const rows = team.length ? team.map((m,i) => {
+    const nm = _artistMemberName(m); const linked = !!m.email;
+    const chip = linked
+      ? `<span class="chip on" style="cursor:default;font-size:9px;padding:2px 7px" title="Miembro del workspace">${icon('team',10)} conectado</span>`
+      : `<span class="chip" style="cursor:default;font-size:9px;padding:2px 7px;color:var(--text-dim)" title="Colaborador externo (no es del workspace)">externo</span>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="artist-avatar" style="width:30px;height:30px;font-size:12px">${up(nm||'?').slice(0,1)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">${s(nm)} ${chip}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${s(m.role)||'—'}${linked?' · '+s(m.email):''}</div></div>
       <button class="goal-btn reject" onclick="quitarMiembro(${i})" title="Quitar">${icon('close',12)}</button>
-    </div>`).join('');
+    </div>`;
+  }).join('') : `<div class="empty-hint">Aún no hay miembros. Conecta a alguien de tu equipo (de "Mi equipo") o agrega un colaborador externo.</div>`;
+  // Picker: miembros del workspace que aún no están en este artista.
+  let picker = '';
+  if (typeof _teamMembers !== 'undefined' && _teamMembers && _teamMembers.length){
+    const have = team.filter(m=>m.email).map(m=>s(m.email).toLowerCase());
+    const avail = _teamMembers.filter(tm => tm.email && have.indexOf(s(tm.email).toLowerCase()) < 0);
+    if (avail.length){
+      const opts = avail.map(tm => {
+        const nm = ((typeof _nameMap==='function') ? _nameMap()[s(tm.email).toLowerCase()] : '') || tm.email;
+        const rl = (typeof PRESET_LABELS!=='undefined' && tm.seat_role) ? (PRESET_LABELS[tm.seat_role]||'') : '';
+        return `<option value="${s(tm.email)}">${s(nm)}${rl?' · '+rl:''}</option>`;
+      }).join('');
+      picker = `<div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${icon('team',12)} Conectar del workspace</span>
+        <select class="input" id="artist-member-pick" style="flex:1;min-width:150px;font-size:12px"><option value="">Elige un miembro…</option>${opts}</select>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="conectarMiembro()">Conectar</button>
+      </div>`;
+    } else if (team.some(m=>m.email)) {
+      picker = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:12px">Todos los miembros del workspace ya están en este artista.</div>`;
+    }
+  }
+  host.innerHTML = rows + picker;
+  if (typeof hydrateIcons === 'function') hydrateIcons(host);
 }
+// Conecta un miembro del workspace al equipo del artista (queda ligado por correo → nombre vivo).
+function conectarMiembro() {
+  if (!requireCan('edit_perfil_adn')) return;
+  const a = activeArtist(); if (!a) return;
+  const email = (document.getElementById('artist-member-pick')||{}).value || '';
+  if (!email) return;
+  const tm = (typeof _teamMembers!=='undefined') ? _teamMembers.find(x=>s(x.email).toLowerCase()===s(email).toLowerCase()) : null;
+  const role = (tm && tm.seat_role && typeof PRESET_LABELS!=='undefined') ? (PRESET_LABELS[tm.seat_role]||'') : '';
+  a.team = Array.isArray(a.team) ? a.team : [];
+  if (a.team.some(m=>s(m.email).toLowerCase()===s(email).toLowerCase())) return; // ya está
+  a.team.push({ email: email, role: role });
+  saveArtists(); renderTeam();
+  uiToast('✓ Miembro conectado');
+}
+// Colaborador EXTERNO (no es del workspace): se escribe a mano.
 async function agregarMiembro() {
   if (!requireCan('edit_perfil_adn')) return;
   const a = activeArtist(); if (!a) return;
-  const name = await uiPrompt('Nombre del miembro:', {title:'Agregar miembro'}); if (!name) return;
+  const name = await uiPrompt('Nombre del colaborador externo:', {title:'Agregar externo'}); if (!name) return;
   const role = await uiPrompt('Rol (ej. Manager, Productor, Editor):') || '';
+  a.team = Array.isArray(a.team) ? a.team : [];
   a.team.push({ name: name.trim(), role: role.trim() });
   saveArtists(); renderTeam();
 }
