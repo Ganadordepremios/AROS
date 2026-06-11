@@ -2051,7 +2051,34 @@ if (!Array.isArray(launches) || !launches.length) { launches = SEED_LAUNCHES.map
 else { launches = launches.map(normalizeLaunch); }
 
 function saveLaunchesLocal() { localStorage.setItem('ao_launches', JSON.stringify(launches)); }
-function saveLaunches() { saveLaunchesLocal(); scheduleCloudSync(); }
+function saveLaunches() {
+  // Sella "modificado" del release abierto (heurística para ordenar por "modificado recientemente").
+  if (typeof currentLaunchId !== 'undefined' && currentLaunchId) {
+    const _l = launches.find(x => x.id === currentLaunchId); if (_l) _l._updatedAt = Date.now();
+  }
+  saveLaunchesLocal(); scheduleCloudSync();
+}
+// ── Ordenamiento de lanzamientos (lista + dashboard) ──
+const LAUNCH_STATUS_ORDER = { active:0, planning:1, analisis:2, bloqueado:3, complete:4, cerrado:5 };
+function launchSortMode() { return localStorage.getItem('ao_launch_sort') || 'date_desc'; }
+function setLaunchSort(v) { localStorage.setItem('ao_launch_sort', v); renderAllLaunches(); }
+function sortLaunches(list) {
+  const mode = launchSortMode();
+  const dnum = l => l.date ? new Date(l.date + 'T00:00:00').getTime() : null;
+  const arr = (list || []).slice();
+  arr.sort((a, b) => {
+    switch (mode) {
+      case 'date_asc':  { const x = dnum(a), y = dnum(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return x - y; }
+      case 'updated':   return (b._updatedAt || b.createdAt || 0) - (a._updatedAt || a.createdAt || 0);
+      case 'created':   return (b.createdAt || 0) - (a.createdAt || 0);
+      case 'name':      return s(a.name).localeCompare(s(b.name));
+      case 'status':    return ((LAUNCH_STATUS_ORDER[a.status] ?? 9) - (LAUNCH_STATUS_ORDER[b.status] ?? 9)) || ((dnum(b) || 0) - (dnum(a) || 0));
+      case 'date_desc':
+      default:          { const x = dnum(a), y = dnum(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return y - x; }
+    }
+  });
+  return arr;
+}
 
 // ══════════════════════════════════════════
 // MODELO DE DATOS — TRACKS (canción durable, CRM Sprint 0)
@@ -2160,6 +2187,13 @@ function setLaunchStatus(id, st) {
   if (typeof renderReleaseTab === 'function' && currentLaunchId === id) renderReleaseTab('resumen');
   renderAllLaunches();
 }
+// Dropdown de estado del release (editable) o badge estático según permiso. Reusable (header + resumen).
+function statusDropdownHTML(l, extra) {
+  const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
+  const editable = (typeof canDo === 'function') ? canDo('edit_launch') : true;
+  if (!editable) return `<span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>`;
+  return `<select class="status-select ${st.cls}" style="${extra || ''}" title="Cambiar estado del release" onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k => `<option value="${k}" ${l.status === k ? 'selected' : ''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
+}
 const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 function launchDateLabel(l) {
@@ -2187,14 +2221,15 @@ function launchCardHTML(l) {
 function renderLaunches() {
   const grid = document.getElementById('launches-grid');
   if (!grid) return;
+  const sel = document.getElementById('launch-sort'); if (sel) sel.value = launchSortMode();
   grid.innerHTML =
     `<div class="launch-card add" onclick="abrirWizard()"><div class="plus">+</div><div style="font-size:12px">Nuevo Lanzamiento</div></div>`
-    + artistLaunches().map(launchCardHTML).join('');
+    + sortLaunches(artistLaunches()).map(launchCardHTML).join('');
 }
 function renderDashLaunches() {
   const grid = document.getElementById('dash-launches');
   if (!grid) return;
-  const mine = artistLaunches();
+  const mine = sortLaunches(artistLaunches());
   grid.innerHTML = mine.length
     ? mine.slice(0,3).map(launchCardHTML).join('')
     : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay lanzamientos para este artista. Crea el primero con “+ Nuevo Lanzamiento”.</div>`;

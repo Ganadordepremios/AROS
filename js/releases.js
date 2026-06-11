@@ -74,7 +74,7 @@ function renderLaunchDetail() {
         </div>
         <div class="lh-meta">
           <span class="chip on" style="cursor:default;text-transform:uppercase;font-size:10px;letter-spacing:1px">${up(l.type || 'single')}</span>
-          <span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>
+          ${statusDropdownHTML(l)}
           <span class="lh-date">${launchDateLabel(l)}</span>
         </div>
         <div class="lh-timeline">
