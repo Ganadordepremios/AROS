@@ -121,6 +121,7 @@ function toggleSidebar(force) {
 }
 function showPage(id) {
   document.body.classList.remove('sidebar-open'); // cierra el menú en móvil al navegar
+  if (typeof releaseRestorePages === 'function') releaseRestorePages(); // devuelve páginas embebidas a .content antes de navegar
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');

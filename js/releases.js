@@ -94,24 +94,77 @@ function renderLaunchDetail() {
   renderReleaseTab(_releaseTab);
 }
 
-// ── Ficha de RELEASE con pestañas (Sprint 1) ──
+// ── Ficha de RELEASE con pestañas (Sprint 1 · reagrupadas v0.31) ──
 let _releaseTab = 'resumen';
-const RELEASE_TABS = [['resumen','Resumen'],['tracklist','Tracklist'],['marketing','Marketing'],['contenido','Contenido'],['data','Data'],['inversion','Inversión'],['assets','Assets'],['tareas','Tareas'],['actividad','Actividad'],['reportes','Reportes']];
+// 10 → 7 pestañas con sentido. Las agrupadas (campana/resultados/trabajo) usan sub-pestañas.
+const RELEASE_TABS = [['resumen','Resumen'],['musica','Música'],['campana','Campaña'],['resultados','Resultados'],['negocio','Negocio'],['archivos','Archivos'],['trabajo','Trabajo']];
+// Sub-pestañas: [id, etiqueta, ícono]. id 'reportes'/'actividad' = panel HTML; el resto = página global embebida.
+const TAB_GROUPS = {
+  campana:    [['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar']],
+  resultados: [['metricas','Métricas','metrics'],['aprendizajes','Aprendizajes','learnings'],['ia','IA estratégica','ai'],['reportes','Reportes','report']],
+  trabajo:    [['tareas','Tareas','checklist'],['actividad','Actividad','activity']],
+};
+// Funciones de render de cada página global embebible.
+const EMBED_RENDER = { objetivos:'renderObjetivos', ideas:'renderIdeas', calendario:'renderCalendar', metricas:'renderMetricas', aprendizajes:'renderAprendizajes', ia:'renderIA' };
+let _embeddedPages = []; // ids de páginas globales reubicadas dentro de una pestaña del release
+let _releaseSubTab = {}; // sub-pestaña activa recordada por grupo
+// Devuelve las páginas globales reubicadas a su sitio en .content (para que showPage siga funcionando).
+function releaseRestorePages(){
+  if(!_embeddedPages.length) return;
+  const content = document.querySelector('.content'); if(!content) return;
+  _embeddedPages.forEach(id=>{ const el=document.getElementById('page-'+id); if(el){ el.style.display=''; el.classList.remove('active','embedded'); content.appendChild(el); } });
+  _embeddedPages=[];
+}
+// Reubica una página global (#page-<id>) dentro de un contenedor de pestaña y la renderiza.
+function embedPageInto(target, id){
+  releaseRestorePages();
+  const el=document.getElementById('page-'+id); if(!el||!target) return;
+  el.classList.add('embedded'); el.style.display='block'; target.appendChild(el); _embeddedPages.push(id);
+  const fn=EMBED_RENDER[id]; if(fn && typeof window[fn]==='function') window[fn]();
+}
+// Mapea nombres viejos/sub (que aún llaman otros módulos: finance/accountability/crm) a la nueva estructura.
+// valor string = pestaña simple renombrada; array [grupo, sub] = sub-pestaña dentro de un grupo.
+const LEGACY_TAB = {
+  tracklist:'musica', inversion:'negocio',
+  marketing:['campana','objetivos'], contenido:['campana','ideas'], data:['resultados','metricas'],
+  objetivos:['campana','objetivos'], ideas:['campana','ideas'], calendario:['campana','calendario'],
+  metricas:['resultados','metricas'], aprendizajes:['resultados','aprendizajes'], ia:['resultados','ia'], reportes:['resultados','reportes'],
+  tareas:['trabajo','tareas'], actividad:['trabajo','actividad'],
+};
 function setReleaseTab(name){ _releaseTab = name; document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name)); renderReleaseTab(name); document.querySelector('.content').scrollTop = 0; }
+function setReleaseSubTab(group, sub){ _releaseSubTab[group]=sub; renderReleaseTab(group); }
 function renderReleaseTab(name){
   const l = launches.find(x=>x.id===currentLaunchId); if(!l) return;
   const host = document.getElementById('release-tab-body'); if(!host) return;
+  // Normaliza nombres legacy/sub → pestaña actual (+ recuerda la sub-pestaña).
+  const map = LEGACY_TAB[name];
+  if (map) {
+    if (Array.isArray(map)) { _releaseSubTab[map[0]] = map[1]; name = map[0]; }
+    else name = map;
+    _releaseTab = name;
+    document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name));
+  }
+  if(name!=='campana' && name!=='resultados' && name!=='trabajo') releaseRestorePages(); // pestañas simples no embeben
   if(name==='resumen') host.innerHTML = releaseResumenHTML(l);
-  else if(name==='tracklist') host.innerHTML = releaseTracklistHTML(l);
-  else if(name==='reportes') host.innerHTML = releaseReportesHTML(l);
-  else if(name==='marketing') host.innerHTML = releaseLinkTabHTML('Marketing','ADN de campaña, objetivos SMART y plan de medios de este lanzamiento.',[[`${icon('goals',13)} Objetivos SMART`,'objetivos'],[`${icon('dna',13)} ADN de campaña`,'adn']]);
-  else if(name==='contenido') host.innerHTML = releaseLinkTabHTML('Contenido','Banco de referencias, generador de ideas y calendario.',[[`${icon('references',13)} Banco de Referencias`,'banco'],[`${icon('ideas',13)} Generador de Ideas`,'ideas'],[`${icon('calendar',13)} Calendario`,'calendario']]);
-  else if(name==='data') host.innerHTML = releaseLinkTabHTML('Data','Métricas, sparklines, aprendizajes e IA estratégica.',[[`${icon('metrics',13)} Métricas`,'metricas'],[`${icon('learnings',13)} Aprendizajes`,'aprendizajes'],[`${icon('ai',13)} IA Estratégica`,'ia']]);
-  else if(name==='assets') host.innerHTML = releaseAssetsHTML(l);
-  else if(name==='tareas') host.innerHTML = tareasPanelHTML('release');
-  else if(name==='inversion') host.innerHTML = releaseInversionHTML(l);
-  else if(name==='actividad') { host.innerHTML = (typeof releaseActividadHTML==='function') ? releaseActividadHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(host); }
+  else if(name==='musica') host.innerHTML = releaseTracklistHTML(l);
+  else if(name==='negocio') host.innerHTML = releaseInversionHTML(l);
+  else if(name==='archivos') host.innerHTML = releaseAssetsHTML(l);
+  else if(TAB_GROUPS[name]) renderReleaseGroup(name, l);
   else host.innerHTML = `<div class="empty-hint">${s(name)}</div>`;
+}
+// Pestaña agrupada con sub-pestañas (embebe la página global correspondiente o un panel HTML).
+function renderReleaseGroup(group, l){
+  const host = document.getElementById('release-tab-body'); if(!host) return;
+  releaseRestorePages(); // saca cualquier nodo embebido ANTES de reescribir el host (si no, se destruye)
+  const subs = TAB_GROUPS[group];
+  const sub = _releaseSubTab[group] && subs.some(x=>x[0]===_releaseSubTab[group]) ? _releaseSubTab[group] : subs[0][0];
+  const bar = `<div class="mtabs" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">${subs.map(x=>`<div class="mtab ${x[0]===sub?'active':''}" style="font-size:11px;padding:6px 12px" onclick="setReleaseSubTab('${group}','${x[0]}')">${icon(x[2],13)} ${x[1]}</div>`).join('')}</div>`;
+  host.innerHTML = bar + `<div id="release-sub-body"></div>`;
+  const body = document.getElementById('release-sub-body');
+  if(sub==='reportes'){ releaseRestorePages(); body.innerHTML = releaseReportesHTML(l); }
+  else if(sub==='tareas'){ releaseRestorePages(); body.innerHTML = tareasPanelHTML('release'); }
+  else if(sub==='actividad'){ releaseRestorePages(); body.innerHTML = (typeof releaseActividadHTML==='function') ? releaseActividadHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(body); }
+  else embedPageInto(body, sub); // objetivos/ideas/calendario/metricas/aprendizajes/ia
 }
 // ── Assets del release (links clasificados) ──
 const ASSET_TIPOS = [['portada','Portada'],['audio','Audio'],['video','Video'],['documento','Documento'],['otro','Otro']];
