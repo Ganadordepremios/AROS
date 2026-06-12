@@ -93,6 +93,7 @@ function parsearCSV(csv) {
       for: forTags,
       cat: catTags,
       link: obj.link || obj.url || '',
+      thumb: obj.thumb || obj.miniatura || obj.imagen || obj.image || '',
       comentarios: obj.comentarios || obj.notas || '',
       icon: catIcon(catTags),
     };
@@ -283,11 +284,13 @@ function renderBanco() {
     const sel = ideaSelected(r);
     return `
     <div class="ref-page-card fade-in" onclick="openRefBoxdrop(${r._idx})">
-      <div class="ref-page-thumb" style="background:linear-gradient(135deg,#111,#1a1a1a);position:relative;min-height:90px;display:flex;align-items:center;justify-content:center">
-        <span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',30)}</span>
+      <div class="ref-page-thumb">
+        ${(() => { const th = r.thumb || refThumb(r.link); return th
+          ? `<img class="ref-thumb-img" src="${s(th)}" alt="${s(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
+          : `<span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
-          style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'var(--text-dim)'};opacity:${sel?1:0.5};transition:all 0.2s">${icon(sel?'starFill':'star',15)}</button>
-        ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2)">↗ VER</a>` : ''}
+          style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
+        ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
         <div class="ref-page-title">${s(r.title)}</div>
@@ -349,8 +352,8 @@ function refThumb(link) {
   // Vimeo
   const vm = url.match(/vimeo\.com\/(\d+)/);
   if (vm) return `https://vumbnail.com/${vm[1]}.jpg`;
-  // Universal: screenshot público de la página (TikTok, IG, X, posts, etc.)
-  return `https://image.thum.io/get/width/600/crop/800/${url}`;
+  // Universal: screenshot público de la página (TikTok, IG, X, posts, etc.) en formato vertical 9:16.
+  return `https://image.thum.io/get/width/450/crop/800/${url}`;
 }
 
 // ══════════════════════════════════════════
@@ -1867,10 +1870,22 @@ function handleCSVFile(e) {
     try {
       const parsed = parsearCSV(ev.target.result);
       if (!parsed.length) throw new Error('sin datos');
-      setReferencias(parsed);
+      const append = !!(document.getElementById('csv-append') || {}).checked;
+      let added = parsed.length;
+      if (append) {
+        const key = r => (s(r.link).trim().toLowerCase() || s(r.title).trim().toLowerCase());
+        const have = new Set(referencias.map(key));
+        const nuevos = parsed.filter(r => { const k = key(r); if (have.has(k)) return false; have.add(k); return true; });
+        added = nuevos.length;
+        setReferencias(referencias.concat(nuevos));
+      } else {
+        setReferencias(parsed);
+      }
       bancoCargado = true;
       document.getElementById('csv-status').style.color = '#4ade80';
-      document.getElementById('csv-status').textContent = `✓ ${parsed.length} referencias cargadas`;
+      document.getElementById('csv-status').textContent = append
+        ? `✓ ${added} nuevas (${referencias.length} en total)`
+        : `✓ ${parsed.length} referencias cargadas`;
       setTimeout(() => {
         document.getElementById('modal-csv').classList.remove('open');
         showPage('banco');
@@ -1890,9 +1905,10 @@ function usarDemoData() {
 }
 // render CSV column chips
 document.getElementById('csv-cols').innerHTML =
-  ['id','title','hook','for','cat','link','comentarios'].map(c =>
-    `<div style="background:var(--surface2);padding:5px 10px;border-radius:3px;font-family:var(--font-mono);font-size:10px;color:var(--text);border:1px solid var(--border)">${c}</div>`
-  ).join('');
+  ['title','hook','for','cat','link','thumb','comentarios'].map(c => {
+    const opt = ['link','thumb','comentarios','hook'].indexOf(c) >= 0;
+    return `<div style="background:var(--surface2);padding:5px 10px;border-radius:3px;font-family:var(--font-mono);font-size:10px;color:${opt?'var(--text-dim)':'var(--text)'};border:1px solid var(--border)">${c}${opt?' ·opc':''}</div>`;
+  }).join('');
 
 // ══════════════════════════════════════════
 // MODELO DE DATOS — LANZAMIENTOS (localStorage)
