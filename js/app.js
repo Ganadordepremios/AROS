@@ -285,9 +285,10 @@ function renderBanco() {
     return `
     <div class="ref-page-card fade-in" onclick="openRefBoxdrop(${r._idx})">
       <div class="ref-page-thumb">
-        ${(() => { const th = r.thumb || refThumb(r.link); return th
-          ? `<img class="ref-thumb-img" src="${s(th)}" alt="${s(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
-          : `<span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
+        ${(() => { const th = refThumbImmediate(r); const iid = 'rthumb-' + r._idx;
+          return th
+          ? `<img id="${iid}" class="ref-thumb-img" src="${s(th)}" alt="${s(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
+          : `<img id="${iid}" class="ref-thumb-img" alt="${s(r.title)}" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
@@ -315,6 +316,11 @@ function renderBanco() {
       </div>
     </div>`;
   grid.innerHTML = cards + paginacion;
+  // Resuelve async la miniatura real de los TikTok visibles que aún no están en caché (oEmbed + CORS).
+  slice.forEach(r => {
+    const link = s(r.link).trim();
+    if (!r.thumb && /tiktok\.com/.test(link) && !_thumbCache()[link]) resolveTikTokThumb(link, 'rthumb-' + r._idx);
+  });
 }
 function cambiarPagina(n) { paginaActual = n; renderBanco(); document.querySelector('.content').scrollTop = 0; }
 function cambiarPorPagina(n) { porPagina = n; paginaActual = 1; renderBanco(); }
@@ -346,14 +352,43 @@ function toggleIdea(idx, btn) {
 function refThumb(link) {
   const url = s(link).trim();
   if (!url) return null;
-  // YouTube (watch / shorts / youtu.be / embed)
+  // YouTube (watch / shorts / youtu.be / embed) — derivable y estable.
   const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/|v\/)|youtu\.be\/)([\w-]{11})/);
   if (yt) return `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg`;
   // Vimeo
   const vm = url.match(/vimeo\.com\/(\d+)/);
   if (vm) return `https://vumbnail.com/${vm[1]}.jpg`;
-  // Universal: screenshot público de la página (TikTok, IG, X, posts, etc.) en formato vertical 9:16.
-  return `https://image.thum.io/get/width/450/crop/800/${url}`;
+  // TikTok: miniatura real vía oEmbed (se resuelve async; aquí devolvemos la cacheada si existe).
+  if (/tiktok\.com/.test(url)) return _thumbCache()[url] || null;
+  // IG / X / web: no hay captura automática fiable → ícono (usa la columna `thumb` para una imagen propia).
+  return null;
+}
+// ── Miniaturas resueltas por oEmbed (TikTok) con caché en localStorage ──
+// El oEmbed oficial de TikTok devuelve la miniatura real (1080x1920) y permite CORS.
+function _thumbCache() { try { return JSON.parse(localStorage.getItem('ao_thumb_cache')) || {}; } catch (e) { return {}; } }
+function _thumbCacheSet(link, thumb) { try { const c = _thumbCache(); c[link] = thumb; localStorage.setItem('ao_thumb_cache', JSON.stringify(c)); } catch (e) {} }
+// Miniatura disponible YA (sin red): manual (columna thumb) > lo que dé refThumb (YouTube/Vimeo/caché TikTok).
+function refThumbImmediate(r) {
+  if (r.thumb) return s(r.thumb);
+  return refThumb(r.link);
+}
+let _thumbInflight = {};
+// Resuelve async la miniatura de un TikTok y actualiza su <img> en el DOM (solo para los cards visibles).
+function resolveTikTokThumb(link, imgId) {
+  if (!link || _thumbInflight[link]) return;
+  _thumbInflight[link] = true;
+  fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(link))
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.thumbnail_url) {
+        _thumbCacheSet(link, d.thumbnail_url);
+        const im = document.getElementById(imgId);
+        if (im) { im.onerror = null; im.src = d.thumbnail_url; im.style.display = 'block';
+          const fb = im.parentNode && im.parentNode.querySelector('.ref-thumb-fallback'); if (fb) fb.style.display = 'none'; }
+      }
+    })
+    .catch(() => {})
+    .finally(() => { delete _thumbInflight[link]; });
 }
 
 // ══════════════════════════════════════════
