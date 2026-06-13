@@ -103,10 +103,44 @@ async function instagramThumb(url) {
       if (d.thumbnail_url) return d.thumbnail_url;
     } catch {}
   }
-  // 2) Sin token: el fetch simple NO sirve (IG entrega un shell JS sin la imagen).
-  //    La única vía sin token que funciona es renderizar el /embed/ en un navegador headless (--ig-browser → requiere `npm i puppeteer`).
-  if (IG_BROWSER) return igViaBrowser(url);
-  return null;
+  // 2) Navegador headless (--ig-browser) si se pidió explícitamente.
+  if (IG_BROWSER) { const b = await igViaBrowser(url); if (b) return b; }
+  // 3) Por defecto (sin setup): downloader gratuito grabgram.io. El fetch simple NO sirve (IG sirve shell JS).
+  return igViaGrabgram(url);
+}
+// ── Instagram vía grabgram.io (downloader gratuito; sin token ni navegador) ──
+// Devuelve la portada (CDN de IG). Esa URL caduca → el script la descarga y la rehostea a Supabase.
+const GG_PAGE = 'https://grabgram.io/en/instagram-video-thumbnail-downloader';
+const GG_API = 'https://grabgram.io/api/fetch/instagram';
+let _ggToken = null, _ggCookie = null, _ggInit = null, _ggLast = 0;
+async function grabgramInit() {
+  const r = await fetch(GG_PAGE, { headers: { 'User-Agent': UA, 'Accept-Language': 'en' } });
+  const html = await r.text();
+  const m = html.match(/csrf-token"\s+content="([^"]+)"/i);
+  _ggToken = m ? m[1] : null;
+  const sc = (typeof r.headers.getSetCookie === 'function') ? r.headers.getSetCookie()
+    : (r.headers.get('set-cookie') ? [r.headers.get('set-cookie')] : []);
+  _ggCookie = sc.map(c => c.split(';')[0]).join('; ');
+}
+async function igViaGrabgram(url, retried) {
+  const wait = Math.max(0, 450 - (Date.now() - _ggLast)); if (wait) await new Promise(s => setTimeout(s, wait)); _ggLast = Date.now(); // cortesía (evita baneo)
+  if (!_ggToken) { if (!_ggInit) _ggInit = grabgramInit().catch(() => {}); await _ggInit; }
+  try {
+    const r = await fetch(GG_API, {
+      method: 'POST',
+      headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json',
+        'X-CSRF-TOKEN': _ggToken || '', 'X-Requested-With': 'XMLHttpRequest', 'Referer': GG_PAGE, 'Cookie': _ggCookie || '' },
+      body: JSON.stringify({ url }),
+    });
+    if (r.status === 419 && !retried) { _ggToken = null; _ggInit = grabgramInit().catch(() => {}); await _ggInit; return igViaGrabgram(url, true); } // token expiró → renueva
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.ok || !d.data) return null;
+    const it = (d.data.items || [])[0]; if (!it) return null;
+    if (it.preview) return it.preview;
+    const ph = (it.downloads || []).find(x => x.kind === 'photo' && x.url);
+    return ph ? ph.url : null;
+  } catch { return null; }
 }
 // Resuelve la portada de IG renderizando el embed público en Chromium headless (Puppeteer, carga perezosa).
 let _pptr = null, _browser = null, _pptrFailed = false;
@@ -184,7 +218,7 @@ function platformOf(u) { if (/tiktok/.test(u)) return 'tiktok'; if (/youtu/.test
   let objs = rows.slice(1).map(vals => { const o = {}; headers.forEach((h, i) => { o[h] = (vals[i] ?? '').trim(); }); return o; });
   if (LIMIT) objs = objs.slice(0, LIMIT);
 
-  const igMode = META_TOKEN ? 'oEmbed' : (IG_BROWSER ? 'navegador headless' : 'omitido (sin token/--ig-browser)');
+  const igMode = META_TOKEN ? 'oEmbed' : (IG_BROWSER ? 'navegador headless' : 'grabgram.io (gratis)');
   console.log(`▶ ${objs.length} filas · bucket=${BUCKET} · IG=${igMode} ${DRY ? '· DRY-RUN' : ''}`);
   // Conteo por plataforma (para ver la composición del banco).
   const byPlat = {}; objs.forEach(o => { const p = platformOf(String(o[linkKey] || '')); byPlat[p] = (byPlat[p] || 0) + 1; });

@@ -9,10 +9,10 @@ columna `thumb`. La app ya prioriza `thumb`, así que tras correrlo solo reimpor
 | TikTok | oEmbed oficial (`thumbnail_url`) | — |
 | YouTube | `i.ytimg.com/vi/<id>/maxres` (cae a `hqdefault`) | — |
 | Vimeo | Vimeo oEmbed | — |
-| Instagram | Meta oEmbed (si hay `META_TOKEN`) · o `--ig-browser` (Chromium headless) · si no, se omite | opcional |
+| Instagram | **grabgram.io** (gratis, por defecto) · o Meta oEmbed (`META_TOKEN`) · o `--ig-browser` (Chromium) | — |
 | Otros / falla | (sin thumb → la app muestra el ícono) | — |
 
-> **Importante sobre Instagram:** IG ya **no se puede scrapear con un fetch simple** — sirve un shell de JS y la imagen la pinta el navegador en cliente (verificado). Las únicas vías que funcionan: (a) **Meta oEmbed** con `META_TOKEN` (oficial), o (b) **`--ig-browser`**, que renderiza el `/embed/` público en Chromium headless (requiere `npm i puppeteer`, ~150 MB). Sin ninguna de las dos, las referencias de IG quedan con ícono. **TikTok/YouTube/Vimeo no necesitan nada de esto.**
+> **Instagram:** IG ya **no se puede scrapear con un fetch simple** (sirve un shell JS; la imagen la pinta el cliente — verificado). Por defecto el script usa el downloader gratuito **grabgram.io** (sin token ni setup): obtiene la portada del post desde el CDN de IG, y como esa URL caduca, el script la **descarga y rehostea a Supabase** (queda permanente). Va con throttle (~450 ms/llamada) para no saturar; algunos posts privados/borrados no saldrán (es esperado). Alternativas: `META_TOKEN` (Meta oEmbed oficial) o `--ig-browser` (Chromium headless, `npm i puppeteer`). **TikTok/YouTube/Vimeo no necesitan nada de esto.**
 
 Idempotente: si la imagen ya está en el bucket, reusa su URL (puedes re-correrlo sin re-subir).
 
