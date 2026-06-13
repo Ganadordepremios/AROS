@@ -98,6 +98,19 @@ function contactLabel(c) { return c.name || c.email; }
 function contactById(id) { return mentionContacts().find(c => c.id === id || s(c.email).toLowerCase() === s(id).toLowerCase()) || null; }
 function _esc(x) { return s(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
 
+// ── Dropdown reusable de "Responsable" — mismas personas que @menciones (miembros del workspace ∪ contactos) ──
+function assigneeOptionsHTML(selected) {
+  const selv = s(selected);
+  const labels = ((typeof mentionContacts === 'function') ? mentionContacts() : []).map(contactLabel).filter(Boolean);
+  if (selv && !labels.some(l => l.toLowerCase() === selv.toLowerCase())) labels.unshift(selv); // conserva un valor viejo fuera de la lista
+  const seen = {}, uniq = [];
+  labels.forEach(l => { const k = l.toLowerCase(); if (!seen[k]) { seen[k] = 1; uniq.push(l); } });
+  return `<option value="">— Sin asignar —</option>` + uniq.map(l => `<option value="${_esc(l)}" ${selv.toLowerCase() === l.toLowerCase() ? 'selected' : ''}>${_esc(l)}</option>`).join('');
+}
+function assigneeSelectHTML(selected, onchangeAttr, style) {
+  return `<select class="input" style="${style || ''}" title="Responsable" ${onchangeAttr || ''}>${assigneeOptionsHTML(selected)}</select>`;
+}
+
 // ══════════════════════════════════════════
 // COMENTARIOS (canales por área + @menciones inline)
 // ══════════════════════════════════════════

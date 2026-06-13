@@ -611,9 +611,10 @@ function renderResults() {
   const a = activeLaunch(); const host = document.getElementById('ideas-results'); if (!host || !a) return;
   const g = a.generated || [];
   if (!g.length) { host.innerHTML = ''; return; }
-  const usage = a.lastUsage
+  const showCost = !(typeof isAdmin === 'function') || isAdmin(); // detalle de costo solo super-admin
+  const usage = (a.lastUsage && showCost)
     ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
-    : `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('zap',12)} Generado con plantillas · sin costo</div>`;
+    : '';
   host.innerHTML = `
     <div class="section-header" style="margin-top:8px"><div class="section-title">IDEAS GENERADAS · ${g.length}</div></div>
     ${usage}
@@ -698,13 +699,16 @@ function aiCostHint(prompt, expectedOut) {
   const cost = inTok / 1e6 * ai.priceIn + outTok / 1e6 * ai.priceOut;
   return { inTok, outTok, cost, ai };
 }
+// El detalle de costo/tokens de IA solo lo ve el super-admin (josh@hookspa.com) — oculto para todos los demás.
 function aiHintHTML(prompt, expectedOut) {
+  if (typeof isAdmin === 'function' && !isAdmin()) return '';
   const e = aiCostHint(prompt, expectedOut);
   const perDollar = e.cost > 0 ? Math.max(1, Math.floor(1 / e.cost)) : '∞';
   return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
 }
 function usageBadge(u, ai) {
   if (!u) return '';
+  if (typeof isAdmin === 'function' && !isAdmin()) return '';
   return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
 }
 function buildIdeaPrompt(a, count) {

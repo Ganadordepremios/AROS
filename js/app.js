@@ -372,23 +372,33 @@ function refThumbImmediate(r) {
   if (r.thumb) return s(r.thumb);
   return refThumb(r.link);
 }
-let _thumbInflight = {};
-// Resuelve async la miniatura de un TikTok y actualiza su <img> en el DOM (solo para los cards visibles).
+// ── Cola con concurrencia limitada para los oEmbed de TikTok (evita rate-limit → "muchos no cargan") ──
+let _thumbInflight = {}, _thumbQueue = [], _thumbActive = 0;
+const _THUMB_MAX = 3;
+function _thumbPump() {
+  while (_thumbActive < _THUMB_MAX && _thumbQueue.length) {
+    const { link, imgId } = _thumbQueue.shift();
+    _thumbActive++;
+    fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(link))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.thumbnail_url) {
+          _thumbCacheSet(link, d.thumbnail_url);
+          const im = document.getElementById(imgId);
+          if (im) { im.onerror = null; im.src = d.thumbnail_url; im.style.display = 'block';
+            const fb = im.parentNode && im.parentNode.querySelector('.ref-thumb-fallback, .brief-thumb-fallback'); if (fb) fb.style.display = 'none'; }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { delete _thumbInflight[link]; _thumbActive--; _thumbPump(); });
+  }
+}
+// Encola la resolución async de la miniatura de un TikTok (oEmbed) → actualiza su <img> al resolver.
 function resolveTikTokThumb(link, imgId) {
   if (!link || _thumbInflight[link]) return;
   _thumbInflight[link] = true;
-  fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(link))
-    .then(r => r.json())
-    .then(d => {
-      if (d && d.thumbnail_url) {
-        _thumbCacheSet(link, d.thumbnail_url);
-        const im = document.getElementById(imgId);
-        if (im) { im.onerror = null; im.src = d.thumbnail_url; im.style.display = 'block';
-          const fb = im.parentNode && im.parentNode.querySelector('.ref-thumb-fallback'); if (fb) fb.style.display = 'none'; }
-      }
-    })
-    .catch(() => {})
-    .finally(() => { delete _thumbInflight[link]; });
+  _thumbQueue.push({ link, imgId });
+  _thumbPump();
 }
 
 // ══════════════════════════════════════════
@@ -422,23 +432,21 @@ function openRefBoxdrop(idx) {
   badge.style.cssText = `background:${fcol}22;color:${fcol};border:1px solid ${fcol}44;padding:3px 10px;border-radius:2px;font-size:9px;font-family:var(--font-mono)`;
   badge.textContent   = up(fc) || 'REF';
 
-  // Miniatura (lado derecho del brief)
-  const thumb = refThumb(r.link);
+  // Miniatura (lado derecho del brief) — el LINK y la MINIATURA son independientes.
+  const thumb = refThumbImmediate(r);
+  const link  = s(r.link).trim();
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
-  if (thumb) {
-    card.innerHTML = `
-      <img class="brief-thumb-img" src="${thumb}" alt="${s(r.title)}" loading="lazy"
-        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="brief-thumb-fallback" style="display:none">${briefIco}</div>
-      <div style="padding:10px;border-top:1px solid var(--border)">
-        <a href="${s(r.link)}" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">${icon('link',12)} Abrir original</a>
-      </div>`;
-  } else {
-    card.innerHTML = `
-      <div class="brief-thumb-fallback" style="display:flex">${briefIco}</div>
-      <div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`;
-  }
+  const linkFooter = link
+    ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${s(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
+    : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`;
+  card.innerHTML = `
+    <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${s(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
+      onerror="this.style.display='none';this.parentNode.querySelector('.brief-thumb-fallback').style.display='flex'">
+    <div class="brief-thumb-fallback" style="display:${thumb?'none':'flex'}">${briefIco}</div>
+    ${linkFooter}`;
+  // Si es TikTok sin caché, resuelve la miniatura async y la coloca al vuelo.
+  if (!thumb && /tiktok\.com/.test(link)) resolveTikTokThumb(link, 'bd-thumb-img');
 
   const selLabel = a ? `Seleccionar para ${s(a.name)}` : 'Seleccionar idea';
   document.getElementById('bd-actions').innerHTML = `
@@ -762,14 +770,14 @@ function renderProd() {
   else body.innerHTML = prodAssetsHTML(ci, p);
 }
 function prodBriefHTML(ci, p) {
-  const art = activeArtist();
-  const team = (art && art.team) || [];
-  const teamOpts = `<option value="">— Sin asignar —</option>` + team.map(m => `<option value="${s(m.name)}" ${p.responsable === m.name ? 'selected' : ''}>${s(m.name)}${m.role ? ' · ' + s(m.role) : ''}</option>`).join('');
+  const respSel = (typeof assigneeSelectHTML === 'function')
+    ? assigneeSelectHTML(p.responsable, `onchange="prodSet('responsable',this.value)"`)
+    : `<select class="input" onchange="prodSet('responsable',this.value)"><option value="">— Sin asignar —</option></select>`;
   return `
     <div class="field-grid" style="margin-bottom:16px">
       <div class="field"><label>Objetivo</label><input class="input" value="${s(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
       <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
-      <div class="field"><label>Responsable</label><select class="input" onchange="prodSet('responsable',this.value)">${teamOpts}</select></div>
+      <div class="field"><label>Responsable</label>${respSel}</div>
       <div class="field"><label>Fecha</label><input type="date" class="input" value="${s(ci.fecha)}" onchange="prodSetFecha(this.value)"></div>
     </div>
     <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>

@@ -227,7 +227,7 @@ function trackLegalHTML(t) {
       <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">${icon('close',12)}</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <input class="input" style="flex:1;min-width:120px;padding:5px 8px;font-size:12px" value="${s(d.responsable)}" placeholder="Responsable" ${setF(i,'responsable')}>
+      ${assigneeSelectHTML(d.responsable, setF(i,'responsable'), 'flex:1;min-width:120px;padding:5px 8px;font-size:12px')}
       <input class="input" style="flex:2;min-width:160px;padding:5px 8px;font-size:12px" value="${s(d.fileLink)}" placeholder="Link del documento (Drive/PDF)" ${setF(i,'fileLink')}>
     </div>
     <input class="input" style="margin-top:8px;padding:5px 8px;font-size:12px" value="${s(d.note)}" placeholder="Nota" ${setF(i,'note')}>
