@@ -9,8 +9,10 @@ columna `thumb`. La app ya prioriza `thumb`, así que tras correrlo solo reimpor
 | TikTok | oEmbed oficial (`thumbnail_url`) | — |
 | YouTube | `i.ytimg.com/vi/<id>/maxres` (cae a `hqdefault`) | — |
 | Vimeo | Vimeo oEmbed | — |
-| Instagram | Meta oEmbed (si hay `META_TOKEN`) → si no/falla, `og:image` del `/embed/` público | opcional |
+| Instagram | Meta oEmbed (si hay `META_TOKEN`) · o `--ig-browser` (Chromium headless) · si no, se omite | opcional |
 | Otros / falla | (sin thumb → la app muestra el ícono) | — |
+
+> **Importante sobre Instagram:** IG ya **no se puede scrapear con un fetch simple** — sirve un shell de JS y la imagen la pinta el navegador en cliente (verificado). Las únicas vías que funcionan: (a) **Meta oEmbed** con `META_TOKEN` (oficial), o (b) **`--ig-browser`**, que renderiza el `/embed/` público en Chromium headless (requiere `npm i puppeteer`, ~150 MB). Sin ninguna de las dos, las referencias de IG quedan con ícono. **TikTok/YouTube/Vimeo no necesitan nada de esto.**
 
 Idempotente: si la imagen ya está en el bucket, reusa su URL (puedes re-correrlo sin re-subir).
 
@@ -43,7 +45,16 @@ SUPABASE_SERVICE_KEY=eyJ...service_role... \
 META_TOKEN="APP_ID|APP_SECRET" \   # omite esta línea si no usas Meta
 node tools/enrich-thumbnails.mjs miBanco.csv salida.csv
 ```
-Flags: `--limit N` (solo N filas) · `--dry` (no sube) · `--bucket nombre` (default `ref-thumbs`) · `--conc N` (concurrencia, default 5).
+Flags: `--limit N` (solo N filas) · `--dry` (no sube) · `--bucket nombre` (default `ref-thumbs`) · `--conc N` (concurrencia, default 5) · `--ig-browser` (resolver IG con Chromium headless; antes corre `npm i puppeteer`).
+
+El dry-run imprime el **conteo por plataforma** (`Por plataforma: {tiktok, instagram, …}`) y las **resueltas por plataforma**, para ver cuántas IG hay y decidir si vale la pena `--ig-browser`.
+
+### Instagram con navegador headless (sin token)
+```bash
+npm i puppeteer          # una vez (~150 MB, baja Chromium)
+SUPABASE_URL=… SUPABASE_SERVICE_KEY=… \
+node tools/enrich-thumbnails.mjs miBanco.csv salida.csv --ig-browser
+```
 
 El script imprime un resumen (`uploaded`, `cached`, `no-thumb`, etc.) y deja `salida.csv` con la columna `thumb` llena de URLs de Supabase.
 
