@@ -95,6 +95,17 @@ function tvFilter(key, val) { _tv[key] = val; tvRenderBody(); updateTaskBadge();
 function tvSearch(val) { _tv.q = val; tvRenderBody(); }
 function tvCalNav(delta) { const d = _tv.calMonth || new Date(); _tv.calMonth = new Date(d.getFullYear(), d.getMonth() + delta, 1); tvRenderBody(); }
 function setTaskEstadoInline(id, val) { updateTaskRow(id, { estado: val }); tvRenderBody(); updateTaskBadge(); }
+// Asignar/cambiar responsable desde la vista de Tareas → se refleja en el release/track (misma tabla).
+function setTaskRespInline(id, val) {
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  updateTaskRow(id, { responsable: val });
+  // refresca el panel del release/track si está abierto en esa tarea
+  const t = taskById(id);
+  if (t && typeof currentLaunchId !== 'undefined' && currentLaunchId === t.releaseId && typeof renderReleaseTab === 'function') {
+    if (t.trackId && typeof renderTrackTab === 'function') renderTrackTab('tareas'); else renderReleaseTab('tareas');
+  }
+  tvRenderBody();
+}
 
 // ── Badge del nav ──
 function updateTaskBadge() {
@@ -118,9 +129,12 @@ function renderTareas() {
         <h2 id="tareas-title">${_tv.mine ? 'Mis tareas' : 'Todas las tareas'}</h2>
         <div class="dash-sub">${_tv.mine ? mineCount + ' abierta' + (mineCount === 1 ? '' : 's') + ' asignadas a ti' : allOpen + ' abiertas en el equipo'}</div>
       </div>
-      <div class="tv-seg">
-        <button class="${_tv.mine ? 'on' : ''}" onclick="tvScope(true)">Mías</button>
-        <button class="${!_tv.mine ? 'on' : ''}" onclick="tvScope(false)">Todas</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="tv-seg">
+          <button class="${_tv.mine ? 'on' : ''}" onclick="tvScope(true)">Mías</button>
+          <button class="${!_tv.mine ? 'on' : ''}" onclick="tvScope(false)">Todas</button>
+        </div>
+        ${canDo('gestionar_tareas') ? `<button class="btn btn-primary" onclick="openNewTask()">+ Nueva tarea</button>` : ''}
       </div>
     </div>
     <div class="tv-toolbar">
@@ -151,6 +165,71 @@ function tvRenderBody() {
   else if (_tv.view === 'assignee') body.innerHTML = tvAssignee(list);
 }
 
+// ══════════════════════════════════════════
+// NUEVA TAREA (global) — se puede linkear a un módulo (departamento) y, opcionalmente, a un artista/release.
+// No requiere abrir ninguna sección: la tarea aparece en esta lista y, si tiene release, en su pestaña Tareas.
+// ══════════════════════════════════════════
+function openNewTask() {
+  if (!requireCan('gestionar_tareas')) return;
+  const arts = (typeof artists !== 'undefined') ? artists : [];
+  const m = document.getElementById('modal-newtask'); if (!m) return;
+  const body = document.getElementById('newtask-body');
+  body.innerHTML = `
+    <div class="field" style="margin-bottom:12px"><label>Tarea</label>
+      <input class="input" id="nt-titulo" placeholder="¿Qué hay que hacer?" onkeydown="if(event.key==='Enter')submitNewTask()"></div>
+    <div class="field-grid" style="margin-bottom:12px">
+      <div class="field"><label>Módulo / área</label>
+        <select class="input" id="nt-depto"><option value="">— Ninguno —</option>${TASK_DEPTS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
+      <div class="field"><label>Responsable</label>
+        ${(typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML('', 'id="nt-resp"') : '<select class="input" id="nt-resp"><option value="">— Sin asignar —</option></select>'}</div>
+    </div>
+    <div class="field-grid" style="margin-bottom:12px">
+      <div class="field"><label>Prioridad</label>
+        <select class="input" id="nt-pri">${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${x[0] === 'media' ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
+      <div class="field"><label>Fecha límite</label><input type="date" class="input" id="nt-due"></div>
+    </div>
+    <div class="field-grid" style="margin-bottom:6px">
+      <div class="field"><label>Artista <span style="color:var(--text-dim)">(opcional)</span></label>
+        <select class="input" id="nt-artist" onchange="ntFillReleases()"><option value="">— Ninguno —</option>${arts.map(a => `<option value="${a.id}">${s(a.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>Release <span style="color:var(--text-dim)">(opcional)</span></label>
+        <select class="input" id="nt-release"><option value="">— Ninguno —</option></select></div>
+    </div>
+    <div class="empty-hint" style="margin:4px 0 14px">Puedes crear la tarea sin artista ni release (queda como tarea suelta del workspace) y linkearla solo a un módulo.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="cerrarNewTask()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitNewTask()">Crear tarea</button>
+    </div>`;
+  m.classList.add('open');
+  if (typeof hydrateIcons === 'function') hydrateIcons(m);
+  setTimeout(() => { const i = document.getElementById('nt-titulo'); if (i) i.focus(); }, 50);
+}
+function ntFillReleases() {
+  const aid = (document.getElementById('nt-artist') || {}).value || '';
+  const rel = document.getElementById('nt-release'); if (!rel) return;
+  const ls = (typeof launches !== 'undefined') ? launches.filter(l => !aid || l.artistId === aid) : [];
+  rel.innerHTML = `<option value="">— Ninguno —</option>` + ls.map(l => `<option value="${l.id}">${s(l.name)}</option>`).join('');
+}
+function cerrarNewTask(e) { if (!e || e.target === document.getElementById('modal-newtask')) document.getElementById('modal-newtask').classList.remove('open'); }
+function submitNewTask() {
+  if (!requireCan('gestionar_tareas')) return;
+  const titulo = ((document.getElementById('nt-titulo') || {}).value || '').trim();
+  if (!titulo) { const i = document.getElementById('nt-titulo'); if (i) i.style.borderColor = 'var(--accent2)'; return; }
+  const releaseId = (document.getElementById('nt-release') || {}).value || null;
+  let artistId = (document.getElementById('nt-artist') || {}).value || null;
+  if (releaseId && typeof launches !== 'undefined') { const l = launches.find(x => x.id === releaseId); if (l) artistId = l.artistId; } // coherencia
+  const fields = {
+    titulo,
+    departamento: (document.getElementById('nt-depto') || {}).value || '',
+    responsable: (document.getElementById('nt-resp') || {}).value || '',
+    priority: (document.getElementById('nt-pri') || {}).value || 'media',
+    dueDate: (document.getElementById('nt-due') || {}).value || '',
+  };
+  createTask({ artistId: artistId || null, releaseId: releaseId || null, trackId: null }, fields);
+  document.getElementById('modal-newtask').classList.remove('open');
+  if (typeof uiToast === 'function') uiToast('✓ Tarea creada');
+  renderTareas();
+}
+
 // ── Vista: Lista ──
 function _taskCardHTML(t) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
@@ -159,11 +238,12 @@ function _taskCardHTML(t) {
   return `<div class="tk-card" style="border-left-color:${blocked ? 'var(--accent2)' : (TASK_PRI_COLOR[t.priority] || 'var(--border)')}" onclick="openTaskContext('${t.id}')">
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
-      <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.responsable ? ' · ' + icon('person', 11) + ' ' + s(t.responsable) : ''}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}</div>
+      <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}</div>
     </div>
     <div class="tk-right" onclick="event.stopPropagation()">
       ${priChip(t.priority)}
       ${du.label ? `<span class="tk-due ${du.cls}">${du.label}</span>` : ''}
+      ${(typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="setTaskRespInline('${t.id}',this.value)"`, 'padding:5px 7px;font-size:11px;width:auto;max-width:130px') : ''}
       <select class="input" style="padding:5px 7px;font-size:11px;width:auto" onchange="setTaskEstadoInline('${t.id}',this.value)">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
     </div>
   </div>`;
